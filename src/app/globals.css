@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #14110f;
+  --foreground: #efe3d3;
+  --color-ash-950: #14110f;
+  --color-ash-900: #1d1916;
+  --color-ash-800: #2d2723;
+  --color-ash-700: #463d36;
+  --color-paper-100: #efe3d3;
+  --color-paper-200: #dbc7b0;
+  --color-paper-400: #ac9a84;
+  --color-line: rgba(239, 227, 211, 0.18);
+  --color-alert: #c9533e;
+  --color-gold: #b9955a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-heading);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-mono), monospace;
+  background-image:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(201, 83, 62, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 24%),
+    linear-gradient(180deg, #14110f 0%, #0e0c0b 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-position: 0 0, 16px 16px;
+  background-size: 32px 32px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(185, 149, 90, 0.35);
+}
+
+.archive-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.archive-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+.case-panel {
+  border: 1px solid var(--color-line);
+  background: linear-gradient(180deg, rgba(57, 49, 44, 0.74), rgba(24, 20, 18, 0.88));
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.25);
+}
+
+.case-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent 0%, var(--color-line) 12%, var(--color-line) 88%, transparent 100%);
+}
+
+.grain-border {
+  position: relative;
+}
+
+.grain-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
