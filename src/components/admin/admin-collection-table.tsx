@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
+
 type AdminCollectionTableProps = {
   title: string;
   description: string;
   columns: string[];
-  rows: string[][];
+  rows: ReactNode[][];
 };
 
 export function AdminCollectionTable({ title, description, columns, rows }: AdminCollectionTableProps) {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, IBM_Plex_Mono } from "next/font/google";
+import { StickyPlayer } from "@/components/player/sticky-player";
 import "./globals.css";
 
 const headingFont = Bebas_Neue({
@@ -31,6 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full bg-[var(--color-ash-950)] text-[var(--color-paper-100)]">
         {children}
+        <StickyPlayer />
       </body>
     </html>
   );

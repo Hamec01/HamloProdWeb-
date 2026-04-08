@@ -17,7 +17,7 @@ function formatSeconds(seconds: number) {
 export function StickyPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const queue = usePlayerStore((state) => state.queue);
-  const currentIndex = usePlayerStore((state) => state.currentIndex);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const next = usePlayerStore((state) => state.next);
   const previous = usePlayerStore((state) => state.previous);
@@ -25,7 +25,6 @@ export function StickyPlayer() {
   const syncPlayback = usePlayerStore((state) => state.syncPlayback);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const currentTrack = queue[currentIndex];
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -83,6 +82,8 @@ export function StickyPlayer() {
     }
   }, [currentTrack, isPlaying, syncPlayback]);
 
+  const showTransport = queue.length > 1;
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(15,13,11,0.92)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
@@ -113,7 +114,9 @@ export function StickyPlayer() {
         </div>
 
         <div className="flex items-center gap-2 justify-self-end">
-          <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" />
+          {showTransport ? (
+            <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" />
+          ) : null}
           <Button
             variant={currentTrack ? "primary" : "ghost"}
             icon={isPlaying ? <Pause size={14} /> : <Play size={14} />}
@@ -122,7 +125,9 @@ export function StickyPlayer() {
           >
             {isPlaying ? "Pause" : "Play"}
           </Button>
-          <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" />
+          {showTransport ? (
+            <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" />
+          ) : null}
         </div>
       </div>
     </div>

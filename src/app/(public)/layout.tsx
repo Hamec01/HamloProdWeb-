@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { PublicHeader } from "@/components/layout/public-header";
-import { StickyPlayer } from "@/components/player/sticky-player";
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -11,7 +10,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PublicFooter />
-      <StickyPlayer />
     </div>
   );
 }

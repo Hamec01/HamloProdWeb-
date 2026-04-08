@@ -1,32 +1,31 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/store/player-store";
 import type { Beat } from "@/types";
 
-export function PlayBeatButton({ beat, queue }: { beat: Beat; queue: Beat[] }) {
+export function AdminBeatPlayButton({ beat }: { beat: Beat }) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const play = usePlayerStore((state) => state.play);
   const pause = usePlayerStore((state) => state.pause);
+
   const isCurrentBeat = currentTrack?.id === beat.id;
-  const isCurrentBeatPlaying = isCurrentBeat && isPlaying;
+  const label = isCurrentBeat && isPlaying ? "Pause" : "Play";
 
   return (
     <Button
-      variant={isCurrentBeatPlaying ? "alert" : "primary"}
-      icon={isCurrentBeatPlaying ? <Pause size={14} /> : <Play size={14} />}
+      variant={isCurrentBeat && isPlaying ? "alert" : "ghost"}
       onClick={() => {
-        if (isCurrentBeatPlaying) {
+        if (isCurrentBeat && isPlaying) {
           pause();
           return;
         }
 
-        play(beat, queue);
+        play(beat, [beat]);
       }}
     >
-      {isCurrentBeatPlaying ? "Pause" : "Play"}
+      {label}
     </Button>
   );
 }
