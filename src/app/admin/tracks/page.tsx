@@ -1,15 +1,10 @@
-import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
-import { getTracks } from "@/services/content";
+import { AdminTrackCrudManager } from "@/components/admin/admin-track-crud-manager";
+import { requireAdminSession } from "@/lib/auth/session";
+import { getAdminTracks } from "@/services/content";
 
 export default async function AdminTracksPage() {
-  const tracks = await getTracks();
+  const session = await requireAdminSession();
+  const tracks = await getAdminTracks();
 
-  return (
-    <AdminCollectionTable
-      title="Tracks CRUD"
-      description="Future track management belongs here and should persist through Supabase instead of page-level hardcoding."
-      columns={["Title", "Artist", "Release Date"]}
-      rows={tracks.map((track) => [track.title, track.artistName, track.releaseDate])}
-    />
-  );
+  return <AdminTrackCrudManager tracks={tracks} hasSupabase={session.hasSupabase} />;
 }

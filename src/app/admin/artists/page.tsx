@@ -1,15 +1,10 @@
-import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
-import { getArtists } from "@/services/content";
+import { AdminArtistCrudManager } from "@/components/admin/admin-artist-crud-manager";
+import { requireAdminSession } from "@/lib/auth/session";
+import { getAdminArtists } from "@/services/content";
 
 export default async function AdminArtistsPage() {
-  const artists = await getArtists();
+  const session = await requireAdminSession();
+  const artists = await getAdminArtists();
 
-  return (
-    <AdminCollectionTable
-      title="Artists CRUD"
-      description="Artist profiles and streaming links should be maintained through admin workflows, not public pages."
-      columns={["Artist", "Track", "Beat"]}
-      rows={artists.map((artist) => [artist.artistName, artist.trackTitle, artist.beatTitle])}
-    />
-  );
+  return <AdminArtistCrudManager artists={artists} hasSupabase={session.hasSupabase} />;
 }
