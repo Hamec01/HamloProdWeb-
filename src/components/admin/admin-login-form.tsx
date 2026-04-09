@@ -18,8 +18,8 @@ export function AdminLoginForm({ hasSupabase }: { hasSupabase: boolean }) {
   } = useForm<AdminLoginValues>({
     resolver: zodResolver(adminLoginSchema),
     defaultValues: {
-      email: "admin@hamloprod.com",
-      password: "password123",
+      email: "",
+      password: "",
     },
   });
 
