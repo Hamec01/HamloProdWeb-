@@ -16,6 +16,8 @@ function formatSeconds(seconds: number) {
 
 export function StickyPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const tagAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastTagSlotRef = useRef(0);
   const queue = usePlayerStore((state) => state.queue);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -25,6 +27,8 @@ export function StickyPlayer() {
   const syncPlayback = usePlayerStore((state) => state.syncPlayback);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
+  const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -32,7 +36,28 @@ export function StickyPlayer() {
       return;
     }
 
-    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+
+      if (!currentTrack || !tagAudioUrl || tagIntervalSeconds <= 0 || audio.currentTime < tagIntervalSeconds) {
+        return;
+      }
+
+      const nextSlot = Math.floor(audio.currentTime / tagIntervalSeconds);
+      if (nextSlot <= lastTagSlotRef.current) {
+        return;
+      }
+
+      lastTagSlotRef.current = nextSlot;
+      const tagAudio = tagAudioRef.current;
+
+      if (!tagAudio) {
+        return;
+      }
+
+      tagAudio.currentTime = 0;
+      void tagAudio.play().catch(() => {});
+    };
     const handleEnded = () => next();
     const handlePause = () => syncPlayback(false);
     const handlePlay = () => syncPlayback(true);
@@ -51,7 +76,7 @@ export function StickyPlayer() {
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [next, syncPlayback]);
+  }, [currentTrack, next, syncPlayback, tagAudioUrl, tagIntervalSeconds]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -62,15 +87,21 @@ export function StickyPlayer() {
     if (!currentTrack) {
       audio.pause();
       audio.removeAttribute("src");
-      setCurrentTime(0);
-      setDuration(0);
+      lastTagSlotRef.current = 0;
+      requestAnimationFrame(() => {
+        setCurrentTime(0);
+        setDuration(0);
+      });
       return;
     }
 
     if (audio.src !== currentTrack.previewUrl) {
       audio.src = currentTrack.previewUrl;
       audio.load();
-      setCurrentTime(0);
+      lastTagSlotRef.current = 0;
+      requestAnimationFrame(() => {
+        setCurrentTime(0);
+      });
     }
 
     if (isPlaying) {
@@ -87,6 +118,7 @@ export function StickyPlayer() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(15,13,11,0.92)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
+      {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-3 sm:grid-cols-[1.4fr_2fr_auto] sm:items-center">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Sticky Player</p>

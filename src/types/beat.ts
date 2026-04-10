@@ -6,6 +6,8 @@ export type Beat = {
   slug: string;
   caseNumber: string;
   coverPalette: string;
+  coverImageUrl: string | null;
+  coverImagePath: string | null;
   previewUrl: string;
   previewStoragePath: string | null;
   wavFilePath: string | null;

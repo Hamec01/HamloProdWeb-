@@ -34,6 +34,8 @@ export async function POST(request: Request) {
     slug: values.slug,
     case_number: values.caseNumber,
     cover_palette: values.coverPalette,
+    cover_image_url: values.coverImageUrl,
+    cover_image_path: values.coverImagePath,
     preview_url: values.previewUrl,
     preview_storage_path: values.previewStoragePath,
     wav_file_path: values.wavFilePath,

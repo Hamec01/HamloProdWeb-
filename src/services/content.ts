@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { mockArtists, mockBeats, mockTracks, siteSettings } from "@/services/mock-data";
-import type { Artist, Beat, SiteSettings, Track } from "@/types";
+import type { Artist, Beat, SiteSettings, Track, TrackDownloadLog } from "@/types";
 
 type BeatRow = {
   id: string;
@@ -9,6 +9,8 @@ type BeatRow = {
   slug: string;
   case_number: string;
   cover_palette: string;
+  cover_image_url: string | null;
+  cover_image_path: string | null;
   preview_url: string;
   preview_storage_path: string | null;
   wav_file_path: string | null;
@@ -29,11 +31,23 @@ type TrackRow = {
   slug: string;
   artist_name: string;
   cover_palette: string;
+  cover_image_url: string | null;
+  cover_image_path: string | null;
+  mp3_file_path: string | null;
   spotify_url: string;
   apple_music_url: string;
   youtube_url: string;
   release_date: string;
   created_at: string;
+};
+
+type TrackDownloadRow = {
+  id: string;
+  track_id: string;
+  track_title: string;
+  user_id: string;
+  user_email: string;
+  downloaded_at: string;
 };
 
 type ArtistRow = {
@@ -62,6 +76,8 @@ function mapBeat(row: BeatRow): Beat {
     slug: row.slug,
     caseNumber: row.case_number,
     coverPalette: row.cover_palette,
+    coverImageUrl: row.cover_image_url,
+    coverImagePath: row.cover_image_path,
     previewUrl: row.preview_url,
     previewStoragePath: row.preview_storage_path,
     wavFilePath: row.wav_file_path,
@@ -84,11 +100,25 @@ function mapTrack(row: TrackRow): Track {
     slug: row.slug,
     artistName: row.artist_name,
     coverPalette: row.cover_palette,
+    coverImageUrl: row.cover_image_url,
+    coverImagePath: row.cover_image_path,
+    mp3FilePath: row.mp3_file_path,
     spotifyUrl: row.spotify_url,
     appleMusicUrl: row.apple_music_url,
     youtubeUrl: row.youtube_url,
     releaseDate: row.release_date,
     createdAt: row.created_at,
+  };
+}
+
+function mapTrackDownload(row: TrackDownloadRow): TrackDownloadLog {
+  return {
+    id: row.id,
+    trackId: row.track_id,
+    trackTitle: row.track_title,
+    userId: row.user_id,
+    userEmail: row.user_email,
+    downloadedAt: row.downloaded_at,
   };
 }
 
@@ -155,7 +185,7 @@ export async function getBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
       )
       .neq("status", "private")
       .order("created_at", { ascending: false })
@@ -175,7 +205,7 @@ export async function getTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, spotify_url, apple_music_url, youtube_url, release_date, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, created_at",
       )
       .order("release_date", { ascending: false })
       .returns<TrackRow[]>();
@@ -213,7 +243,7 @@ export async function getAdminBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
       )
       .order("created_at", { ascending: false })
       .returns<BeatRow[]>();
@@ -232,7 +262,7 @@ export async function getAdminTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, spotify_url, apple_music_url, youtube_url, release_date, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, created_at",
       )
       .order("release_date", { ascending: false })
       .returns<TrackRow[]>();
@@ -262,4 +292,22 @@ export async function getAdminArtists() {
 
     return data.map(mapArtist);
   }, mockArtists);
+}
+
+export async function getAdminTrackDownloads() {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("track_downloads")
+      .select("id, track_id, track_title, user_id, user_email, downloaded_at")
+      .order("downloaded_at", { ascending: false })
+      .limit(30)
+      .returns<TrackDownloadRow[]>();
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map(mapTrackDownload);
+  }, [] as TrackDownloadLog[]);
 }

@@ -11,6 +11,13 @@ export type AdminSessionState = {
   email: string | null;
 };
 
+export type PublicSessionState = {
+  hasSupabase: boolean;
+  isAuthenticated: boolean;
+  userId: string | null;
+  email: string | null;
+};
+
 export async function getAdminSessionState(): Promise<AdminSessionState> {
   if (!hasSupabaseEnv()) {
     return {
@@ -63,4 +70,27 @@ export async function requireAdminSession() {
   }
 
   return session;
+}
+
+export async function getPublicSessionState(): Promise<PublicSessionState> {
+  if (!hasSupabaseEnv()) {
+    return {
+      hasSupabase: false,
+      isAuthenticated: false,
+      userId: null,
+      email: null,
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return {
+    hasSupabase: true,
+    isAuthenticated: Boolean(user),
+    userId: user?.id ?? null,
+    email: user?.email ?? null,
+  };
 }

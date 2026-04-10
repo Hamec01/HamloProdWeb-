@@ -8,34 +8,23 @@ import { AdminBeatPlayButton } from "@/components/admin/admin-beat-play-button";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import {
+  BEAT_DOWNLOADS_BUCKET,
+  BEAT_PREVIEWS_BUCKET,
+  MEDIA_IMAGES_BUCKET,
+  buildStoragePath,
+  getPendingUploadUrl,
+} from "@/lib/storage/media";
 import { beatFormSchema, type BeatFormValues } from "@/lib/validations/beat";
 import type { Beat } from "@/types";
-
-const PREVIEW_BUCKET = "beat-previews";
-const DOWNLOAD_BUCKET = "beat-downloads";
-
-function sanitizeFileName(fileName: string) {
-  return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-");
-}
-
-function buildStoragePath(slug: string, kind: "preview" | "wav" | "zip", file: File) {
-  const lastDotIndex = file.name.lastIndexOf(".");
-  const hasExtension = lastDotIndex > -1;
-  const extension = hasExtension ? file.name.slice(lastDotIndex).toLowerCase() : "";
-  const baseName = hasExtension ? file.name.slice(0, lastDotIndex) : file.name;
-
-  return `${slug}/${kind}-${Date.now()}-${sanitizeFileName(baseName)}${extension}`;
-}
-
-function getPendingPreviewUrl(fileName: string) {
-  return `https://upload.local/${sanitizeFileName(fileName)}`;
-}
 
 const defaultValues: BeatFormValues = {
   title: "",
   slug: "",
   caseNumber: "",
   coverPalette: "from-stone-700 via-stone-900 to-zinc-950",
+  coverImageUrl: null,
+  coverImagePath: null,
   previewUrl: "",
   previewStoragePath: null,
   wavFilePath: null,
@@ -53,6 +42,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
   const router = useRouter();
   const [editingBeatId, setEditingBeatId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -74,6 +64,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
       beats.map((beat) => [
         <AdminBeatPlayButton key={`play-${beat.id}`} beat={beat} />,
         beat.title,
+        beat.coverImagePath ? "ready" : "palette",
         beat.previewStoragePath ? "ready" : beat.previewUrl ? "external" : "missing",
         beat.wavFilePath ? "ready" : "missing",
         beat.zipFilePath ? "ready" : "missing",
@@ -89,6 +80,8 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("slug", beat.slug);
               setValue("caseNumber", beat.caseNumber);
               setValue("coverPalette", beat.coverPalette);
+              setValue("coverImageUrl", beat.coverImageUrl);
+              setValue("coverImagePath", beat.coverImagePath);
               setValue("previewUrl", beat.previewUrl);
               setValue("previewStoragePath", beat.previewStoragePath);
               setValue("wavFilePath", beat.wavFilePath);
@@ -100,6 +93,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("status", beat.status);
               setValue("priceUsd", beat.priceUsd);
               setValue("featured", beat.featured);
+              setCoverImageFile(null);
               setPreviewFile(null);
               setWavFile(null);
               setZipFile(null);
@@ -135,6 +129,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               if (editingBeatId === beat.id) {
                 setEditingBeatId(null);
                 reset(defaultValues);
+                setCoverImageFile(null);
                 setPreviewFile(null);
                 setWavFile(null);
                 setZipFile(null);
@@ -180,6 +175,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               onClick={() => {
                 setEditingBeatId(null);
                 reset(defaultValues);
+                setCoverImageFile(null);
                 setPreviewFile(null);
                 setWavFile(null);
                 setZipFile(null);
@@ -208,9 +204,26 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             try {
               const supabase = createSupabaseBrowserClient();
 
+              if (coverImageFile) {
+                const coverImagePath = buildStoragePath(values.slug, "cover", coverImageFile.name);
+                const { error: coverUploadError } = await supabase.storage.from(MEDIA_IMAGES_BUCKET).upload(coverImagePath, coverImageFile, {
+                  upsert: true,
+                  contentType: coverImageFile.type || undefined,
+                });
+
+                if (coverUploadError) {
+                  setStatusMessage(coverUploadError.message);
+                  return;
+                }
+
+                const { data: publicCover } = supabase.storage.from(MEDIA_IMAGES_BUCKET).getPublicUrl(coverImagePath);
+                nextValues.coverImageUrl = publicCover.publicUrl;
+                nextValues.coverImagePath = coverImagePath;
+              }
+
               if (previewFile) {
-                const previewPath = buildStoragePath(values.slug, "preview", previewFile);
-                const { error: previewUploadError } = await supabase.storage.from(PREVIEW_BUCKET).upload(previewPath, previewFile, {
+                const previewPath = buildStoragePath(values.slug, "preview", previewFile.name);
+                const { error: previewUploadError } = await supabase.storage.from(BEAT_PREVIEWS_BUCKET).upload(previewPath, previewFile, {
                   upsert: true,
                   contentType: previewFile.type || undefined,
                 });
@@ -220,14 +233,14 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
                   return;
                 }
 
-                const { data: publicPreview } = supabase.storage.from(PREVIEW_BUCKET).getPublicUrl(previewPath);
+                const { data: publicPreview } = supabase.storage.from(BEAT_PREVIEWS_BUCKET).getPublicUrl(previewPath);
                 nextValues.previewUrl = publicPreview.publicUrl;
                 nextValues.previewStoragePath = previewPath;
               }
 
               if (wavFile) {
-                const wavPath = buildStoragePath(values.slug, "wav", wavFile);
-                const { error: wavUploadError } = await supabase.storage.from(DOWNLOAD_BUCKET).upload(wavPath, wavFile, {
+                const wavPath = buildStoragePath(values.slug, "wav", wavFile.name);
+                const { error: wavUploadError } = await supabase.storage.from(BEAT_DOWNLOADS_BUCKET).upload(wavPath, wavFile, {
                   upsert: true,
                   contentType: wavFile.type || undefined,
                 });
@@ -241,8 +254,8 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               }
 
               if (zipFile) {
-                const zipPath = buildStoragePath(values.slug, "zip", zipFile);
-                const { error: zipUploadError } = await supabase.storage.from(DOWNLOAD_BUCKET).upload(zipPath, zipFile, {
+                const zipPath = buildStoragePath(values.slug, "zip", zipFile.name);
+                const { error: zipUploadError } = await supabase.storage.from(BEAT_DOWNLOADS_BUCKET).upload(zipPath, zipFile, {
                   upsert: true,
                   contentType: zipFile.type || undefined,
                 });
@@ -280,12 +293,15 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             setStatusMessage(editingBeatId ? "Beat updated." : "Beat created.");
             setEditingBeatId(null);
             reset(defaultValues);
+            setCoverImageFile(null);
             setPreviewFile(null);
             setWavFile(null);
             setZipFile(null);
             router.refresh();
           })}
         >
+          <input type="hidden" {...register("coverImageUrl")} />
+          <input type="hidden" {...register("coverImagePath")} />
           <input type="hidden" {...register("previewStoragePath")} />
           <input type="hidden" {...register("wavFilePath")} />
           <input type="hidden" {...register("zipFilePath")} />
@@ -311,6 +327,28 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             {errors.previewUrl ? <span className="text-xs text-[var(--color-alert)]">{errors.previewUrl.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>Cover Image</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setCoverImageFile(file);
+                if (file) {
+                  setValue("coverImageUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
+                }
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {coverImageFile
+                ? `Selected: ${coverImageFile.name}`
+                : editingBeatId && beats.find((beat) => beat.id === editingBeatId)?.coverImagePath
+                  ? "Stored in public image bucket."
+                  : "Optional cover image for the public card."}
+            </span>
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Preview File</span>
             <input
               type="file"
@@ -319,7 +357,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
                 const file = event.target.files?.[0] ?? null;
                 setPreviewFile(file);
                 if (file) {
-                  setValue("previewUrl", getPendingPreviewUrl(file.name), { shouldValidate: true });
+                  setValue("previewUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
                 }
               }}
               className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
@@ -432,7 +470,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
       <AdminCollectionTable
         title="Existing Beats"
         description="Preview streams publicly; WAV and ZIP stay private in storage for the purchase flow."
-        columns={["Playback", "Title", "Preview", "WAV", "ZIP", "BPM", "Mood", "Status", "Actions"]}
+        columns={["Playback", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Mood", "Status", "Actions"]}
         rows={rows}
       />
     </div>

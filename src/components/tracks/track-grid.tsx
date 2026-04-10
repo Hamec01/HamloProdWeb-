@@ -1,11 +1,11 @@
 import { TrackCard } from "@/components/tracks/track-card";
 import type { Track } from "@/types";
 
-export function TrackGrid({ tracks }: { tracks: Track[] }) {
+export function TrackGrid({ tracks, isAuthenticated }: { tracks: Track[]; isAuthenticated: boolean }) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {tracks.map((track) => (
-        <TrackCard key={track.id} track={track} />
+        <TrackCard key={track.id} track={track} isAuthenticated={isAuthenticated} />
       ))}
     </div>
   );

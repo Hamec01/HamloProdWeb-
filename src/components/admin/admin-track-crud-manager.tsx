@@ -6,24 +6,39 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { MEDIA_IMAGES_BUCKET, TRACK_DOWNLOADS_BUCKET, buildStoragePath, getPendingUploadUrl } from "@/lib/storage/media";
 import { trackFormSchema, type TrackFormValues } from "@/lib/validations/track";
-import type { Track } from "@/types";
+import type { Track, TrackDownloadLog } from "@/types";
 
 const defaultValues: TrackFormValues = {
   title: "",
   slug: "",
   artistName: "HaM",
   coverPalette: "from-zinc-800 via-stone-900 to-black",
-  spotifyUrl: "https://open.spotify.com/",
-  appleMusicUrl: "https://music.apple.com/",
-  youtubeUrl: "https://youtube.com/",
+  coverImageUrl: null,
+  coverImagePath: null,
+  mp3FilePath: null,
+  spotifyUrl: "",
+  appleMusicUrl: "",
+  youtubeUrl: "",
   releaseDate: "2026-01-01",
 };
 
-export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]; hasSupabase: boolean }) {
+export function AdminTrackCrudManager({
+  tracks,
+  downloadLogs,
+  hasSupabase,
+}: {
+  tracks: Track[];
+  downloadLogs: TrackDownloadLog[];
+  hasSupabase: boolean;
+}) {
   const router = useRouter();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [mp3File, setMp3File] = useState<File | null>(null);
   const {
     register,
     handleSubmit,
@@ -40,6 +55,8 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
       tracks.map((track) => [
         track.title,
         track.artistName,
+        track.coverImagePath ? "ready" : "palette",
+        track.mp3FilePath ? "ready" : "missing",
         track.releaseDate,
         <div key={`actions-${track.id}`} className="flex gap-2">
           <Button
@@ -50,10 +67,15 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
               setValue("slug", track.slug);
               setValue("artistName", track.artistName);
               setValue("coverPalette", track.coverPalette);
+              setValue("coverImageUrl", track.coverImageUrl);
+              setValue("coverImagePath", track.coverImagePath);
+              setValue("mp3FilePath", track.mp3FilePath);
               setValue("spotifyUrl", track.spotifyUrl);
               setValue("appleMusicUrl", track.appleMusicUrl);
               setValue("youtubeUrl", track.youtubeUrl);
               setValue("releaseDate", track.releaseDate);
+              setCoverImageFile(null);
+              setMp3File(null);
               setStatusMessage(null);
             }}
           >
@@ -83,6 +105,8 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
               if (editingTrackId === track.id) {
                 setEditingTrackId(null);
                 reset(defaultValues);
+                setCoverImageFile(null);
+                setMp3File(null);
               }
               router.refresh();
             }}
@@ -127,6 +151,8 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
               onClick={() => {
                 setEditingTrackId(null);
                 reset(defaultValues);
+                setCoverImageFile(null);
+                setMp3File(null);
                 setStatusMessage(null);
               }}
             >
@@ -145,13 +171,56 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
 
             setStatusMessage(null);
 
+            const nextValues: TrackFormValues = {
+              ...values,
+            };
+
+            try {
+              const supabase = createSupabaseBrowserClient();
+
+              if (coverImageFile) {
+                const coverImagePath = buildStoragePath(values.slug, "cover", coverImageFile.name);
+                const { error: coverUploadError } = await supabase.storage.from(MEDIA_IMAGES_BUCKET).upload(coverImagePath, coverImageFile, {
+                  upsert: true,
+                  contentType: coverImageFile.type || undefined,
+                });
+
+                if (coverUploadError) {
+                  setStatusMessage(coverUploadError.message);
+                  return;
+                }
+
+                const { data: publicCover } = supabase.storage.from(MEDIA_IMAGES_BUCKET).getPublicUrl(coverImagePath);
+                nextValues.coverImageUrl = publicCover.publicUrl;
+                nextValues.coverImagePath = coverImagePath;
+              }
+
+              if (mp3File) {
+                const mp3Path = buildStoragePath(values.slug, "mp3", mp3File.name);
+                const { error: mp3UploadError } = await supabase.storage.from(TRACK_DOWNLOADS_BUCKET).upload(mp3Path, mp3File, {
+                  upsert: true,
+                  contentType: mp3File.type || undefined,
+                });
+
+                if (mp3UploadError) {
+                  setStatusMessage(mp3UploadError.message);
+                  return;
+                }
+
+                nextValues.mp3FilePath = mp3Path;
+              }
+            } catch (error) {
+              setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
+              return;
+            }
+
             const endpoint = editingTrackId ? `/api/admin/tracks/${editingTrackId}` : "/api/admin/tracks";
             const method = editingTrackId ? "PUT" : "POST";
 
             const response = await fetch(endpoint, {
               method,
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(values),
+              body: JSON.stringify(nextValues),
             });
 
             const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -163,9 +232,15 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
             setStatusMessage(editingTrackId ? "Track updated." : "Track created.");
             setEditingTrackId(null);
             reset(defaultValues);
+            setCoverImageFile(null);
+            setMp3File(null);
             router.refresh();
           })}
         >
+          <input type="hidden" {...register("coverImageUrl")} />
+          <input type="hidden" {...register("coverImagePath")} />
+          <input type="hidden" {...register("mp3FilePath")} />
+
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Title</span>
             <input {...register("title")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
@@ -190,6 +265,46 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
             <span>Cover Palette</span>
             <input {...register("coverPalette")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.coverPalette ? <span className="text-xs text-[var(--color-alert)]">{errors.coverPalette.message}</span> : null}
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
+            <span>Cover Image</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setCoverImageFile(file);
+                if (file) {
+                  setValue("coverImageUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
+                }
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {coverImageFile
+                ? `Selected: ${coverImageFile.name}`
+                : editingTrackId && tracks.find((track) => track.id === editingTrackId)?.coverImagePath
+                  ? "Stored in public image bucket."
+                  : "Optional image for the public release card."}
+            </span>
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
+            <span>MP3 File</span>
+            <input
+              type="file"
+              accept=".mp3,audio/mpeg"
+              onChange={(event) => {
+                setMp3File(event.target.files?.[0] ?? null);
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {mp3File
+                ? `Selected: ${mp3File.name}`
+                : editingTrackId && tracks.find((track) => track.id === editingTrackId)?.mp3FilePath
+                  ? "Stored as a private free-download asset."
+                  : "Optional free MP3 for registered users."}
+            </span>
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
             <span>Spotify URL</span>
@@ -218,8 +333,15 @@ export function AdminTrackCrudManager({ tracks, hasSupabase }: { tracks: Track[]
       <AdminCollectionTable
         title="Existing Tracks"
         description="Релизы подгружаются из Supabase с fallback на mock data, если env ещё не настроены."
-        columns={["Title", "Artist", "Release Date", "Actions"]}
+        columns={["Title", "Artist", "Cover", "MP3", "Release Date", "Actions"]}
         rows={rows}
+      />
+
+      <AdminCollectionTable
+        title="MP3 Download Log"
+        description="Список зарегистрированных пользователей, которые скачали бесплатный MP3."
+        columns={["Track", "User", "Downloaded At"]}
+        rows={downloadLogs.map((log) => [log.trackTitle, log.userEmail, new Date(log.downloadedAt).toLocaleString("ru-RU")])}
       />
     </div>
   );

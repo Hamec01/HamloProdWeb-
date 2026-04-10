@@ -21,7 +21,14 @@ export function BeatCard({ beat, queue }: { beat: Beat; queue: Beat[] }) {
         {beat.mood} / {beat.bpm} BPM
       </p>
 
-      <div className={`mt-4 h-44 border border-[var(--color-line)] bg-gradient-to-br ${beat.coverPalette}`} />
+      {beat.coverImageUrl ? (
+        <div
+          className="mt-4 h-44 border border-[var(--color-line)] bg-cover bg-center"
+          style={{ backgroundImage: `url(${beat.coverImageUrl})` }}
+        />
+      ) : (
+        <div className={`mt-4 h-44 border border-[var(--color-line)] bg-gradient-to-br ${beat.coverPalette}`} />
+      )}
 
       <p className="mt-4 min-h-14 text-sm leading-6 text-[var(--color-paper-200)]">{beat.description}</p>
 
