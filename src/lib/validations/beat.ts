@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-const nullableText = z.preprocess((value) => {
-  if (value === "") {
+const nullableText = z.string().trim().nullable().transform((value) => {
+  if (!value) {
     return null;
   }
 
-  return value;
-}, z.string().trim().min(1).nullable());
+  return value.length > 0 ? value : null;
+});
 
 export const beatFormSchema = z.object({
   title: z.string().min(2),
