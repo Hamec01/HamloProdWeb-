@@ -7,15 +7,39 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminBeatPlayButton } from "@/components/admin/admin-beat-play-button";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { beatFormSchema, type BeatFormValues } from "@/lib/validations/beat";
 import type { Beat } from "@/types";
+
+const PREVIEW_BUCKET = "beat-previews";
+const DOWNLOAD_BUCKET = "beat-downloads";
+
+function sanitizeFileName(fileName: string) {
+  return fileName.toLowerCase().replace(/[^a-z0-9.-]+/g, "-");
+}
+
+function buildStoragePath(slug: string, kind: "preview" | "wav" | "zip", file: File) {
+  const lastDotIndex = file.name.lastIndexOf(".");
+  const hasExtension = lastDotIndex > -1;
+  const extension = hasExtension ? file.name.slice(lastDotIndex).toLowerCase() : "";
+  const baseName = hasExtension ? file.name.slice(0, lastDotIndex) : file.name;
+
+  return `${slug}/${kind}-${Date.now()}-${sanitizeFileName(baseName)}${extension}`;
+}
+
+function getPendingPreviewUrl(fileName: string) {
+  return `https://upload.local/${sanitizeFileName(fileName)}`;
+}
 
 const defaultValues: BeatFormValues = {
   title: "",
   slug: "",
   caseNumber: "",
   coverPalette: "from-stone-700 via-stone-900 to-zinc-950",
-  previewUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  previewUrl: "",
+  previewStoragePath: null,
+  wavFilePath: null,
+  zipFilePath: null,
   bpm: 90,
   mood: "Dark / Atmospheric",
   description: "Beat description goes here.",
@@ -29,6 +53,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
   const router = useRouter();
   const [editingBeatId, setEditingBeatId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [wavFile, setWavFile] = useState<File | null>(null);
+  const [zipFile, setZipFile] = useState<File | null>(null);
   const {
     register,
     handleSubmit,
@@ -47,6 +74,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
       beats.map((beat) => [
         <AdminBeatPlayButton key={`play-${beat.id}`} beat={beat} />,
         beat.title,
+        beat.previewStoragePath ? "ready" : beat.previewUrl ? "external" : "missing",
+        beat.wavFilePath ? "ready" : "missing",
+        beat.zipFilePath ? "ready" : "missing",
         String(beat.bpm),
         beat.mood,
         beat.status,
@@ -60,6 +90,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("caseNumber", beat.caseNumber);
               setValue("coverPalette", beat.coverPalette);
               setValue("previewUrl", beat.previewUrl);
+              setValue("previewStoragePath", beat.previewStoragePath);
+              setValue("wavFilePath", beat.wavFilePath);
+              setValue("zipFilePath", beat.zipFilePath);
               setValue("bpm", beat.bpm);
               setValue("mood", beat.mood);
               setValue("description", beat.description);
@@ -67,6 +100,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("status", beat.status);
               setValue("priceUsd", beat.priceUsd);
               setValue("featured", beat.featured);
+              setPreviewFile(null);
+              setWavFile(null);
+              setZipFile(null);
               setStatusMessage(null);
             }}
           >
@@ -99,6 +135,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               if (editingBeatId === beat.id) {
                 setEditingBeatId(null);
                 reset(defaultValues);
+                setPreviewFile(null);
+                setWavFile(null);
+                setZipFile(null);
               }
               router.refresh();
             }}
@@ -141,6 +180,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               onClick={() => {
                 setEditingBeatId(null);
                 reset(defaultValues);
+                setPreviewFile(null);
+                setWavFile(null);
+                setZipFile(null);
                 setStatusMessage(null);
               }}
             >
@@ -159,6 +201,64 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
 
             setStatusMessage(null);
 
+            const nextValues: BeatFormValues = {
+              ...values,
+            };
+
+            try {
+              const supabase = createSupabaseBrowserClient();
+
+              if (previewFile) {
+                const previewPath = buildStoragePath(values.slug, "preview", previewFile);
+                const { error: previewUploadError } = await supabase.storage.from(PREVIEW_BUCKET).upload(previewPath, previewFile, {
+                  upsert: true,
+                  contentType: previewFile.type || undefined,
+                });
+
+                if (previewUploadError) {
+                  setStatusMessage(previewUploadError.message);
+                  return;
+                }
+
+                const { data: publicPreview } = supabase.storage.from(PREVIEW_BUCKET).getPublicUrl(previewPath);
+                nextValues.previewUrl = publicPreview.publicUrl;
+                nextValues.previewStoragePath = previewPath;
+              }
+
+              if (wavFile) {
+                const wavPath = buildStoragePath(values.slug, "wav", wavFile);
+                const { error: wavUploadError } = await supabase.storage.from(DOWNLOAD_BUCKET).upload(wavPath, wavFile, {
+                  upsert: true,
+                  contentType: wavFile.type || undefined,
+                });
+
+                if (wavUploadError) {
+                  setStatusMessage(wavUploadError.message);
+                  return;
+                }
+
+                nextValues.wavFilePath = wavPath;
+              }
+
+              if (zipFile) {
+                const zipPath = buildStoragePath(values.slug, "zip", zipFile);
+                const { error: zipUploadError } = await supabase.storage.from(DOWNLOAD_BUCKET).upload(zipPath, zipFile, {
+                  upsert: true,
+                  contentType: zipFile.type || undefined,
+                });
+
+                if (zipUploadError) {
+                  setStatusMessage(zipUploadError.message);
+                  return;
+                }
+
+                nextValues.zipFilePath = zipPath;
+              }
+            } catch (error) {
+              setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
+              return;
+            }
+
             const endpoint = editingBeatId ? `/api/admin/beats/${editingBeatId}` : "/api/admin/beats";
             const method = editingBeatId ? "PUT" : "POST";
 
@@ -167,7 +267,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify(values),
+              body: JSON.stringify(nextValues),
             });
 
             const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -180,9 +280,16 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             setStatusMessage(editingBeatId ? "Beat updated." : "Beat created.");
             setEditingBeatId(null);
             reset(defaultValues);
+            setPreviewFile(null);
+            setWavFile(null);
+            setZipFile(null);
             router.refresh();
           })}
         >
+          <input type="hidden" {...register("previewStoragePath")} />
+          <input type="hidden" {...register("wavFilePath")} />
+          <input type="hidden" {...register("zipFilePath")} />
+
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Title</span>
             <input {...register("title")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
@@ -202,6 +309,28 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <span>Preview URL</span>
             <input {...register("previewUrl")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.previewUrl ? <span className="text-xs text-[var(--color-alert)]">{errors.previewUrl.message}</span> : null}
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>Preview File</span>
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                setPreviewFile(file);
+                if (file) {
+                  setValue("previewUrl", getPendingPreviewUrl(file.name), { shouldValidate: true });
+                }
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {previewFile
+                ? `Selected: ${previewFile.name}`
+                : editingBeatId && beats.find((beat) => beat.id === editingBeatId)?.previewStoragePath
+                  ? "Stored in Supabase previews bucket."
+                  : "Upload the audio file that the public player should stream."}
+            </span>
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Cover Palette</span>
@@ -249,6 +378,42 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <input type="checkbox" {...register("featured")} className="h-4 w-4" />
             <span>Featured</span>
           </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>WAV File</span>
+            <input
+              type="file"
+              accept=".wav,audio/wav"
+              onChange={(event) => {
+                setWavFile(event.target.files?.[0] ?? null);
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {wavFile
+                ? `Selected: ${wavFile.name}`
+                : editingBeatId && beats.find((beat) => beat.id === editingBeatId)?.wavFilePath
+                  ? "Stored as a private sale asset."
+                  : "Private WAV for post-purchase delivery."}
+            </span>
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>ZIP File</span>
+            <input
+              type="file"
+              accept=".zip,application/zip,application/x-zip-compressed"
+              onChange={(event) => {
+                setZipFile(event.target.files?.[0] ?? null);
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+            />
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              {zipFile
+                ? `Selected: ${zipFile.name}`
+                : editingBeatId && beats.find((beat) => beat.id === editingBeatId)?.zipFilePath
+                  ? "Stored as a private archive bundle."
+                  : "Private ZIP for stems or full sale package."}
+            </span>
+          </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
             <span>Description</span>
             <textarea {...register("description")} rows={4} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
@@ -266,8 +431,8 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
 
       <AdminCollectionTable
         title="Existing Beats"
-        description="Playback uses the same global audio player as the public archive."
-        columns={["Playback", "Title", "BPM", "Mood", "Status", "Actions"]}
+        description="Preview streams publicly; WAV and ZIP stay private in storage for the purchase flow."
+        columns={["Playback", "Title", "Preview", "WAV", "ZIP", "BPM", "Mood", "Status", "Actions"]}
         rows={rows}
       />
     </div>

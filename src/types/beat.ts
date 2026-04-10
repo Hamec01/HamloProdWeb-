@@ -7,6 +7,9 @@ export type Beat = {
   caseNumber: string;
   coverPalette: string;
   previewUrl: string;
+  previewStoragePath: string | null;
+  wavFilePath: string | null;
+  zipFilePath: string | null;
   bpm: number;
   mood: string;
   description: string;

@@ -10,6 +10,9 @@ type BeatRow = {
   case_number: string;
   cover_palette: string;
   preview_url: string;
+  preview_storage_path: string | null;
+  wav_file_path: string | null;
+  zip_file_path: string | null;
   bpm: number;
   mood: string;
   description: string;
@@ -60,6 +63,9 @@ function mapBeat(row: BeatRow): Beat {
     caseNumber: row.case_number,
     coverPalette: row.cover_palette,
     previewUrl: row.preview_url,
+    previewStoragePath: row.preview_storage_path,
+    wavFilePath: row.wav_file_path,
+    zipFilePath: row.zip_file_path,
     bpm: row.bpm,
     mood: row.mood,
     description: row.description,
@@ -149,7 +155,7 @@ export async function getBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, preview_url, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
       )
       .neq("status", "private")
       .order("created_at", { ascending: false })
@@ -207,7 +213,7 @@ export async function getAdminBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, preview_url, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
       )
       .order("created_at", { ascending: false })
       .returns<BeatRow[]>();
