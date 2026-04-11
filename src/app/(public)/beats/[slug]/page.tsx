@@ -5,6 +5,17 @@ import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getBeatBySlug, getBeats } from "@/services/content";
 
+function getLicenseRequestHref(beatTitle: string, beatSlug: string) {
+  const configuredUrl = process.env.NEXT_PUBLIC_LICENSE_REQUEST_URL?.trim();
+
+  if (!configuredUrl) {
+    return null;
+  }
+
+  const separator = configuredUrl.includes("?") ? "&" : "?";
+  return `${configuredUrl}${separator}beat=${encodeURIComponent(beatSlug)}&title=${encodeURIComponent(beatTitle)}`;
+}
+
 export default async function BeatCasePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [beat, beats] = await Promise.all([getBeatBySlug(slug), getBeats()]);
@@ -12,6 +23,9 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   if (!beat) {
     notFound();
   }
+
+  const licenseRequestHref = getLicenseRequestHref(beat.title, beat.slug);
+  const hasSaleAssets = Boolean(beat.wavFilePath || beat.zipFilePath);
 
   return (
     <section className="space-y-8">
@@ -38,7 +52,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
 
           {beat.coverImageUrl ? (
             <div
-              className="mt-6 h-[22rem] border border-[var(--color-line)] bg-[rgba(0,0,0,0.28)] bg-contain bg-center bg-no-repeat"
+              className="case-artwork mt-6 h-[22rem]"
               style={{ backgroundImage: `url(${beat.coverImageUrl})` }}
             />
           ) : (
@@ -71,14 +85,32 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               Сейчас это публичная карточка конкретного бита. Следующим шагом сюда можно подключить checkout и выдачу WAV/ZIP после покупки.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
+              {licenseRequestHref ? (
+                <Link
+                  href={licenseRequestHref}
+                  className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
+                >
+                  Buy License
+                  <ArrowRight size={14} />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">
+                  {hasSaleAssets ? "Buy License Soon" : "Sale Assets Not Ready"}
+                </span>
+              )}
               <Link
-                href="/tracks"
+                href="/auth"
                 className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
               >
-                Browse Public Releases
+                Buyer Login
                 <ArrowRight size={14} />
               </Link>
             </div>
+            {!licenseRequestHref ? (
+              <p className="mt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
+                Добавь `NEXT_PUBLIC_LICENSE_REQUEST_URL` в Vercel, чтобы кнопка покупки вела на checkout или форму заказа.
+              </p>
+            ) : null}
           </section>
         </aside>
       </div>

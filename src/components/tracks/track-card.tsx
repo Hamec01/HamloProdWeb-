@@ -34,7 +34,7 @@ export function TrackCard({ track, isAuthenticated }: { track: Track; isAuthenti
             YouTube
           </Link>
         ) : null}
-        {track.mp3FilePath ? <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} /> : null}
+        <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} />
       </div>
     </article>
   );
