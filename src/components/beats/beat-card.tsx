@@ -23,7 +23,7 @@ export function BeatCard({ beat, queue }: { beat: Beat; queue: Beat[] }) {
 
       {beat.coverImageUrl ? (
         <div
-          className="mt-4 h-44 border border-[var(--color-line)] bg-cover bg-center"
+          className="mt-4 h-44 border border-[var(--color-line)] bg-[rgba(0,0,0,0.28)] bg-contain bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${beat.coverImageUrl})` }}
         />
       ) : (

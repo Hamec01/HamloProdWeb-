@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminBeatPlayButton } from "@/components/admin/admin-beat-play-button";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
+import { analyzeAudioFile } from "@/lib/audio/analyze-audio";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   BEAT_DOWNLOADS_BUCKET,
@@ -358,6 +359,22 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
                 setPreviewFile(file);
                 if (file) {
                   setValue("previewUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
+                  setStatusMessage("Анализирую аудио...");
+                  void analyzeAudioFile(file)
+                    .then((analysis) => {
+                      setValue("duration", analysis.formattedDuration, { shouldValidate: true, shouldDirty: true });
+
+                      if (analysis.bpm !== null) {
+                        setValue("bpm", analysis.bpm, { shouldValidate: true, shouldDirty: true });
+                        setStatusMessage(`Определено: ${analysis.bpm} BPM / ${analysis.formattedDuration}`);
+                        return;
+                      }
+
+                      setStatusMessage(`Длительность определена автоматически: ${analysis.formattedDuration}. BPM уточни вручную.`);
+                    })
+                    .catch((error) => {
+                      setStatusMessage(error instanceof Error ? error.message : "Не удалось проанализировать аудио.");
+                    });
                 }
               }}
               className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"

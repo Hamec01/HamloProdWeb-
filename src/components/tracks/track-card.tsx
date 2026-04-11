@@ -7,7 +7,7 @@ export function TrackCard({ track, isAuthenticated }: { track: Track; isAuthenti
     <article className="case-panel overflow-hidden p-4">
       {track.coverImageUrl ? (
         <div
-          className="h-44 border border-[var(--color-line)] bg-cover bg-center"
+          className="h-44 border border-[var(--color-line)] bg-[rgba(0,0,0,0.28)] bg-contain bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${track.coverImageUrl})` }}
         />
       ) : (
