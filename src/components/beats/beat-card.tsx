@@ -35,7 +35,7 @@ export function BeatCard({ beat, queue }: { beat: Beat; queue: Beat[] }) {
       <div className="mt-5 flex flex-wrap gap-3">
         <PlayBeatButton beat={beat} queue={queue} />
         <Link
-          href="/admin/beats"
+          href={`/beats/${beat.slug}`}
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
         >
           Open Case

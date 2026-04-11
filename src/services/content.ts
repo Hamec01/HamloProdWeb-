@@ -179,6 +179,11 @@ export async function getFeaturedBeats() {
   return beats.filter((beat) => beat.featured);
 }
 
+export async function getBeatBySlug(slug: string) {
+  const beats = await getBeats();
+  return beats.find((beat) => beat.slug === slug) ?? null;
+}
+
 export async function getBeats() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
