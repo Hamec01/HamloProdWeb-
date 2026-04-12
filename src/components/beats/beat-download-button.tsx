@@ -3,31 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { dictionary, type Locale } from "@/lib/i18n";
 
 export function BeatDownloadButton({
   beatId,
   beatSlug,
   isAuthenticated,
   availableForDownload,
+  locale,
 }: {
   beatId: string;
   beatSlug: string;
   isAuthenticated: boolean;
   availableForDownload: boolean;
+  locale: Locale;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const t = dictionary[locale];
 
   const isAvailable = availableForDownload;
 
-  const buttonLabel = !isAvailable
-    ? "Assets Unavailable"
-    : !isAuthenticated
-      ? "Login For MP3"
-      : isLoading
-        ? "Preparing"
-        : "Download MP3";
+  const buttonLabel = !isAvailable ? t.mp3Unavailable : !isAuthenticated ? t.loginForMp3 : isLoading ? t.preparing : t.downloadMp3;
 
   const startBrowserDownload = async (url: string, fileName: string) => {
     try {
@@ -57,7 +55,7 @@ export function BeatDownloadButton({
         disabled={isLoading || !isAvailable}
         onClick={async () => {
           if (!isAvailable) {
-            setStatusMessage("Скачивание MP3 для этого бита отключено администратором.");
+            setStatusMessage(locale === "ru" ? "Скачивание MP3 для этого бита отключено администратором." : "MP3 download is disabled by admin for this beat.");
             return;
           }
 
@@ -74,7 +72,7 @@ export function BeatDownloadButton({
             const payload = (await response.json().catch(() => null)) as { error?: string; url?: string; format?: string } | null;
 
             if (!response.ok || !payload?.url) {
-              setStatusMessage(payload?.error ?? "Не удалось подготовить скачивание.");
+              setStatusMessage(payload?.error ?? (locale === "ru" ? "Не удалось подготовить скачивание." : "Failed to prepare download."));
               return;
             }
 

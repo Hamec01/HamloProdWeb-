@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
+import { dictionary, type Locale } from "@/lib/i18n";
 import type { Track } from "@/types";
 
-export function TrackCard({ track, isAuthenticated }: { track: Track; isAuthenticated: boolean }) {
+export function TrackCard({ track, isAuthenticated, locale }: { track: Track; isAuthenticated: boolean; locale: Locale }) {
+  const t = dictionary[locale];
+
   return (
     <article className="case-panel overflow-hidden p-4">
       {track.coverImageUrl ? (
@@ -14,7 +17,7 @@ export function TrackCard({ track, isAuthenticated }: { track: Track; isAuthenti
         <div className={`h-44 border border-[var(--color-line)] bg-gradient-to-br ${track.coverPalette}`} />
       )}
       <div className="mt-4 space-y-2">
-        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-paper-400)]">Release / {track.releaseDate}</p>
+        <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-paper-400)]">{t.release} / {track.releaseDate}</p>
         <h3 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{track.title}</h3>
         <p className="text-sm text-[var(--color-paper-200)]">{track.artistName}</p>
       </div>
@@ -34,7 +37,7 @@ export function TrackCard({ track, isAuthenticated }: { track: Track; isAuthenti
             YouTube
           </Link>
         ) : null}
-        <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} />
+        <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} locale={locale} />
       </div>
     </article>
   );

@@ -1,18 +1,23 @@
 import { BeatGrid } from "@/components/beats/beat-grid";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { dictionary } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
+import { localizeBeats } from "@/lib/localize-content";
 import { getBeats } from "@/services/content";
 
 export default async function BeatsPage() {
-  const beats = await getBeats();
+  const [beats, locale] = await Promise.all([getBeats(), getLocale()]);
+  const t = dictionary[locale];
+  const localizedBeats = await localizeBeats(beats, locale);
 
   return (
     <section className="space-y-8">
       <SectionHeading
-        eyebrow="Archive"
-        title="Beat Files"
-        description="Temporary mock records for development. Production content should be created through admin and loaded from Supabase tables."
+        eyebrow={t.archiveEyebrow}
+        title={t.beatsTitle}
+        description={t.beatsDesc}
       />
-      <BeatGrid beats={beats} />
+      <BeatGrid beats={localizedBeats} locale={locale} />
     </section>
   );
 }

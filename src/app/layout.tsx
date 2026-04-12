@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, IBM_Plex_Mono } from "next/font/google";
 import { StickyPlayer } from "@/components/player/sticky-player";
+import { getLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
 const headingFont = Bebas_Neue({
@@ -20,19 +21,21 @@ export const metadata: Metadata = {
   description: "Archive / case-file style music producer website for HamloProd.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
     <html
-      lang="ru"
+      lang={locale}
       className={`${headingFont.variable} ${monoFont.variable} h-full antialiased`}
     >
       <body className="min-h-full text-[var(--color-paper-100)]">
         {children}
-        <StickyPlayer />
+        <StickyPlayer locale={locale} />
       </body>
     </html>
   );

@@ -1,18 +1,21 @@
 import { ArtistGrid } from "@/components/artists/artist-grid";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { dictionary } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
 import { getArtists } from "@/services/content";
 
 export default async function ArtistsPage() {
-  const artists = await getArtists();
+  const [artists, locale] = await Promise.all([getArtists(), getLocale()]);
+  const t = dictionary[locale];
 
   return (
     <section className="space-y-8">
       <SectionHeading
-        eyebrow="Artists"
-        title="Artist Files"
-        description="Public artist cards stay read-only. New artist records should eventually be created inside the admin panel."
+        eyebrow={t.artistsEyebrow}
+        title={t.artistsTitle}
+        description={t.artistsDesc}
       />
-      <ArtistGrid artists={artists} />
+      <ArtistGrid artists={artists} locale={locale} />
     </section>
   );
 }

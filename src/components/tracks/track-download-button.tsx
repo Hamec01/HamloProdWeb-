@@ -3,21 +3,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { dictionary, type Locale } from "@/lib/i18n";
 
 export function TrackDownloadButton({
   trackId,
   isAuthenticated,
   isAvailable,
+  locale,
 }: {
   trackId: string;
   isAuthenticated: boolean;
   isAvailable: boolean;
+  locale: Locale;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const t = dictionary[locale];
 
-  const buttonLabel = !isAvailable ? "MP3 Unavailable" : !isAuthenticated ? "Login For MP3" : isLoading ? "Preparing" : "Free MP3";
+  const buttonLabel = !isAvailable ? t.mp3Unavailable : !isAuthenticated ? t.loginForMp3 : isLoading ? t.preparing : t.downloadMp3;
 
   const startBrowserDownload = async (url: string) => {
     try {
@@ -47,7 +51,7 @@ export function TrackDownloadButton({
         disabled={isLoading || !isAvailable}
         onClick={async () => {
           if (!isAvailable) {
-            setStatusMessage("Для этого релиза бесплатный MP3 ещё не загружен.");
+            setStatusMessage(locale === "ru" ? "Для этого релиза бесплатный MP3 ещё не загружен." : "Free MP3 is not uploaded for this release yet.");
             return;
           }
 
@@ -64,7 +68,7 @@ export function TrackDownloadButton({
             const payload = (await response.json().catch(() => null)) as { error?: string; url?: string } | null;
 
             if (!response.ok || !payload?.url) {
-              setStatusMessage(payload?.error ?? "Не удалось подготовить скачивание.");
+              setStatusMessage(payload?.error ?? (locale === "ru" ? "Не удалось подготовить скачивание." : "Failed to prepare download."));
               return;
             }
 

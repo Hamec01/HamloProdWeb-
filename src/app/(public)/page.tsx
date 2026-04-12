@@ -2,10 +2,15 @@ import Link from "next/link";
 import { RandomBeatButton } from "@/components/beats/random-beat-button";
 import { BeatGrid } from "@/components/beats/beat-grid";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { dictionary } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n-server";
+import { localizeBeats } from "@/lib/localize-content";
 import { getBeats, getSiteSettings } from "@/services/content";
 
 export default async function HomePage() {
-  const [settings, beats] = await Promise.all([getSiteSettings(), getBeats()]);
+  const [settings, beats, locale] = await Promise.all([getSiteSettings(), getBeats(), getLocale()]);
+  const t = dictionary[locale];
+  const localizedBeats = await localizeBeats(beats, locale);
 
   return (
     <>
@@ -22,20 +27,20 @@ export default async function HomePage() {
             href="/tracks"
             className="inline-flex items-center justify-center gap-2 border border-[var(--color-line)] bg-[rgba(27,23,20,0.75)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(52,45,40,0.9)]"
           >
-            Listen
+            {t.listen}
           </Link>
-          <RandomBeatButton beats={beats} />
+          <RandomBeatButton beats={localizedBeats} locale={locale} />
         </div>
       </section>
 
       <section className="space-y-8">
         <div className="case-divider" />
         <SectionHeading
-          eyebrow="Archive"
+          eyebrow={t.archiveEyebrow}
           title={settings.archiveHeadline}
           description={settings.archiveDescription}
         />
-        <BeatGrid beats={beats} />
+        <BeatGrid beats={localizedBeats} locale={locale} />
       </section>
     </>
   );

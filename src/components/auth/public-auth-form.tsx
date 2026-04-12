@@ -4,8 +4,19 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { type Locale } from "@/lib/i18n";
 
-export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSupabase: boolean; isAuthenticated: boolean; email: string | null }) {
+export function PublicAuthForm({
+  hasSupabase,
+  isAuthenticated,
+  email,
+  locale,
+}: {
+  hasSupabase: boolean;
+  isAuthenticated: boolean;
+  email: string | null;
+  locale: Locale;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") || "/tracks";
@@ -14,25 +25,51 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const copy = locale === "ru"
+    ? {
+        heading: "Бесплатный MP3 доступ",
+        note: "Зарегистрированные пользователи могут бесплатно скачивать MP3 релизы. Все скачивания логируются в админке.",
+        noEnv: "Supabase env не настроены. Публичная регистрация пока недоступна.",
+        alreadyIn: `Вход уже выполнен как ${email}. Можешь вернуться к трекам и скачать доступный MP3.`,
+        login: "Вход",
+        signUp: "Регистрация",
+        password: "Пароль",
+        submitting: "Отправка",
+        createAccount: "Создать аккаунт",
+        authFailed: "Ошибка авторизации.",
+      }
+    : {
+        heading: "Free MP3 Access",
+        note: "Registered users can download MP3 releases for free. All downloads are logged in admin.",
+        noEnv: "Supabase env is not configured. Public registration is unavailable.",
+        alreadyIn: `You are already signed in as ${email}. You can return to tracks and download available MP3 files.`,
+        login: "Login",
+        signUp: "Sign Up",
+        password: "Password",
+        submitting: "Submitting",
+        createAccount: "Create Account",
+        authFailed: "Auth failed.",
+      };
+
   return (
     <section className="case-panel mx-auto max-w-xl space-y-6 p-6">
       <div>
         <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Public Auth</p>
-        <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Free MP3 Access</h1>
+        <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">{copy.heading}</h1>
         <p className="mt-4 text-sm leading-7 text-[var(--color-paper-200)]">
-          Зарегистрированные пользователи могут бесплатно скачивать MP3 релизы. Все скачивания логируются в админке.
+          {copy.note}
         </p>
       </div>
 
       {!hasSupabase ? (
         <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--color-paper-200)]">
-          Supabase env не настроены. Публичная регистрация пока недоступна.
+          {copy.noEnv}
         </div>
       ) : null}
 
       {isAuthenticated ? (
         <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--color-paper-200)]">
-          Вход уже выполнен как {email}. Можешь вернуться к трекам и скачать доступный MP3.
+          {copy.alreadyIn}
         </div>
       ) : (
         <form
@@ -61,7 +98,11 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
                   return;
                 }
 
-                setStatusMessage("Аккаунт создан. Если Supabase требует email confirmation, подтверди почту и войди.");
+                setStatusMessage(
+                  locale === "ru"
+                    ? "Аккаунт создан. Если Supabase требует email confirmation, подтверди почту и войди."
+                    : "Account created. If Supabase requires email confirmation, confirm your email and sign in.",
+                );
                 return;
               }
 
@@ -78,7 +119,7 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
               router.push(nextPath);
               router.refresh();
             } catch (error) {
-              setStatusMessage(error instanceof Error ? error.message : "Auth failed.");
+              setStatusMessage(error instanceof Error ? error.message : copy.authFailed);
             } finally {
               setIsSubmitting(false);
             }
@@ -86,10 +127,10 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
         >
           <div className="flex gap-2">
             <Button type="button" variant={mode === "login" ? "primary" : "ghost"} onClick={() => setMode("login")}>
-              Login
+              {copy.login}
             </Button>
             <Button type="button" variant={mode === "signup" ? "primary" : "ghost"} onClick={() => setMode("signup")}>
-              Sign Up
+              {copy.signUp}
             </Button>
           </div>
 
@@ -105,7 +146,7 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
           </label>
 
           <label className="block space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            <span>Password</span>
+            <span>{copy.password}</span>
             <input
               type="password"
               value={formState.password}
@@ -117,7 +158,7 @@ export function PublicAuthForm({ hasSupabase, isAuthenticated, email }: { hasSup
           </label>
 
           <Button type="submit" disabled={isSubmitting || !hasSupabase}>
-            {isSubmitting ? "Submitting" : mode === "login" ? "Login" : "Create Account"}
+            {isSubmitting ? copy.submitting : mode === "login" ? copy.login : copy.createAccount}
           </Button>
 
           {statusMessage ? (
