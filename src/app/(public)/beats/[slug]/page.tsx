@@ -69,7 +69,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
             <p className="text-xs uppercase tracking-[0.32em] text-[var(--color-paper-400)]">Playback</p>
             <h2 className="mt-3 font-sans text-4xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">Preview Stream</h2>
             <p className="mt-4 text-sm leading-7 text-[var(--color-paper-200)]">
-              Здесь пользователь слушает public preview. Полный WAV и ZIP остаются закрытыми sale-asset файлами.
+              Здесь пользователь слушает public preview. Бесплатный MP3 доступен зарегистрированным пользователям, а WAV/ZIP выдаются только после покупки.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <PlayBeatButton beat={beat} queue={beats} />
@@ -84,14 +84,13 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">${beat.priceUsd}</span>
             </div>
             <p className="mt-4 text-sm leading-7 text-[var(--color-paper-200)]">
-              Сейчас это публичная карточка конкретного бита. Следующим шагом сюда можно подключить checkout и выдачу WAV/ZIP после покупки.
+              Сейчас это публичная карточка конкретного бита. Здесь можно скачать MP3 при наличии аккаунта, а выдачу WAV/ZIP подключить через checkout после покупки.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <BeatDownloadButton
                 beatId={beat.id}
                 beatSlug={beat.slug}
                 isAuthenticated={session.isAuthenticated}
-                hasDownloadFiles={Boolean(beat.wavFilePath || beat.zipFilePath)}
                 availableForDownload={beat.availableForDownload}
               />
               {licenseRequestHref ? (

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { BEAT_DOWNLOADS_BUCKET } from "@/lib/storage/media";
+import { BEAT_PREVIEWS_BUCKET } from "@/lib/storage/media";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -24,13 +24,13 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { id } = await params;
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, title, wav_file_path, zip_file_path, available_for_download")
+    .select("id, title, preview_url, preview_storage_path, available_for_download")
     .eq("id", id)
     .maybeSingle<{
       id: string;
       title: string;
-      wav_file_path: string | null;
-      zip_file_path: string | null;
+      preview_url: string;
+      preview_storage_path: string | null;
       available_for_download: boolean;
     }>();
 
@@ -42,17 +42,10 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return errorResponse("Downloads are not available for this beat.", 404);
   }
 
-  const selectedPath = beat.zip_file_path ?? beat.wav_file_path;
-  const selectedFormat = beat.zip_file_path ? "zip" : beat.wav_file_path ? "wav" : null;
-
-  if (!selectedPath || !selectedFormat) {
-    return errorResponse("Download files are not available for this beat.", 404);
-  }
-
   const { error: logError } = await supabase.from("beat_downloads").insert({
     beat_id: beat.id,
     beat_title: beat.title,
-    file_format: selectedFormat,
+    file_format: "mp3",
     user_id: user.id,
     user_email: user.email ?? "unknown",
   });
@@ -61,13 +54,17 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return errorResponse(logError.message, 400);
   }
 
+  if (!beat.preview_storage_path) {
+    return NextResponse.json({ url: beat.preview_url, format: "mp3" });
+  }
+
   const { data: signedData, error: signedError } = await supabase.storage
-    .from(BEAT_DOWNLOADS_BUCKET)
-    .createSignedUrl(selectedPath, 60);
+    .from(BEAT_PREVIEWS_BUCKET)
+    .createSignedUrl(beat.preview_storage_path, 60);
 
   if (signedError || !signedData?.signedUrl) {
     return errorResponse(signedError?.message ?? "Failed to prepare download.", 400);
   }
 
-  return NextResponse.json({ url: signedData.signedUrl, format: selectedFormat });
+  return NextResponse.json({ url: signedData.signedUrl, format: "mp3" });
 }

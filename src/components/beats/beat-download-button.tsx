@@ -8,28 +8,26 @@ export function BeatDownloadButton({
   beatId,
   beatSlug,
   isAuthenticated,
-  hasDownloadFiles,
   availableForDownload,
 }: {
   beatId: string;
   beatSlug: string;
   isAuthenticated: boolean;
-  hasDownloadFiles: boolean;
   availableForDownload: boolean;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const isAvailable = hasDownloadFiles && availableForDownload;
+  const isAvailable = availableForDownload;
 
   const buttonLabel = !isAvailable
     ? "Assets Unavailable"
     : !isAuthenticated
-      ? "Login For Files"
+      ? "Login For MP3"
       : isLoading
         ? "Preparing"
-        : "Download Files";
+        : "Download MP3";
 
   return (
     <div className="flex flex-col gap-2">
@@ -38,7 +36,7 @@ export function BeatDownloadButton({
         disabled={isLoading || !isAvailable}
         onClick={async () => {
           if (!isAvailable) {
-            setStatusMessage("Для этого бита пока не загружены WAV/ZIP файлы.");
+            setStatusMessage("Скачивание MP3 для этого бита отключено администратором.");
             return;
           }
 

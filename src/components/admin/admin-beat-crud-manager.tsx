@@ -437,7 +437,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
           </label>
           <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <input type="checkbox" {...register("availableForDownload")} className="h-4 w-4" />
-            <span>Available For Download</span>
+            <span>Allow MP3 Download</span>
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>WAV File</span>
