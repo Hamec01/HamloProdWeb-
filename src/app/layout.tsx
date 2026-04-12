@@ -30,7 +30,7 @@ export default function RootLayout({
       lang="ru"
       className={`${headingFont.variable} ${monoFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-[var(--color-ash-950)] text-[var(--color-paper-100)]">
+      <body className="min-h-full text-[var(--color-paper-100)]">
         {children}
         <StickyPlayer />
       </body>

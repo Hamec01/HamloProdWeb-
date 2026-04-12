@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { PublicAuthStatus } from "@/components/auth/public-auth-status";
 import { getPublicSessionState } from "@/lib/auth/session";
@@ -15,10 +16,17 @@ export async function PublicHeader() {
   const session = await getPublicSessionState();
 
   return (
-    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(20,17,15,0.72)] backdrop-blur">
+    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(2,0,1,0.82)] backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/" className="font-sans text-3xl uppercase tracking-[0.08em] text-[var(--color-paper-100)]">
-          HamloProd
+        <Link href="/" className="flex items-center">
+          <Image
+            src="/logo.png"
+            alt="HamloProd"
+            width={160}
+            height={48}
+            priority
+            className="h-10 w-auto object-contain"
+          />
         </Link>
         <div className="flex flex-col gap-4 sm:items-end">
           <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.22em] text-[var(--color-paper-200)]">
