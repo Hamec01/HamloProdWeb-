@@ -19,6 +19,27 @@ export function TrackDownloadButton({
 
   const buttonLabel = !isAvailable ? "MP3 Unavailable" : !isAuthenticated ? "Login For MP3" : isLoading ? "Preparing" : "Free MP3";
 
+  const startBrowserDownload = async (url: string) => {
+    try {
+      const fileResponse = await fetch(url);
+      if (!fileResponse.ok) {
+        throw new Error("Failed to fetch file.");
+      }
+
+      const blob = await fileResponse.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = "track.mp3";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.location.assign(url);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -47,7 +68,7 @@ export function TrackDownloadButton({
               return;
             }
 
-            window.location.href = payload.url;
+            await startBrowserDownload(payload.url);
           } finally {
             setIsLoading(false);
           }

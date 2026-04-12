@@ -19,6 +19,7 @@ type PlayerStore = {
   setQueue: (queue: PlayerQueueItem[], startIndex?: number) => void;
   play: (track: PlayerTrack, queue?: PlayerQueueItem[]) => void;
   pause: () => void;
+  stop: () => void;
   playBeat: (beat: PlayerQueueItem, queue?: PlayerQueueItem[]) => void;
   playRandom: (queue?: PlayerQueueItem[]) => void;
   togglePlayback: () => void;
@@ -66,6 +67,7 @@ export const usePlayerStore = create<PlayerStore>()(
         });
       },
       pause: () => set({ isPlaying: false }),
+      stop: () => set({ currentTrack: null, isPlaying: false }),
       playBeat: (beat, queue) => {
         get().play(beat, queue);
       },
@@ -83,7 +85,14 @@ export const usePlayerStore = create<PlayerStore>()(
           isPlaying: true,
         });
       },
-      togglePlayback: () => set((state) => ({ isPlaying: !state.isPlaying })),
+      togglePlayback: () =>
+        set((state) => {
+          if (!state.currentTrack) {
+            return state;
+          }
+
+          return { isPlaying: !state.isPlaying };
+        }),
       syncPlayback: (isPlaying) => set({ isPlaying }),
       next: () => {
         const { queue, currentIndex } = get();

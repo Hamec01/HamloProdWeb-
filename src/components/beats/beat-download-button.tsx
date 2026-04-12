@@ -29,6 +29,27 @@ export function BeatDownloadButton({
         ? "Preparing"
         : "Download MP3";
 
+  const startBrowserDownload = async (url: string, fileName: string) => {
+    try {
+      const fileResponse = await fetch(url);
+      if (!fileResponse.ok) {
+        throw new Error("Failed to fetch file.");
+      }
+
+      const blob = await fileResponse.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.location.assign(url);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -57,7 +78,7 @@ export function BeatDownloadButton({
               return;
             }
 
-            window.location.href = payload.url;
+            await startBrowserDownload(payload.url, `${beatSlug}.mp3`);
           } finally {
             setIsLoading(false);
           }

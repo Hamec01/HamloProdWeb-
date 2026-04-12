@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/store/player-store";
 
@@ -23,6 +23,7 @@ export function StickyPlayer() {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const next = usePlayerStore((state) => state.next);
   const previous = usePlayerStore((state) => state.previous);
+  const stop = usePlayerStore((state) => state.stop);
   const togglePlayback = usePlayerStore((state) => state.togglePlayback);
   const syncPlayback = usePlayerStore((state) => state.syncPlayback);
   const [currentTime, setCurrentTime] = useState(0);
@@ -113,7 +114,18 @@ export function StickyPlayer() {
     }
   }, [currentTrack, isPlaying, syncPlayback]);
 
-  const showTransport = queue.length > 1;
+  const canMoveQueue = queue.length > 1;
+
+  const seekTo = (nextTime: number) => {
+    const audio = audioRef.current;
+    if (!audio || !Number.isFinite(nextTime)) {
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(nextTime, duration || 0));
+    audio.currentTime = clamped;
+    setCurrentTime(clamped);
+  };
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(15,13,11,0.92)] backdrop-blur">
@@ -139,6 +151,17 @@ export function StickyPlayer() {
               }}
             />
           </div>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(event) => seekTo(Number(event.target.value))}
+            className="w-full accent-[var(--color-gold)]"
+            aria-label="Seek playback"
+            disabled={!currentTrack || duration <= 0}
+          />
           <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-[var(--color-paper-400)]">
             <span>{formatSeconds(currentTime)}</span>
             <span>{currentTrack?.duration ?? "00:00"}</span>
@@ -146,9 +169,7 @@ export function StickyPlayer() {
         </div>
 
         <div className="flex items-center gap-2 justify-self-end">
-          {showTransport ? (
-            <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" />
-          ) : null}
+          <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
           <Button
             variant={currentTrack ? "primary" : "ghost"}
             icon={isPlaying ? <Pause size={14} /> : <Play size={14} />}
@@ -157,9 +178,10 @@ export function StickyPlayer() {
           >
             {isPlaying ? "Pause" : "Play"}
           </Button>
-          {showTransport ? (
-            <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" />
-          ) : null}
+          <Button variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
+            Stop
+          </Button>
+          <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
         </div>
       </div>
     </div>
