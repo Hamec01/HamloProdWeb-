@@ -129,7 +129,7 @@ export function StickyPlayer() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(2,0,1,0.94)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(16,13,7,0.96)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-3 sm:grid-cols-[1.4fr_2fr_auto] sm:items-center">

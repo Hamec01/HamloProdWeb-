@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020001;
+  --background: #100d07;
   --foreground: #efe3d3;
-  --color-ash-950: #020001;
-  --color-ash-900: #0d0a0c;
-  --color-ash-800: #1a1418;
-  --color-ash-700: #2e242b;
+  --color-ash-950: #100d07;
+  --color-ash-900: #1a1509;
+  --color-ash-800: #261e0d;
+  --color-ash-700: #3a2d14;
   --color-paper-100: #efe3d3;
   --color-paper-200: #dbc7b0;
   --color-paper-400: #ac9a84;
@@ -30,98 +30,54 @@ html {
   scroll-behavior: smooth;
 }
 
-@keyframes vhs-scanline {
-  0%   { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-
-@keyframes vhs-glitch {
-  0%, 94%, 100% {
-    clip-path: inset(0 0 100% 0);
-    opacity: 0;
-  }
-  95% {
-    clip-path: inset(18% 0 72% 0);
-    opacity: 0.18;
-    transform: translateX(-4px);
-  }
-  96% {
-    clip-path: inset(54% 0 34% 0);
-    opacity: 0.12;
-    transform: translateX(5px);
-  }
-  97% {
-    clip-path: inset(78% 0 8% 0);
-    opacity: 0.22;
-    transform: translateX(-2px);
-  }
-  98% {
-    clip-path: inset(38% 0 52% 0);
-    opacity: 0.10;
-    transform: translateX(3px);
-  }
-  99% {
-    clip-path: inset(64% 0 26% 0);
-    opacity: 0.16;
-    transform: translateX(-5px);
-  }
+@keyframes grain-shift {
+  0%   { background-position: 0 0; }
+  20%  { background-position: 37px -53px; }
+  40%  { background-position: -71px 29px; }
+  60%  { background-position: 47px 61px; }
+  80%  { background-position: -23px -41px; }
+  100% { background-position: 11px 17px; }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-mono), monospace;
   background-image:
-    radial-gradient(ellipse 120% 60% at 50% 0%, rgba(140, 30, 60, 0.10), transparent 55%),
-    radial-gradient(ellipse 80% 40% at 100% 100%, rgba(80, 10, 30, 0.10), transparent 50%),
-    radial-gradient(ellipse 60% 30% at 0% 80%, rgba(60, 0, 80, 0.07), transparent 50%),
-    linear-gradient(180deg, #040103 0%, #020001 40%, #000000 100%);
+    radial-gradient(ellipse 100% 55% at 50% 0%, rgba(190, 110, 15, 0.11), transparent 55%),
+    radial-gradient(ellipse 70% 40% at 100% 100%, rgba(130, 70, 10, 0.09), transparent 50%),
+    radial-gradient(ellipse 50% 35% at 0% 80%, rgba(100, 55, 10, 0.07), transparent 50%),
+    linear-gradient(180deg, #1d1509 0%, #100d07 45%, #080603 100%);
 }
 
-/* scanlines base layer */
+/* static film grain — base layer */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 9998;
   pointer-events: none;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.22) 2px,
-    rgba(0, 0, 0, 0.22) 4px
-  );
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  background-repeat: repeat;
+  opacity: 0.10;
+  mix-blend-mode: overlay;
 }
 
-/* animated VHS scan pass */
+/* animated grain shimmer */
 body::after {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -5%;
   z-index: 9999;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.03) 40%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 60%,
-    transparent 100%
-  );
-  height: 40vh;
-  animation: vhs-scanline 8s linear infinite;
-}
-
-/* VHS glitch overlay */
-html::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 9997;
-  pointer-events: none;
-  background: rgba(120, 0, 40, 0.04);
-  animation: vhs-glitch 12s steps(1) infinite;
+  width: 110%;
+  height: 110%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='grain2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.90' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain2)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  animation: grain-shift 0.35s steps(1) infinite;
 }
 
 a {
@@ -152,8 +108,8 @@ button {
 
 .case-panel {
   border: 1px solid var(--color-line);
-  background: linear-gradient(180deg, rgba(28, 18, 24, 0.88), rgba(8, 4, 8, 0.94));
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 18px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(40, 28, 12, 0.92), rgba(22, 15, 6, 0.96));
+  box-shadow: 0 0 0 1px rgba(255, 210, 120, 0.05), 0 18px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 210, 100, 0.07);
 }
 
 .case-divider {
@@ -170,18 +126,18 @@ button {
   content: "";
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 210, 120, 0.13);
   pointer-events: none;
 }
 
 .case-artwork {
   position: relative;
   overflow: hidden;
-  background-color: rgba(10, 9, 8, 0.42);
+  background-color: rgba(16, 12, 5, 0.55);
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 210, 100, 0.04);
 }
 
 .case-artwork::after {
@@ -190,9 +146,9 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(2, 0, 1, 0.55) 0%, transparent 18%, transparent 78%, rgba(2, 0, 1, 0.72) 100%),
-    linear-gradient(90deg, rgba(2, 0, 1, 0.75) 0%, transparent 12%, transparent 88%, rgba(2, 0, 1, 0.75) 100%),
-    radial-gradient(circle at center, transparent 55%, rgba(2, 0, 1, 0.42) 100%);
+    linear-gradient(180deg, rgba(16, 12, 5, 0.55) 0%, transparent 18%, transparent 78%, rgba(16, 12, 5, 0.72) 100%),
+    linear-gradient(90deg, rgba(16, 12, 5, 0.75) 0%, transparent 12%, transparent 88%, rgba(16, 12, 5, 0.75) 100%),
+    radial-gradient(circle at center, transparent 55%, rgba(16, 12, 5, 0.42) 100%);
 }
 
 .text-balance {
