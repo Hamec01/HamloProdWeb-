@@ -192,7 +192,7 @@ export async function getBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration, available_for_download",
       )
       .neq("status", "private")
       .order("created_at", { ascending: false })
@@ -250,7 +250,7 @@ export async function getAdminBeats() {
     const { data, error } = await supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, status, featured, created_at, duration, available_for_download",
       )
       .order("created_at", { ascending: false })
       .returns<BeatRow[]>();
