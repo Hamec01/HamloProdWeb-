@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0f0c08;
+  --background: #0a0d12;
   --foreground: #efe3d3;
-  --color-ash-950: #0f0c08;
-  --color-ash-900: #17130e;
-  --color-ash-800: #231d15;
-  --color-ash-700: #342a1d;
+  --color-ash-950: #0a0d12;
+  --color-ash-900: #10151c;
+  --color-ash-800: #191f28;
+  --color-ash-700: #2b3440;
   --color-paper-100: #efe3d3;
   --color-paper-200: #dbc7b0;
-  --color-paper-400: #b6a389;
+  --color-paper-400: #b5aca0;
   --color-line: rgba(239, 227, 211, 0.2);
   --color-alert: #c9533e;
-  --color-gold: #c9a062;
+  --color-gold: #d0b98e;
 }
 
 @theme inline {
@@ -67,9 +67,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-mono), monospace;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(160, 115, 58, 0.1), transparent 56%),
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(72, 49, 25, 0.11), transparent 58%),
-    linear-gradient(180deg, #1a140d 0%, #0f0c08 44%, #090704 100%);
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(128, 141, 165, 0.1), transparent 56%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(54, 66, 82, 0.12), transparent 58%),
+    linear-gradient(180deg, #141922 0%, #0a0d12 44%, #07090c 100%);
 }
 
 /* coarse film grain */
@@ -139,9 +139,9 @@ button {
   pointer-events: none;
   z-index: 1;
   background-image:
-    radial-gradient(circle at 20% 12%, rgba(255, 229, 180, 0.06), transparent 24%),
-    radial-gradient(circle at 80% 18%, rgba(255, 223, 165, 0.05), transparent 28%),
-    radial-gradient(circle at 50% 86%, rgba(255, 200, 130, 0.05), transparent 32%);
+    radial-gradient(circle at 20% 12%, rgba(205, 214, 228, 0.06), transparent 24%),
+    radial-gradient(circle at 80% 18%, rgba(170, 184, 205, 0.05), transparent 28%),
+    radial-gradient(circle at 50% 86%, rgba(130, 145, 170, 0.05), transparent 32%);
 }
 
 .archive-shell::after {
@@ -155,12 +155,12 @@ button {
 .case-panel {
   border: 1px solid var(--color-line);
   background:
-    linear-gradient(180deg, rgba(48, 35, 19, 0.9), rgba(24, 17, 10, 0.95)),
+    linear-gradient(180deg, rgba(31, 38, 48, 0.9), rgba(15, 20, 27, 0.95)),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 2px, transparent 2px, transparent 6px);
   box-shadow:
-    0 0 0 1px rgba(255, 210, 120, 0.08),
+    0 0 0 1px rgba(210, 218, 232, 0.08),
     0 18px 40px rgba(0, 0, 0, 0.58),
-    inset 0 1px 0 rgba(255, 220, 160, 0.12),
+    inset 0 1px 0 rgba(235, 238, 245, 0.12),
     inset 0 -20px 40px rgba(0, 0, 0, 0.28);
 }
 
@@ -180,6 +180,19 @@ button {
   inset: 0;
   border: 1px solid rgba(255, 210, 120, 0.13);
   pointer-events: none;
+}
+
+.grain-border::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.08), transparent 20%),
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.07), transparent 22%),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.018) 2px, transparent 4px);
+  opacity: 0.55;
+  mix-blend-mode: overlay;
 }
 
 .case-artwork {
