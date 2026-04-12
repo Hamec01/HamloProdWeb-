@@ -8,16 +8,20 @@ export function BeatDownloadButton({
   beatId,
   beatSlug,
   isAuthenticated,
-  isAvailable,
+  hasDownloadFiles,
+  availableForDownload,
 }: {
   beatId: string;
   beatSlug: string;
   isAuthenticated: boolean;
-  isAvailable: boolean;
+  hasDownloadFiles: boolean;
+  availableForDownload: boolean;
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const isAvailable = hasDownloadFiles && availableForDownload;
 
   const buttonLabel = !isAvailable
     ? "Assets Unavailable"

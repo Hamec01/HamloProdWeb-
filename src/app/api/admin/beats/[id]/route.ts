@@ -50,6 +50,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       status: values.status,
       price_usd: values.priceUsd,
       featured: values.featured,
+      available_for_download: values.availableForDownload,
     })
     .eq("id", id);
 

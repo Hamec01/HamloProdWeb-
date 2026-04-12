@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     status: values.status,
     price_usd: values.priceUsd,
     featured: values.featured,
+    available_for_download: values.availableForDownload,
   });
 
   if (error) {

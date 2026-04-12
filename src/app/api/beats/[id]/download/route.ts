@@ -24,12 +24,22 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { id } = await params;
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, title, wav_file_path, zip_file_path")
+    .select("id, title, wav_file_path, zip_file_path, available_for_download")
     .eq("id", id)
-    .maybeSingle<{ id: string; title: string; wav_file_path: string | null; zip_file_path: string | null }>();
+    .maybeSingle<{
+      id: string;
+      title: string;
+      wav_file_path: string | null;
+      zip_file_path: string | null;
+      available_for_download: boolean;
+    }>();
 
   if (beatError || !beat) {
     return errorResponse("Beat not found.", 404);
+  }
+
+  if (!beat.available_for_download) {
+    return errorResponse("Downloads are not available for this beat.", 404);
   }
 
   const selectedPath = beat.zip_file_path ?? beat.wav_file_path;

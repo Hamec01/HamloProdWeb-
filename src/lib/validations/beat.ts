@@ -41,6 +41,7 @@ export const beatFormSchema = z.object({
   status: z.enum(["available", "reserved", "sold", "private"]),
   priceUsd: z.number().min(0),
   featured: z.boolean(),
+  availableForDownload: z.boolean(),
 });
 
 export type BeatFormValues = z.infer<typeof beatFormSchema>;

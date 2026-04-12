@@ -20,4 +20,5 @@ export type Beat = {
   featured: boolean;
   createdAt: string;
   duration: string;
+  availableForDownload: boolean;
 };

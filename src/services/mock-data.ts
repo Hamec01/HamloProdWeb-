@@ -29,6 +29,7 @@ export const mockBeats: Beat[] = [
     featured: true,
     createdAt: "2026-04-01T10:00:00.000Z",
     duration: "02:32",
+    availableForDownload: false,
   },
   {
     id: "beat-002",
@@ -50,6 +51,7 @@ export const mockBeats: Beat[] = [
     featured: false,
     createdAt: "2026-04-02T10:00:00.000Z",
     duration: "02:45",
+    availableForDownload: false,
   },
   {
     id: "beat-003",
@@ -71,6 +73,7 @@ export const mockBeats: Beat[] = [
     featured: false,
     createdAt: "2026-04-03T10:00:00.000Z",
     duration: "02:18",
+    availableForDownload: false,
   },
   {
     id: "beat-004",
@@ -92,6 +95,7 @@ export const mockBeats: Beat[] = [
     featured: false,
     createdAt: "2026-04-04T10:00:00.000Z",
     duration: "03:01",
+    availableForDownload: false,
   },
   {
     id: "beat-005",
@@ -113,6 +117,7 @@ export const mockBeats: Beat[] = [
     featured: true,
     createdAt: "2026-04-05T10:00:00.000Z",
     duration: "02:58",
+    availableForDownload: false,
   },
   {
     id: "beat-006",
@@ -134,6 +139,7 @@ export const mockBeats: Beat[] = [
     featured: true,
     createdAt: "2026-04-06T10:00:00.000Z",
     duration: "02:24",
+    availableForDownload: false,
   },
 ];
 

@@ -23,6 +23,7 @@ type BeatRow = {
   featured: boolean;
   created_at: string;
   duration: string;
+  available_for_download: boolean;
 };
 
 type TrackRow = {
@@ -90,6 +91,7 @@ function mapBeat(row: BeatRow): Beat {
     featured: row.featured,
     createdAt: row.created_at,
     duration: row.duration,
+    availableForDownload: row.available_for_download,
   };
 }
 

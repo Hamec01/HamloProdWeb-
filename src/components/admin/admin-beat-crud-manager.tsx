@@ -37,6 +37,7 @@ const defaultValues: BeatFormValues = {
   status: "available",
   priceUsd: 100,
   featured: false,
+  availableForDownload: false,
 };
 
 export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; hasSupabase: boolean }) {
@@ -93,6 +94,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("duration", beat.duration);
               setValue("status", beat.status);
               setValue("priceUsd", beat.priceUsd);
+              setValue("availableForDownload", beat.availableForDownload);
               setValue("featured", beat.featured);
               setCoverImageFile(null);
               setPreviewFile(null);
@@ -432,6 +434,10 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
           <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <input type="checkbox" {...register("featured")} className="h-4 w-4" />
             <span>Featured</span>
+          </label>
+          <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <input type="checkbox" {...register("availableForDownload")} className="h-4 w-4" />
+            <span>Available For Download</span>
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>WAV File</span>

@@ -91,7 +91,8 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                 beatId={beat.id}
                 beatSlug={beat.slug}
                 isAuthenticated={session.isAuthenticated}
-                isAvailable={Boolean(beat.wavFilePath || beat.zipFilePath)}
+                hasDownloadFiles={Boolean(beat.wavFilePath || beat.zipFilePath)}
+                availableForDownload={beat.availableForDownload}
               />
               {licenseRequestHref ? (
                 <Link
