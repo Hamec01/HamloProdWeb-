@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -128,29 +129,30 @@ export function StickyPlayer() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(15,13,11,0.92)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(2,0,1,0.94)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-3 sm:grid-cols-[1.4fr_2fr_auto] sm:items-center">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Sticky Player</p>
-          <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
-            {currentTrack ? currentTrack.title : "Player Ready"}
-          </p>
+          {currentTrack ? (
+            <Link
+              href={`/beats/${currentTrack.slug}`}
+              className="block truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)]"
+            >
+              {currentTrack.title}
+            </Link>
+          ) : (
+            <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
+              Player Ready
+            </p>
+          )}
           <p className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             {currentTrack ? `${currentTrack.mood} / ${currentTrack.bpm} BPM / ${currentTrack.caseNumber}` : "Open Archive and press Play"}
           </p>
         </div>
 
         <div className="space-y-2">
-          <div className="h-2 overflow-hidden rounded-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.04)]">
-            <div
-              className="h-full bg-[linear-gradient(90deg,var(--color-paper-100),var(--color-gold))] transition-[width]"
-              style={{
-                width: `${duration > 0 ? Math.min((currentTime / duration) * 100, 100) : 0}%`,
-              }}
-            />
-          </div>
           <input
             type="range"
             min={0}
