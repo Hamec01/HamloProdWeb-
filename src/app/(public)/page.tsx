@@ -2,14 +2,13 @@ import Link from "next/link";
 import { RandomBeatButton } from "@/components/beats/random-beat-button";
 import { BeatGrid } from "@/components/beats/beat-grid";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPublicSessionState } from "@/lib/auth/session";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { localizeBeats } from "@/lib/localize-content";
 import { getBeats, getSiteSettings } from "@/services/content";
 
 export default async function HomePage() {
-  const [settings, beats, locale, session] = await Promise.all([getSiteSettings(), getBeats(), getLocale(), getPublicSessionState()]);
+  const [settings, beats, locale] = await Promise.all([getSiteSettings(), getBeats(), getLocale()]);
   const t = dictionary[locale];
   const localizedBeats = await localizeBeats(beats, locale);
 
@@ -41,7 +40,7 @@ export default async function HomePage() {
           title={settings.archiveHeadline}
           description={settings.archiveDescription}
         />
-        <BeatGrid beats={localizedBeats} locale={locale} isAuthenticated={session.isAuthenticated} />
+        <BeatGrid beats={localizedBeats} locale={locale} />
       </section>
     </>
   );

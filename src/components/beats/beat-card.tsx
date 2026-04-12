@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { dictionary, type Locale } from "@/lib/i18n";
@@ -10,12 +9,10 @@ export function BeatCard({
   beat,
   queue,
   locale,
-  isAuthenticated,
 }: {
   beat: Beat;
   queue: Beat[];
   locale: Locale;
-  isAuthenticated: boolean;
 }) {
   const t = dictionary[locale];
 
@@ -61,8 +58,6 @@ export function BeatCard({
         <span>{beat.duration}</span>
         <span>${beat.priceUsd}</span>
       </div>
-
-      <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={isAuthenticated} locale={locale} />
     </article>
   );
 }
