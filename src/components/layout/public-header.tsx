@@ -16,7 +16,7 @@ export async function PublicHeader() {
   const session = await getPublicSessionState();
 
   return (
-    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(16,13,7,0.90)] backdrop-blur">
+    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(20,15,9,0.9)] backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/" className="flex items-center">
           <Image
