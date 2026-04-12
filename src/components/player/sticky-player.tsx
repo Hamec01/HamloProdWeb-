@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
 
 function formatSeconds(seconds: number) {
@@ -15,7 +16,7 @@ function formatSeconds(seconds: number) {
   return `${minutes}:${remainder}`;
 }
 
-export function StickyPlayer() {
+export function StickyPlayer({ locale }: { locale: Locale }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tagAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTagSlotRef = useRef(0);
@@ -31,6 +32,7 @@ export function StickyPlayer() {
   const [duration, setDuration] = useState(0);
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
   const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
+  const t = dictionary[locale];
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -129,12 +131,12 @@ export function StickyPlayer() {
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(9,12,16,0.96)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-3 sm:grid-cols-[1.4fr_2fr_auto] sm:items-center">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Sticky Player</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
           {currentTrack ? (
             <Link
               href={`/beats/${currentTrack.slug}`}
@@ -144,7 +146,7 @@ export function StickyPlayer() {
             </Link>
           ) : (
             <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
-              Player Ready
+              {t.playerReady}
             </p>
           )}
           <p className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
@@ -178,10 +180,10 @@ export function StickyPlayer() {
             onClick={togglePlayback}
             disabled={!currentTrack}
           >
-            {isPlaying ? "Pause" : "Play"}
+            {isPlaying ? t.pause : t.play}
           </Button>
           <Button variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
-            Stop
+            {t.stop}
           </Button>
           <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
         </div>

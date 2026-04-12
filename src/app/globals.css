@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #06080c;
+  --background: #080807;
   --foreground: #efe3d3;
-  --color-ash-950: #06080c;
-  --color-ash-900: #0c1118;
-  --color-ash-800: #151b24;
-  --color-ash-700: #222b36;
+  --color-ash-950: #080807;
+  --color-ash-900: #11100e;
+  --color-ash-800: #1a1815;
+  --color-ash-700: #2a2723;
   --color-paper-100: #efe3d3;
   --color-paper-200: #dbc7b0;
-  --color-paper-400: #b5aca0;
+  --color-paper-400: #b7ac9b;
   --color-line: rgba(239, 227, 211, 0.16);
   --color-alert: #c9533e;
   --color-gold: #d0b98e;
@@ -67,9 +67,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-mono), monospace;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(105, 120, 145, 0.08), transparent 56%),
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(40, 50, 64, 0.1), transparent 58%),
-    linear-gradient(180deg, #0f141d 0%, #06080c 44%, #04060a 100%);
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(145, 135, 120, 0.07), transparent 56%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(55, 50, 43, 0.1), transparent 58%),
+    linear-gradient(180deg, #12110f 0%, #080807 44%, #050505 100%);
 }
 
 /* coarse film grain */
@@ -139,9 +139,9 @@ button {
   pointer-events: none;
   z-index: 1;
   background-image:
-    radial-gradient(circle at 20% 12%, rgba(205, 214, 228, 0.06), transparent 24%),
-    radial-gradient(circle at 80% 18%, rgba(170, 184, 205, 0.05), transparent 28%),
-    radial-gradient(circle at 50% 86%, rgba(130, 145, 170, 0.05), transparent 32%);
+    radial-gradient(circle at 20% 12%, rgba(220, 214, 205, 0.05), transparent 24%),
+    radial-gradient(circle at 80% 18%, rgba(190, 182, 170, 0.04), transparent 28%),
+    radial-gradient(circle at 50% 86%, rgba(150, 142, 130, 0.04), transparent 32%);
 }
 
 .archive-shell::after {
@@ -155,12 +155,12 @@ button {
 .case-panel {
   border: 1px solid var(--color-line);
   background:
-    linear-gradient(180deg, rgba(22, 27, 34, 0.92), rgba(10, 14, 20, 0.97)),
+    linear-gradient(180deg, rgba(28, 26, 23, 0.92), rgba(14, 13, 11, 0.97)),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 2px, transparent 2px, transparent 6px);
   box-shadow:
-    0 0 0 1px rgba(210, 218, 232, 0.08),
+    0 0 0 1px rgba(225, 214, 194, 0.08),
     0 18px 40px rgba(0, 0, 0, 0.58),
-    inset 0 1px 0 rgba(235, 238, 245, 0.12),
+    inset 0 1px 0 rgba(238, 232, 220, 0.1),
     inset 0 -20px 40px rgba(0, 0, 0, 0.28);
 }
 
@@ -178,7 +178,7 @@ button {
   content: "";
   position: absolute;
   inset: 0;
-  border: 1px solid rgba(255, 210, 120, 0.13);
+  border: 1px solid rgba(228, 214, 188, 0.14);
   pointer-events: none;
 }
 
@@ -198,11 +198,11 @@ button {
 .case-artwork {
   position: relative;
   overflow: hidden;
-  background-color: rgba(16, 12, 5, 0.55);
+  background-color: rgba(10, 9, 8, 0.6);
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  box-shadow: inset 0 0 0 1px rgba(255, 210, 100, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(230, 220, 200, 0.04);
 }
 
 .case-artwork::after {
@@ -211,9 +211,9 @@ button {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(16, 12, 5, 0.55) 0%, transparent 18%, transparent 78%, rgba(16, 12, 5, 0.72) 100%),
-    linear-gradient(90deg, rgba(16, 12, 5, 0.75) 0%, transparent 12%, transparent 88%, rgba(16, 12, 5, 0.75) 100%),
-    radial-gradient(circle at center, transparent 55%, rgba(16, 12, 5, 0.42) 100%);
+    linear-gradient(180deg, rgba(10, 9, 8, 0.58) 0%, transparent 18%, transparent 78%, rgba(10, 9, 8, 0.74) 100%),
+    linear-gradient(90deg, rgba(10, 9, 8, 0.78) 0%, transparent 12%, transparent 88%, rgba(10, 9, 8, 0.78) 100%),
+    radial-gradient(circle at center, transparent 55%, rgba(10, 9, 8, 0.45) 100%);
 }
 
 .text-balance {
