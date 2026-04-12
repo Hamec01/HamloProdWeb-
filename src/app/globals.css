@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0d12;
+  --background: #06080c;
   --foreground: #efe3d3;
-  --color-ash-950: #0a0d12;
-  --color-ash-900: #10151c;
-  --color-ash-800: #191f28;
-  --color-ash-700: #2b3440;
+  --color-ash-950: #06080c;
+  --color-ash-900: #0c1118;
+  --color-ash-800: #151b24;
+  --color-ash-700: #222b36;
   --color-paper-100: #efe3d3;
   --color-paper-200: #dbc7b0;
   --color-paper-400: #b5aca0;
-  --color-line: rgba(239, 227, 211, 0.2);
+  --color-line: rgba(239, 227, 211, 0.16);
   --color-alert: #c9533e;
   --color-gold: #d0b98e;
 }
@@ -67,9 +67,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-mono), monospace;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(128, 141, 165, 0.1), transparent 56%),
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(54, 66, 82, 0.12), transparent 58%),
-    linear-gradient(180deg, #141922 0%, #0a0d12 44%, #07090c 100%);
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(105, 120, 145, 0.08), transparent 56%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(40, 50, 64, 0.1), transparent 58%),
+    linear-gradient(180deg, #0f141d 0%, #06080c 44%, #04060a 100%);
 }
 
 /* coarse film grain */
@@ -82,7 +82,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)'/%3E%3C/svg%3E");
   background-size: 256px 256px;
   background-repeat: repeat;
-  opacity: 0.2;
+  opacity: 0.24;
   mix-blend-mode: soft-light;
 }
 
@@ -97,7 +97,7 @@ body::after {
   height: 110%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='grain2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.90' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain2)'/%3E%3C/svg%3E");
   background-size: 256px 256px;
-  opacity: 0.15;
+  opacity: 0.12;
   mix-blend-mode: screen;
   animation: grain-shift 0.35s steps(1) infinite;
 }
@@ -149,13 +149,13 @@ button {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, transparent 52%, rgba(0, 0, 0, 0.46) 100%);
+  background: radial-gradient(circle at center, transparent 46%, rgba(0, 0, 0, 0.62) 100%);
 }
 
 .case-panel {
   border: 1px solid var(--color-line);
   background:
-    linear-gradient(180deg, rgba(31, 38, 48, 0.9), rgba(15, 20, 27, 0.95)),
+    linear-gradient(180deg, rgba(22, 27, 34, 0.92), rgba(10, 14, 20, 0.97)),
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.015) 0, rgba(255, 255, 255, 0.015) 2px, transparent 2px, transparent 6px);
   box-shadow:
     0 0 0 1px rgba(210, 218, 232, 0.08),
