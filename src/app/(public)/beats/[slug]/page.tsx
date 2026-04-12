@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { getPublicSessionState } from "@/lib/auth/session";
 import { getBeatBySlug, getBeats } from "@/services/content";
 
 function getLicenseRequestHref(beatTitle: string, beatSlug: string) {
@@ -18,7 +20,7 @@ function getLicenseRequestHref(beatTitle: string, beatSlug: string) {
 
 export default async function BeatCasePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [beat, beats] = await Promise.all([getBeatBySlug(slug), getBeats()]);
+  const [beat, beats, session] = await Promise.all([getBeatBySlug(slug), getBeats(), getPublicSessionState()]);
 
   if (!beat) {
     notFound();
@@ -85,6 +87,12 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               Сейчас это публичная карточка конкретного бита. Следующим шагом сюда можно подключить checkout и выдачу WAV/ZIP после покупки.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
+              <BeatDownloadButton
+                beatId={beat.id}
+                beatSlug={beat.slug}
+                isAuthenticated={session.isAuthenticated}
+                isAvailable={Boolean(beat.wavFilePath || beat.zipFilePath)}
+              />
               {licenseRequestHref ? (
                 <Link
                   href={licenseRequestHref}
@@ -102,7 +110,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                 href="/auth"
                 className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
               >
-                Buyer Login
+                {session.isAuthenticated ? "Buyer Account" : "Buyer Login"}
                 <ArrowRight size={14} />
               </Link>
             </div>
