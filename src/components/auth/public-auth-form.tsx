@@ -36,6 +36,7 @@ export function PublicAuthForm({
         password: "Пароль",
         submitting: "Отправка",
         createAccount: "Создать аккаунт",
+        continueWithGoogle: "Продолжить с Google",
         authFailed: "Ошибка авторизации.",
       }
     : {
@@ -48,6 +49,7 @@ export function PublicAuthForm({
         password: "Password",
         submitting: "Submitting",
         createAccount: "Create Account",
+        continueWithGoogle: "Continue with Google",
         authFailed: "Auth failed.",
       };
 
@@ -159,6 +161,39 @@ export function PublicAuthForm({
 
           <Button type="submit" disabled={isSubmitting || !hasSupabase}>
             {isSubmitting ? copy.submitting : mode === "login" ? copy.login : copy.createAccount}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isSubmitting || !hasSupabase}
+            onClick={async () => {
+              if (!hasSupabase) {
+                return;
+              }
+
+              setIsSubmitting(true);
+              setStatusMessage(null);
+
+              try {
+                const supabase = createSupabaseBrowserClient();
+                const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+                const { error } = await supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: { redirectTo },
+                });
+
+                if (error) {
+                  setStatusMessage(error.message);
+                }
+              } catch (error) {
+                setStatusMessage(error instanceof Error ? error.message : copy.authFailed);
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+          >
+            {copy.continueWithGoogle}
           </Button>
 
           {statusMessage ? (

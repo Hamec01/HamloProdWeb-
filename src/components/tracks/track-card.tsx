@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import type { Track } from "@/types";
@@ -39,6 +40,8 @@ export function TrackCard({ track, isAuthenticated, locale }: { track: Track; is
         ) : null}
         <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} locale={locale} />
       </div>
+
+      <ContentFeedbackCard entity="tracks" contentId={track.id} isAuthenticated={isAuthenticated} locale={locale} />
     </article>
   );
 }
