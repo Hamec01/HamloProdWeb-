@@ -50,7 +50,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     user_email: user.email ?? "unknown",
   });
 
-  if (logError) {
+  const isMissingDownloadLogTable = Boolean(logError?.message && /beat_downloads/i.test(logError.message));
+
+  if (logError && !isMissingDownloadLogTable) {
     return errorResponse(logError.message, 400);
   }
 
