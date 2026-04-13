@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
+import { LoyaltyPurchasePanel } from "@/components/beats/loyalty-purchase-panel";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -130,6 +131,13 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                   : "Add NEXT_PUBLIC_LICENSE_REQUEST_URL in Vercel so the purchase button points to checkout or a request form."}
               </p>
             ) : null}
+
+            <LoyaltyPurchasePanel
+              beatId={beat.id}
+              basePriceUsd={beat.priceUsd}
+              isAuthenticated={session.isAuthenticated}
+              locale={locale}
+            />
 
             <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />
           </section>
