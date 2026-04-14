@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
-import { BeatReactionBar } from "@/components/beats/beat-reaction-bar";
 import { LoyaltyPurchasePanel } from "@/components/beats/loyalty-purchase-panel";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
@@ -139,8 +138,6 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               isAuthenticated={session.isAuthenticated}
               locale={locale}
             />
-
-            <BeatReactionBar beatId={beat.id} locale={locale} />
 
             <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />
           </section>

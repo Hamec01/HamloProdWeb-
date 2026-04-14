@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BeatReactionBar } from "@/components/beats/beat-reaction-bar";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { dictionary, type Locale } from "@/lib/i18n";
@@ -59,8 +58,6 @@ export function BeatCard({
         <span>{beat.duration}</span>
         <span>${beat.priceUsd}</span>
       </div>
-
-      <BeatReactionBar beatId={beat.id} locale={locale} />
     </article>
   );
 }
