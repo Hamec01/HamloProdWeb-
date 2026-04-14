@@ -111,9 +111,17 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                   {t.buyLicense}
                   <ArrowRight size={14} />
                 </Link>
+              ) : beat.status === "available" || beat.status === "reserved" ? (
+                <Link
+                  href={`/checkout/${beat.slug}`}
+                  className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
+                >
+                  {t.buyLicense}
+                  <ArrowRight size={14} />
+                </Link>
               ) : (
                 <span className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">
-                  {hasSaleAssets ? t.buyLicenseSoon : t.saleAssetsNotReady}
+                  {t.saleAssetsNotReady}
                 </span>
               )}
               <Link
