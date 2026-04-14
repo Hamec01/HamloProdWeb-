@@ -28,7 +28,6 @@ const copy = {
     buyerEmail: "Email",
     buyerCountry: "Страна",
     buyerCity: "Город",
-    buyerPassport: "Паспорт / Документ (серия и номер)",
     buyerPhone: "Телефон",
     licenseType: "Тип лицензии",
     licenseBasic: "Базовая",
@@ -55,7 +54,6 @@ const copy = {
     buyerEmail: "Email",
     buyerCountry: "Country",
     buyerCity: "City",
-    buyerPassport: "Passport / Document (series & number)",
     buyerPhone: "Phone",
     licenseType: "License Type",
     licenseBasic: "Basic",
@@ -218,12 +216,6 @@ export function CheckoutForm({
             <label className={labelClass()}>{t.buyerCity}</label>
             <input {...register("buyer_city")} className={fieldClass(!!errors.buyer_city)} placeholder="—" />
             {errors.buyer_city && <p className="mt-1 text-xs text-red-400">{errors.buyer_city.message}</p>}
-          </div>
-
-          <div>
-            <label className={labelClass()}>{t.buyerPassport}</label>
-            <input {...register("buyer_passport")} className={fieldClass(!!errors.buyer_passport)} placeholder="—" />
-            {errors.buyer_passport && <p className="mt-1 text-xs text-red-400">{errors.buyer_passport.message}</p>}
           </div>
 
           <div>

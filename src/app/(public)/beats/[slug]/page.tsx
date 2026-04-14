@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
-import { LoyaltyPurchasePanel } from "@/components/beats/loyalty-purchase-panel";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -125,28 +124,13 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                 </span>
               )}
               <Link
-                href="/auth"
+                href={session.isAuthenticated ? "/profile" : "/auth"}
                 className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
               >
                 {session.isAuthenticated ? t.buyerAccount : t.buyerLogin}
                 <ArrowRight size={14} />
               </Link>
             </div>
-            {!licenseRequestHref ? (
-              <p className="mt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
-                {locale === "ru"
-                  ? "Добавь NEXT_PUBLIC_LICENSE_REQUEST_URL в Vercel, чтобы кнопка покупки вела на checkout или форму заказа."
-                  : "Add NEXT_PUBLIC_LICENSE_REQUEST_URL in Vercel so the purchase button points to checkout or a request form."}
-              </p>
-            ) : null}
-
-            <LoyaltyPurchasePanel
-              beatId={beat.id}
-              basePriceUsd={beat.priceUsd}
-              isAuthenticated={session.isAuthenticated}
-              locale={locale}
-            />
-
             <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />
           </section>
         </aside>
