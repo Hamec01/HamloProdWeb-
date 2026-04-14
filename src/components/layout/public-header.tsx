@@ -14,6 +14,7 @@ export async function PublicHeader() {
     { href: "/beats", label: t.navArchive },
     { href: "/tracks", label: t.navTracks },
     { href: "/artists", label: t.navArtists },
+    { href: "/profile", label: t.navProfile },
     { href: "/auth", label: t.navAuth },
     { href: "/admin/login", label: t.navAdmin },
   ];

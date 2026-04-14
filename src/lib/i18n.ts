@@ -8,6 +8,7 @@ type Dictionary = {
   navTracks: string;
   navArtists: string;
   navAuth: string;
+  navProfile: string;
   navAdmin: string;
   logout: string;
   footerLeft: string;
@@ -46,6 +47,22 @@ type Dictionary = {
   stickyPlayer: string;
   playerReady: string;
   stop: string;
+  profileTitle: string;
+  profileDesc: string;
+  profileAuthRequired: string;
+  profileNoSupabase: string;
+  profilePointsTitle: string;
+  profileCurrentPoints: string;
+  profileCurrentDiscount: string;
+  profileNextDiscount: string;
+  profileMaxDiscount: string;
+  profilePurchasesTitle: string;
+  profileRatingsTitle: string;
+  profileNoPurchases: string;
+  profileNoRatings: string;
+  profilePurchasedAt: string;
+  profileRatedAt: string;
+  profileOpenBeat: string;
 };
 
 export const dictionary: Record<Locale, Dictionary> = {
@@ -55,6 +72,7 @@ export const dictionary: Record<Locale, Dictionary> = {
     navTracks: "Треки",
     navArtists: "Артисты",
     navAuth: "Вход / Регистрация",
+    navProfile: "Профиль",
     navAdmin: "Админ",
     logout: "Выйти",
     footerLeft: "Архив / Кейс-файлы",
@@ -93,6 +111,22 @@ export const dictionary: Record<Locale, Dictionary> = {
     stickyPlayer: "Плеер",
     playerReady: "Плеер готов",
     stop: "Стоп",
+    profileTitle: "Профиль пользователя",
+    profileDesc: "Ваши поинты, история покупок и оценённые биты.",
+    profileAuthRequired: "Войдите в аккаунт, чтобы открыть профиль.",
+    profileNoSupabase: "Профиль доступен только при подключенном Supabase.",
+    profilePointsTitle: "Лояльность",
+    profileCurrentPoints: "Текущие поинты",
+    profileCurrentDiscount: "Текущая скидка",
+    profileNextDiscount: "Следующий порог",
+    profileMaxDiscount: "Максимальная скидка уже активна",
+    profilePurchasesTitle: "История покупок",
+    profileRatingsTitle: "Оценённые биты",
+    profileNoPurchases: "Покупок пока нет.",
+    profileNoRatings: "Вы ещё не оценили ни одного бита.",
+    profilePurchasedAt: "Куплено",
+    profileRatedAt: "Оценено",
+    profileOpenBeat: "Открыть кейс",
   },
   en: {
     navHome: "Home",
@@ -100,6 +134,7 @@ export const dictionary: Record<Locale, Dictionary> = {
     navTracks: "Tracks",
     navArtists: "Artists",
     navAuth: "Login / Sign Up",
+    navProfile: "Profile",
     navAdmin: "Admin",
     logout: "Logout",
     footerLeft: "Archive / Case Files",
@@ -138,5 +173,21 @@ export const dictionary: Record<Locale, Dictionary> = {
     stickyPlayer: "Sticky Player",
     playerReady: "Player Ready",
     stop: "Stop",
+    profileTitle: "User Profile",
+    profileDesc: "Your points, purchase history, and rated beats.",
+    profileAuthRequired: "Sign in to open your profile.",
+    profileNoSupabase: "Profile is available only with Supabase configured.",
+    profilePointsTitle: "Loyalty",
+    profileCurrentPoints: "Current Points",
+    profileCurrentDiscount: "Current Discount",
+    profileNextDiscount: "Next Threshold",
+    profileMaxDiscount: "Maximum discount is already active",
+    profilePurchasesTitle: "Purchase History",
+    profileRatingsTitle: "Rated Beats",
+    profileNoPurchases: "No purchases yet.",
+    profileNoRatings: "You have not rated any beats yet.",
+    profilePurchasedAt: "Purchased",
+    profileRatedAt: "Rated",
+    profileOpenBeat: "Open Case",
   },
 };
