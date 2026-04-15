@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
+import { BeatReactionBar } from "@/components/beats/beat-reaction-bar";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
+import { LoyaltyPurchasePanel } from "@/components/beats/loyalty-purchase-panel";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/session";
@@ -31,7 +33,6 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   }
 
   const licenseRequestHref = getLicenseRequestHref(beat.title, beat.slug);
-  const hasSaleAssets = Boolean(beat.wavFilePath || beat.zipFilePath);
 
   return (
     <section className="space-y-8">
@@ -80,6 +81,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
             <div className="mt-6 flex flex-wrap gap-3">
               <PlayBeatButton beat={beat} queue={beats} locale={locale} />
             </div>
+            <BeatReactionBar beatId={beat.id} locale={locale} />
           </section>
 
           <section className="case-panel p-6">
@@ -131,6 +133,12 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                 <ArrowRight size={14} />
               </Link>
             </div>
+            <LoyaltyPurchasePanel
+              beatId={beat.id}
+              basePriceUsd={beat.priceUsd}
+              isAuthenticated={session.isAuthenticated}
+              locale={locale}
+            />
             <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />
           </section>
         </aside>
