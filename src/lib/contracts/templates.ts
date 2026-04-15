@@ -461,9 +461,9 @@ function bodyEn(v: ContractVars): string {
 // Public render functions
 // ---------------------------------------------------------------------------
 
-function wrap(body: string): string {
+function wrap(body: string, htmlLang: string): string {
   return `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${htmlLang}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -480,12 +480,12 @@ function wrap(body: string): string {
 
 export function renderLicenseRu(vars: ContractVars): string {
   const body = inject(bodyRu(vars), vars);
-  return wrap(body);
+  return wrap(body, "ru");
 }
 
 export function renderLicenseEn(vars: ContractVars): string {
   const body = inject(bodyEn(vars), vars);
-  return wrap(body);
+  return wrap(body, "en");
 }
 
 export function renderLicenseBilingual(vars: ContractVars): string {
@@ -499,7 +499,8 @@ export function renderLicenseBilingual(vars: ContractVars): string {
     <div class="lang-badge">EN</div>
     ${enBody}
   `;
-  return wrap(bilingualBody);
+  // Bilingual: use "ru" as the primary document language since RU appears first
+  return wrap(bilingualBody, "ru");
 }
 
 export function renderContractByLocale(locale: ContractLocale, vars: ContractVars): string {

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle<{ id: string; title: string; case_number: string }>();
 
   if (!beat) {
-    return err("Beat not found.", 404);
+    return err("Unable to generate contract preview.", 404);
   }
 
   const html = renderContractHtml(order, beat);
