@@ -38,10 +38,8 @@ const copy = {
     acceptLabel: "Я принимаю условия лицензионного соглашения",
     personalDataLabel: "Я даю согласие на обработку персональных данных",
     submit: "Оформить заказ",
-    submitting: "Создаём заказ…",
-    successTitle: "Заказ создан",
-    successDesc: "Черновик заказа сохранён. Перейди в профиль для оплаты.",
-    toProfile: "В профиль",
+    generatingPreview: "Формируем договор...",
+    genericError: "Ошибка при создании договора. Попробуйте ещё раз.",
     free: "Бесплатно",
   },
   en: {
@@ -64,10 +62,8 @@ const copy = {
     acceptLabel: "I accept the license agreement terms",
     personalDataLabel: "I consent to the processing of my personal data",
     submit: "Place Order",
-    submitting: "Creating order…",
-    successTitle: "Order Created",
-    successDesc: "Draft order saved. Go to profile to proceed with payment.",
-    toProfile: "Go to profile",
+    generatingPreview: "Generating contract...",
+    genericError: "Failed to create contract preview. Please try again.",
     free: "Free",
   },
 };
@@ -107,7 +103,6 @@ export function CheckoutForm({
   const t = copy[locale];
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
 
   const {
     register,
@@ -125,49 +120,47 @@ export function CheckoutForm({
 
   const onSubmit = async (values: CheckoutFormValues) => {
     setServerError(null);
+
     try {
-      const res = await fetch("/api/checkout", {
+      const orderRes = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const payload = (await res.json().catch(() => null)) as { orderId?: string; error?: string } | null;
-      if (!res.ok) {
-        setServerError(payload?.error ?? "Ошибка при создании заказа.");
+
+      const orderPayload = (await orderRes.json().catch(() => null)) as { orderId?: string; error?: string } | null;
+      if (!orderRes.ok || !orderPayload?.orderId) {
+        setServerError(orderPayload?.error ?? t.genericError);
         return;
       }
-      setOrderId(payload?.orderId ?? "");
+
+      const previewRes = await fetch("/api/contracts/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: orderPayload.orderId }),
+      });
+
+      const previewPayload = (await previewRes.json().catch(() => null)) as { previewUrl?: string; error?: string } | null;
+      if (!previewRes.ok || !previewPayload?.previewUrl) {
+        setServerError(previewPayload?.error ?? t.genericError);
+        return;
+      }
+
+      router.push(previewPayload.previewUrl);
+      router.refresh();
     } catch {
-      setServerError("Сетевая ошибка. Попробуйте ещё раз.");
+      setServerError(t.genericError);
     }
   };
 
-  if (orderId) {
-    return (
-      <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6 text-center">
-        <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.successTitle}</p>
-        <p className="text-sm text-[var(--color-paper-200)]">{t.successDesc}</p>
-        <button
-          type="button"
-          onClick={() => router.push("/profile")}
-          className="mt-2 inline-block border border-[var(--color-line)] px-6 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-        >
-          {t.toProfile}
-        </button>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      {/* hidden beat_id */}
       <input type="hidden" {...register("beat_id")} />
 
-      {/* Order summary */}
       <section className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.orderSummary}</p>
         <p className="mt-3 text-2xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">
-          CASE #{beatCaseNumber} — {beatTitle}
+          CASE #{beatCaseNumber} - {beatTitle}
         </p>
         <div className="mt-4 space-y-2 text-sm text-[var(--color-paper-300)]">
           <div className="flex justify-between">
@@ -177,50 +170,47 @@ export function CheckoutForm({
           {discountPercent > 0 && (
             <div className="flex justify-between text-amber-400">
               <span className="uppercase tracking-[0.12em]">{t.discount}</span>
-              <span>−{discountPercent}%</span>
+              <span>-{discountPercent}%</span>
             </div>
           )}
           <div className="flex justify-between border-t border-[var(--color-line)] pt-2 text-[var(--color-paper-100)]">
             <span className="uppercase tracking-[0.12em]">{t.final}</span>
-            <span className="font-semibold">
-              {finalPriceUsd === 0 ? t.free : formatUsd(finalPriceUsd, locale)}
-            </span>
+            <span className="font-semibold">{finalPriceUsd === 0 ? t.free : formatUsd(finalPriceUsd, locale)}</span>
           </div>
         </div>
       </section>
 
-      {/* Personal details */}
       <section className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <p className="mb-4 text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.personal}</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass()}>{t.buyerName}</label>
-            <input {...register("buyer_name")} className={fieldClass(!!errors.buyer_name)} placeholder="—" />
+            <input {...register("buyer_name")} className={fieldClass(!!errors.buyer_name)} placeholder="-" />
             {errors.buyer_name && <p className="mt-1 text-xs text-red-400">{errors.buyer_name.message}</p>}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerEmail}</label>
-            <input {...register("buyer_email")} type="email" className={fieldClass(!!errors.buyer_email)} placeholder="—" />
+            <input {...register("buyer_email")} type="email" className={fieldClass(!!errors.buyer_email)} placeholder="-" />
             {errors.buyer_email && <p className="mt-1 text-xs text-red-400">{errors.buyer_email.message}</p>}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerCountry}</label>
-            <input {...register("buyer_country")} className={fieldClass(!!errors.buyer_country)} placeholder="—" />
+            <input {...register("buyer_country")} className={fieldClass(!!errors.buyer_country)} placeholder="-" />
             {errors.buyer_country && <p className="mt-1 text-xs text-red-400">{errors.buyer_country.message}</p>}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerCity}</label>
-            <input {...register("buyer_city")} className={fieldClass(!!errors.buyer_city)} placeholder="—" />
+            <input {...register("buyer_city")} className={fieldClass(!!errors.buyer_city)} placeholder="-" />
             {errors.buyer_city && <p className="mt-1 text-xs text-red-400">{errors.buyer_city.message}</p>}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerPhone}</label>
-            <input {...register("buyer_phone")} type="tel" className={fieldClass(!!errors.buyer_phone)} placeholder="—" />
+            <input {...register("buyer_phone")} type="tel" className={fieldClass(!!errors.buyer_phone)} placeholder="-" />
             {errors.buyer_phone && <p className="mt-1 text-xs text-red-400">{errors.buyer_phone.message}</p>}
           </div>
         </div>
@@ -244,7 +234,6 @@ export function CheckoutForm({
         </div>
       </section>
 
-      {/* Checkboxes */}
       <section className="space-y-3 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <label className="flex cursor-pointer items-start gap-3">
           <input
@@ -268,9 +257,7 @@ export function CheckoutForm({
       </section>
 
       {serverError && (
-        <p className="rounded border border-red-500/30 bg-red-900/20 px-4 py-2 text-sm text-red-400">
-          {serverError}
-        </p>
+        <p className="rounded border border-red-500/30 bg-red-900/20 px-4 py-2 text-sm text-red-400">{serverError}</p>
       )}
 
       <button
@@ -278,7 +265,7 @@ export function CheckoutForm({
         disabled={isSubmitting}
         className="w-full border border-[var(--color-line)] py-3 text-sm uppercase tracking-[0.22em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(255,255,255,0.05)] disabled:opacity-50"
       >
-        {isSubmitting ? t.submitting : t.submit}
+        {isSubmitting ? t.generatingPreview : t.submit}
       </button>
     </form>
   );

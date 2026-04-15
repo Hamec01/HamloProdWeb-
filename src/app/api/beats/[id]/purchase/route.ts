@@ -1,21 +1,10 @@
 import { NextResponse } from "next/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getDiscountPercent } from "@/lib/loyalty";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
-}
-
-function getDiscountPercent(points: number) {
-  if (points >= 4) {
-    return 100;
-  }
-
-  if (points >= 2) {
-    return 50;
-  }
-
-  return 0;
 }
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {

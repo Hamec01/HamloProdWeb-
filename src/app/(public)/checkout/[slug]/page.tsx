@@ -5,6 +5,7 @@ import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n-server";
+import { getDiscountPercent } from "@/lib/loyalty";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
@@ -19,12 +20,6 @@ type BeatRow = {
 };
 
 type LoyaltyRow = { points: number };
-
-function calcDiscount(points: number) {
-  if (points >= 4) return 100;
-  if (points >= 2) return 50;
-  return 0;
-}
 
 export default async function CheckoutPage({
   params,
@@ -72,7 +67,7 @@ export default async function CheckoutPage({
     .maybeSingle<LoyaltyRow>();
 
   const points = loyalty?.points ?? 0;
-  const discountPercent = calcDiscount(points);
+  const discountPercent = getDiscountPercent(points);
   const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
 
   const heading = locale === "ru" ? "Оформление заказа" : "Checkout";

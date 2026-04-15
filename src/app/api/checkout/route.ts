@@ -3,6 +3,7 @@ import { getPublicSessionState } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
+import { getDiscountPercent } from "@/lib/loyalty";
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -58,8 +59,7 @@ export async function POST(request: NextRequest) {
     return err("Beat is not available for purchase.", 409);
   }
 
-  // Apply loyalty discount if user has points
-  let discountPercent = 0;
+  // Apply loyalty discount from backend source of truth.
   const { data: loyalty } = await supabase
     .from("user_loyalty_points")
     .select("points")
@@ -67,34 +67,59 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   const points = loyalty?.points ?? 0;
-  if (points >= 4) discountPercent = 100;
-  else if (points >= 2) discountPercent = 50;
+  const discountPercent = getDiscountPercent(points);
 
   const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
 
-  const { data: order, error: insertError } = await supabase
-    .from("orders")
-    .insert({
-      beat_id,
-      buyer_user_id: session.userId,
-      buyer_email,
-      buyer_name,
-      buyer_country,
-      buyer_city,
-      buyer_phone,
-      license_type,
-      contract_language,
-      base_price_usd: beat.price_usd,
-      discount_percent: discountPercent,
-      final_price_usd: finalPriceUsd,
-      status: "draft",
-    })
-    .select("id")
-    .single();
+  const orderPayload = {
+    beat_id,
+    buyer_user_id: session.userId,
+    buyer_email,
+    buyer_name,
+    buyer_country,
+    buyer_city,
+    buyer_phone,
+    license_type,
+    contract_language,
+    base_price_usd: beat.price_usd,
+    discount_percent: discountPercent,
+    final_price_usd: finalPriceUsd,
+    // Keep lifecycle backend-controlled even when final price is 0.
+    status: "draft" as const,
+  };
 
-  if (insertError || !order) {
+  const { data: existingDraft } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("buyer_user_id", session.userId)
+    .eq("beat_id", beat_id)
+    .eq("status", "draft")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  if (existingDraft?.id) {
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update(orderPayload)
+      .eq("id", existingDraft.id);
+
+    if (updateError) {
+      return err("Failed to update draft order.", 500);
+    }
+
+    return NextResponse.json({ orderId: existingDraft.id }, { status: 200 });
+  }
+
+  const { data: createdOrder, error: insertError } = await supabase
+    .from("orders")
+    .insert(orderPayload)
+    .select("id")
+    .single<{ id: string }>();
+
+  if (insertError || !createdOrder) {
     return err("Failed to create order.", 500);
   }
 
-  return NextResponse.json({ orderId: order.id }, { status: 201 });
+  return NextResponse.json({ orderId: createdOrder.id }, { status: 201 });
 }
