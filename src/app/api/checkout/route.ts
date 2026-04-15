@@ -3,6 +3,7 @@ import { getPublicSessionState } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
+import { generateContractHtml } from "@/lib/contract-html";
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -44,10 +45,10 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createSupabaseServerClient();
 
-  // Fetch beat to get price and confirm availability
+  // Fetch beat to get price, title, case_number, and confirm availability
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, price_usd, status")
+    .select("id, title, case_number, price_usd, status")
     .eq("id", beat_id)
     .maybeSingle();
 
@@ -96,5 +97,36 @@ export async function POST(request: NextRequest) {
     return err("Failed to create order.", 500);
   }
 
-  return NextResponse.json({ orderId: order.id }, { status: 201 });
+  // Generate contract HTML snapshot
+  const issuedAt = new Date().toISOString();
+  const contractHtml = generateContractHtml({
+    orderId: order.id,
+    beatCaseNumber: beat.case_number as string,
+    beatTitle: beat.title as string,
+    buyerName: buyer_name,
+    buyerEmail: buyer_email,
+    buyerCountry: buyer_country,
+    buyerCity: buyer_city,
+    buyerPhone: buyer_phone,
+    licenseType: license_type,
+    basePriceUsd: beat.price_usd,
+    discountPercent,
+    finalPriceUsd,
+    contractLanguage: contract_language,
+    issuedAt,
+  });
+
+  // Save contract to DB (best-effort; don't fail the order if insert fails)
+  const { error: contractError } = await supabase.from("contracts").insert({
+    order_id: order.id,
+    beat_id,
+    buyer_email,
+    html_snapshot: contractHtml,
+  });
+
+  if (contractError) {
+    console.error("[checkout] contract insert failed for order", order.id, contractError.message);
+  }
+
+  return NextResponse.json({ orderId: order.id, contractHtml }, { status: 201 });
 }

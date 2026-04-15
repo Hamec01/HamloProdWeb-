@@ -43,6 +43,10 @@ const copy = {
     successDesc: "Черновик заказа сохранён. Перейди в профиль для оплаты.",
     toProfile: "В профиль",
     free: "Бесплатно",
+    contractTitle: "Договор лицензии",
+    contractDesc: "Ознакомьтесь с договором. После оплаты он будет доступен в профиле.",
+    contractConfirm: "Перейти к оплате",
+    contractConfirmFree: "Получить лицензию",
   },
   en: {
     orderSummary: "Order Summary",
@@ -69,6 +73,10 @@ const copy = {
     successDesc: "Draft order saved. Go to profile to proceed with payment.",
     toProfile: "Go to profile",
     free: "Free",
+    contractTitle: "License Agreement",
+    contractDesc: "Please review the agreement. After payment it will be available in your profile.",
+    contractConfirm: "Proceed to Payment",
+    contractConfirmFree: "Get License",
   },
 };
 
@@ -108,6 +116,7 @@ export function CheckoutForm({
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [contractHtml, setContractHtml] = useState<string | null>(null);
 
   const {
     register,
@@ -131,12 +140,17 @@ export function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const payload = (await res.json().catch(() => null)) as { orderId?: string; error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as {
+        orderId?: string;
+        contractHtml?: string;
+        error?: string;
+      } | null;
       if (!res.ok) {
         setServerError(payload?.error ?? "Ошибка при создании заказа.");
         return;
       }
       setOrderId(payload?.orderId ?? "");
+      setContractHtml(payload?.contractHtml ?? null);
     } catch {
       setServerError("Сетевая ошибка. Попробуйте ещё раз.");
     }
@@ -144,15 +158,36 @@ export function CheckoutForm({
 
   if (orderId) {
     return (
-      <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6 text-center">
-        <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.successTitle}</p>
-        <p className="text-sm text-[var(--color-paper-200)]">{t.successDesc}</p>
+      <div className="space-y-6">
+        {/* Contract preview header */}
+        <div className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+          <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.contractTitle}</p>
+          <p className="mt-2 text-sm text-[var(--color-paper-200)]">{t.contractDesc}</p>
+        </div>
+
+        {/* Contract HTML rendered in an iframe for isolation */}
+        {contractHtml ? (
+          <div className="overflow-hidden rounded-2xl border border-[var(--color-line)]">
+            <iframe
+              srcDoc={contractHtml}
+              title={t.contractTitle}
+              className="h-[540px] w-full"
+              sandbox=""
+            />
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+            <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.successTitle}</p>
+            <p className="mt-2 text-sm text-[var(--color-paper-200)]">{t.successDesc}</p>
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => router.push("/profile")}
-          className="mt-2 inline-block border border-[var(--color-line)] px-6 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          className="w-full border border-[var(--color-line)] py-3 text-sm uppercase tracking-[0.22em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(255,255,255,0.05)]"
         >
-          {t.toProfile}
+          {finalPriceUsd === 0 ? t.contractConfirmFree : t.contractConfirm}
         </button>
       </div>
     );
