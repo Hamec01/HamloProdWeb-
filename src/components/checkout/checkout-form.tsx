@@ -13,6 +13,7 @@ type Props = {
   basePriceUsd: number;
   discountPercent: number;
   finalPriceUsd: number;
+  currency: "USD" | "RUB";
   prefillEmail: string;
   locale: "ru" | "en";
 };
@@ -82,10 +83,10 @@ function labelClass() {
   return "block text-[10px] uppercase tracking-[0.24em] text-[var(--color-paper-400)] mb-1";
 }
 
-function formatUsd(value: number, locale: "ru" | "en") {
+function formatUsd(value: number, locale: "ru" | "en", currency: "USD" | "RUB") {
   return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -97,6 +98,7 @@ export function CheckoutForm({
   basePriceUsd,
   discountPercent,
   finalPriceUsd,
+  currency,
   prefillEmail,
   locale,
 }: Props) {
@@ -165,7 +167,7 @@ export function CheckoutForm({
         <div className="mt-4 space-y-2 text-sm text-[var(--color-paper-300)]">
           <div className="flex justify-between">
             <span className="uppercase tracking-[0.12em]">{t.base}</span>
-            <span>{formatUsd(basePriceUsd, locale)}</span>
+            <span>{formatUsd(basePriceUsd, locale, currency)}</span>
           </div>
           {discountPercent > 0 && (
             <div className="flex justify-between text-amber-400">
@@ -175,7 +177,7 @@ export function CheckoutForm({
           )}
           <div className="flex justify-between border-t border-[var(--color-line)] pt-2 text-[var(--color-paper-100)]">
             <span className="uppercase tracking-[0.12em]">{t.final}</span>
-            <span className="font-semibold">{finalPriceUsd === 0 ? t.free : formatUsd(finalPriceUsd, locale)}</span>
+            <span className="font-semibold">{finalPriceUsd === 0 ? t.free : formatUsd(finalPriceUsd, locale, currency)}</span>
           </div>
         </div>
       </section>

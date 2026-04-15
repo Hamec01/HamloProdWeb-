@@ -3,18 +3,24 @@ import { ArrowRight } from "lucide-react";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { dictionary, type Locale } from "@/lib/i18n";
+import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
 
 export function BeatCard({
   beat,
   queue,
   locale,
+  hrefBase = "/beats",
 }: {
   beat: Beat;
   queue: Beat[];
   locale: Locale;
+  hrefBase?: string;
 }) {
   const t = dictionary[locale];
+  const market = getMarketContext(locale);
+  const beatPrice = getBeatPriceForLocale(beat, locale);
+  const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
 
   return (
     <article className="case-panel grain-border overflow-hidden p-4">
@@ -46,7 +52,7 @@ export function BeatCard({
       <div className="mt-5 flex flex-wrap gap-3">
         <PlayBeatButton beat={beat} queue={queue} locale={locale} />
         <Link
-          href={`/beats/${beat.slug}`}
+          href={`${hrefBase}/${beat.slug}`}
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
         >
           {t.openCase}
@@ -56,7 +62,7 @@ export function BeatCard({
 
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
         <span>{beat.duration}</span>
-        <span>${beat.priceUsd}</span>
+        <span>{priceLabel}</span>
       </div>
     </article>
   );

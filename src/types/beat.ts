@@ -16,6 +16,7 @@ export type Beat = {
   mood: string;
   description: string;
   priceUsd: number;
+  priceRub: number;
   status: BeatStatus;
   featured: boolean;
   createdAt: string;

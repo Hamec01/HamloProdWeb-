@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n-server";
+import { getMarketContext } from "@/lib/market";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
 import { getDiscountPercent } from "@/lib/loyalty";
@@ -43,12 +45,13 @@ export async function POST(request: NextRequest) {
     contract_language,
   } = parsed.data;
 
-  const supabase = await createSupabaseServerClient();
+  const [supabase, locale] = await Promise.all([createSupabaseServerClient(), getLocale()]);
+  const market = getMarketContext(locale);
 
   // Fetch beat to get price and confirm availability
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, price_usd, status")
+    .select("id, price_usd, price_rub, status")
     .eq("id", beat_id)
     .maybeSingle();
 
@@ -69,7 +72,8 @@ export async function POST(request: NextRequest) {
   const points = loyalty?.points ?? 0;
   const discountPercent = getDiscountPercent(points);
 
-  const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
+  const basePrice = locale === "ru" ? (beat.price_rub ?? 2500) : beat.price_usd;
+  const finalPriceUsd = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
 
   const orderPayload = {
     beat_id,
@@ -81,9 +85,10 @@ export async function POST(request: NextRequest) {
     buyer_phone,
     license_type,
     contract_language,
-    base_price_usd: beat.price_usd,
+    base_price_usd: basePrice,
     discount_percent: discountPercent,
     final_price_usd: finalPriceUsd,
+    payment_provider: market.paymentProvider,
     // Keep lifecycle backend-controlled even when final price is 0.
     status: "draft" as const,
   };

@@ -36,6 +36,7 @@ const defaultValues: BeatFormValues = {
   duration: "02:30",
   status: "available",
   priceUsd: 100,
+  priceRub: 2500,
   featured: false,
   availableForDownload: false,
 };
@@ -72,6 +73,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
         beat.zipFilePath ? "ready" : "missing",
         String(beat.bpm),
         beat.mood,
+        `$${beat.priceUsd} / ₽${beat.priceRub}`,
         beat.status,
         <div key={`actions-${beat.id}`} className="flex gap-2">
           <Button
@@ -94,6 +96,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("duration", beat.duration);
               setValue("status", beat.status);
               setValue("priceUsd", beat.priceUsd);
+              setValue("priceRub", beat.priceRub);
               setValue("availableForDownload", beat.availableForDownload);
               setValue("featured", beat.featured);
               setCoverImageFile(null);
@@ -395,7 +398,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             {errors.coverPalette ? <span className="text-xs text-[var(--color-alert)]">{errors.coverPalette.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            <span>Mood</span>
+            <span>Genre / Mood</span>
             <input {...register("mood")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.mood ? <span className="text-xs text-[var(--color-alert)]">{errors.mood.message}</span> : null}
           </label>
@@ -416,6 +419,15 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
             />
             {errors.priceUsd ? <span className="text-xs text-[var(--color-alert)]">{errors.priceUsd.message}</span> : null}
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>Price RUB</span>
+            <input
+              type="number"
+              {...register("priceRub", { valueAsNumber: true })}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
+            />
+            {errors.priceRub ? <span className="text-xs text-[var(--color-alert)]">{errors.priceRub.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Duration</span>
@@ -493,7 +505,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
       <AdminCollectionTable
         title="Existing Beats"
         description="Preview streams publicly; WAV and ZIP stay private in storage for the purchase flow."
-        columns={["Playback", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Mood", "Status", "Actions"]}
+        columns={["Playback", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Genre", "Price", "Status", "Actions"]}
         rows={rows}
       />
     </div>

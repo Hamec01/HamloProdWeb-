@@ -49,6 +49,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       duration: values.duration,
       status: values.status,
       price_usd: values.priceUsd,
+      price_rub: values.priceRub,
       featured: values.featured,
       available_for_download: values.availableForDownload,
     })

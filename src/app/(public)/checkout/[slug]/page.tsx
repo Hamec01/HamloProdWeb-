@@ -6,6 +6,7 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n-server";
 import { getDiscountPercent } from "@/lib/loyalty";
+import { getMarketContext } from "@/lib/market";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Locale } from "@/lib/i18n";
@@ -16,6 +17,7 @@ type BeatRow = {
   slug: string;
   case_number: string;
   price_usd: number;
+  price_rub: number | null;
   status: string;
 };
 
@@ -49,15 +51,18 @@ export default async function CheckoutPage({
 
   const { data: beat } = await supabase
     .from("beats")
-    .select("id, title, slug, case_number, price_usd, status")
+    .select("id, title, slug, case_number, price_usd, price_rub, status")
     .eq("slug", slug)
     .maybeSingle<BeatRow>();
 
   if (!beat) notFound();
 
   if (beat.status === "sold" || beat.status === "private") {
-    redirect(`/beats/${slug}`);
+    redirect(`/${locale}/beats/${slug}`);
   }
+
+  const market = getMarketContext(locale as Locale);
+  const basePrice = locale === "ru" ? (beat.price_rub ?? 2500) : beat.price_usd;
 
   // Loyalty points → discount
   const { data: loyalty } = await supabase
@@ -68,7 +73,7 @@ export default async function CheckoutPage({
 
   const points = loyalty?.points ?? 0;
   const discountPercent = getDiscountPercent(points);
-  const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
+  const finalPriceUsd = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
 
   const heading = locale === "ru" ? "Оформление заказа" : "Checkout";
   const eyebrow = locale === "ru" ? "Покупка лицензии" : "License Purchase";
@@ -78,7 +83,7 @@ export default async function CheckoutPage({
     <section className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link
-          href={`/beats/${slug}`}
+          href={`/${locale}/beats/${slug}`}
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
         >
           <ArrowLeft size={14} />
@@ -93,9 +98,10 @@ export default async function CheckoutPage({
           beatId={beat.id}
           beatTitle={beat.title}
           beatCaseNumber={beat.case_number}
-          basePriceUsd={beat.price_usd}
+          basePriceUsd={basePrice}
           discountPercent={discountPercent}
           finalPriceUsd={finalPriceUsd}
+          currency={market.currency}
           prefillEmail={session.email ?? ""}
           locale={locale as Locale}
         />

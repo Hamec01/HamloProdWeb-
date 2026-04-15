@@ -40,6 +40,7 @@ export const beatFormSchema = z.object({
   duration: z.string().min(4),
   status: z.enum(["available", "reserved", "sold", "private"]),
   priceUsd: z.number().min(0),
+  priceRub: z.number().min(0),
   featured: z.boolean(),
   availableForDownload: z.boolean(),
 });
