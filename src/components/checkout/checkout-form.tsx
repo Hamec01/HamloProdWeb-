@@ -107,7 +107,6 @@ export function CheckoutForm({
   const t = copy[locale];
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [orderId, setOrderId] = useState<string | null>(null);
 
   const {
     register,
@@ -131,32 +130,21 @@ export function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const payload = (await res.json().catch(() => null)) as { orderId?: string; error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as
+        | { orderId?: string; previewUrl?: string; error?: string }
+        | null;
       if (!res.ok) {
         setServerError(payload?.error ?? "Ошибка при создании заказа.");
         return;
       }
-      setOrderId(payload?.orderId ?? "");
+      const target =
+        payload?.previewUrl ??
+        (payload?.orderId ? "/checkout/preview/" + payload.orderId : "/profile");
+      router.push(target);
     } catch {
       setServerError("Сетевая ошибка. Попробуйте ещё раз.");
     }
   };
-
-  if (orderId) {
-    return (
-      <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6 text-center">
-        <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.successTitle}</p>
-        <p className="text-sm text-[var(--color-paper-200)]">{t.successDesc}</p>
-        <button
-          type="button"
-          onClick={() => router.push("/profile")}
-          className="mt-2 inline-block border border-[var(--color-line)] px-6 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-        >
-          {t.toProfile}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -196,39 +184,74 @@ export function CheckoutForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass()}>{t.buyerName}</label>
-            <input {...register("buyer_name")} className={fieldClass(!!errors.buyer_name)} placeholder="—" />
-            {errors.buyer_name && <p className="mt-1 text-xs text-red-400">{errors.buyer_name.message}</p>}
+            <input
+              {...register("buyer_name")}
+              className={fieldClass(!!errors.buyer_name)}
+              placeholder="—"
+            />
+            {errors.buyer_name && (
+              <p className="mt-1 text-xs text-red-400">{errors.buyer_name.message}</p>
+            )}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerEmail}</label>
-            <input {...register("buyer_email")} type="email" className={fieldClass(!!errors.buyer_email)} placeholder="—" />
-            {errors.buyer_email && <p className="mt-1 text-xs text-red-400">{errors.buyer_email.message}</p>}
+            <input
+              {...register("buyer_email")}
+              type="email"
+              className={fieldClass(!!errors.buyer_email)}
+              placeholder="—"
+            />
+            {errors.buyer_email && (
+              <p className="mt-1 text-xs text-red-400">{errors.buyer_email.message}</p>
+            )}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerCountry}</label>
-            <input {...register("buyer_country")} className={fieldClass(!!errors.buyer_country)} placeholder="—" />
-            {errors.buyer_country && <p className="mt-1 text-xs text-red-400">{errors.buyer_country.message}</p>}
+            <input
+              {...register("buyer_country")}
+              className={fieldClass(!!errors.buyer_country)}
+              placeholder="—"
+            />
+            {errors.buyer_country && (
+              <p className="mt-1 text-xs text-red-400">{errors.buyer_country.message}</p>
+            )}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerCity}</label>
-            <input {...register("buyer_city")} className={fieldClass(!!errors.buyer_city)} placeholder="—" />
-            {errors.buyer_city && <p className="mt-1 text-xs text-red-400">{errors.buyer_city.message}</p>}
+            <input
+              {...register("buyer_city")}
+              className={fieldClass(!!errors.buyer_city)}
+              placeholder="—"
+            />
+            {errors.buyer_city && (
+              <p className="mt-1 text-xs text-red-400">{errors.buyer_city.message}</p>
+            )}
           </div>
 
           <div>
             <label className={labelClass()}>{t.buyerPhone}</label>
-            <input {...register("buyer_phone")} type="tel" className={fieldClass(!!errors.buyer_phone)} placeholder="—" />
-            {errors.buyer_phone && <p className="mt-1 text-xs text-red-400">{errors.buyer_phone.message}</p>}
+            <input
+              {...register("buyer_phone")}
+              type="tel"
+              className={fieldClass(!!errors.buyer_phone)}
+              placeholder="—"
+            />
+            {errors.buyer_phone && (
+              <p className="mt-1 text-xs text-red-400">{errors.buyer_phone.message}</p>
+            )}
           </div>
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <label className={labelClass()}>{t.licenseType}</label>
-            <select {...register("license_type")} className={fieldClass(!!errors.license_type)}>
+            <select
+              {...register("license_type")}
+              className={fieldClass(!!errors.license_type)}
+            >
               <option value="basic">{t.licenseBasic}</option>
               <option value="exclusive">{t.licenseExclusive}</option>
             </select>
@@ -236,7 +259,10 @@ export function CheckoutForm({
 
           <div>
             <label className={labelClass()}>{t.contractLang}</label>
-            <select {...register("contract_language")} className={fieldClass(!!errors.contract_language)}>
+            <select
+              {...register("contract_language")}
+              className={fieldClass(!!errors.contract_language)}
+            >
               <option value="ru">{t.langRu}</option>
               <option value="en">{t.langEn}</option>
             </select>
@@ -254,7 +280,9 @@ export function CheckoutForm({
           />
           <span className="text-sm leading-5 text-[var(--color-paper-200)]">{t.acceptLabel}</span>
         </label>
-        {errors.acceptance && <p className="text-xs text-red-400">{errors.acceptance.message}</p>}
+        {errors.acceptance && (
+          <p className="text-xs text-red-400">{errors.acceptance.message}</p>
+        )}
 
         <label className="flex cursor-pointer items-start gap-3">
           <input
@@ -262,9 +290,13 @@ export function CheckoutForm({
             {...register("personal_data")}
             className="mt-0.5 h-4 w-4 accent-[var(--color-paper-200)]"
           />
-          <span className="text-sm leading-5 text-[var(--color-paper-200)]">{t.personalDataLabel}</span>
+          <span className="text-sm leading-5 text-[var(--color-paper-200)]">
+            {t.personalDataLabel}
+          </span>
         </label>
-        {errors.personal_data && <p className="text-xs text-red-400">{errors.personal_data.message}</p>}
+        {errors.personal_data && (
+          <p className="text-xs text-red-400">{errors.personal_data.message}</p>
+        )}
       </section>
 
       {serverError && (

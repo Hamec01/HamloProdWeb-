@@ -3,10 +3,18 @@ import { getPublicSessionState } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
+import {
+  renderContractHtml,
+  buildContractNumber,
+  formatContractDate,
+  type ContractLanguage,
+} from "@/lib/contracts/templates";
 
 function err(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
+
+const BEAT_SELECT_FIELDS = "id, title, price_usd, status";
 
 export async function POST(request: NextRequest) {
   if (!hasSupabaseEnv()) {
@@ -44,12 +52,11 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createSupabaseServerClient();
 
-  // Fetch beat to get price and confirm availability
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, price_usd, status")
+    .select(BEAT_SELECT_FIELDS)
     .eq("id", beat_id)
-    .maybeSingle();
+    .maybeSingle<{ id: string; title: string; price_usd: number; status: string }>();
 
   if (beatError || !beat) {
     return err("Beat not found.", 404);
@@ -58,19 +65,21 @@ export async function POST(request: NextRequest) {
     return err("Beat is not available for purchase.", 409);
   }
 
-  // Apply loyalty discount if user has points
   let discountPercent = 0;
   const { data: loyalty } = await supabase
     .from("user_loyalty_points")
     .select("points")
     .eq("user_id", session.userId)
-    .maybeSingle();
+    .maybeSingle<{ points: number }>();
 
   const points = loyalty?.points ?? 0;
   if (points >= 4) discountPercent = 100;
   else if (points >= 2) discountPercent = 50;
 
-  const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
+  const finalPriceUsd = Math.max(
+    0,
+    Math.round((beat.price_usd * (100 - discountPercent)) / 100),
+  );
 
   const { data: order, error: insertError } = await supabase
     .from("orders")
@@ -89,12 +98,55 @@ export async function POST(request: NextRequest) {
       final_price_usd: finalPriceUsd,
       status: "draft",
     })
-    .select("id")
-    .single();
+    .select("id, created_at")
+    .single<{ id: string; created_at: string }>();
 
   if (insertError || !order) {
     return err("Failed to create order.", 500);
   }
 
-  return NextResponse.json({ orderId: order.id }, { status: 201 });
+  const language = contract_language as ContractLanguage;
+  const createdAt = new Date(order.created_at);
+  const contractNumber = buildContractNumber(order.id, createdAt);
+  const currentDate = formatContractDate(createdAt, language);
+
+  const licenseLabel =
+    license_type === "exclusive"
+      ? language === "en"
+        ? "Exclusive License"
+        : "Эксклюзивная лицензия"
+      : language === "en"
+        ? "Basic (Non-Exclusive) License"
+        : "Базовая (неисключительная) лицензия";
+
+  const html = renderContractHtml(language, {
+    contract_number: contractNumber,
+    current_date: currentDate,
+    beat_title: beat.title,
+    license_type: licenseLabel,
+    buyer_name: buyer_name ?? "-",
+    buyer_email,
+    buyer_country: buyer_country ?? "-",
+    buyer_city: buyer_city ?? "-",
+    buyer_phone: buyer_phone ?? "-",
+    amount: String(finalPriceUsd),
+    currency: "USD",
+    seller_name: process.env.NEXT_PUBLIC_SELLER_NAME ?? "HamloProd",
+    seller_country: process.env.NEXT_PUBLIC_SELLER_COUNTRY ?? "",
+    seller_city: process.env.NEXT_PUBLIC_SELLER_CITY ?? "",
+  });
+
+  const { error: contractError } = await supabase.from("contracts").upsert(
+    { order_id: order.id, beat_id, buyer_email, html_snapshot: html },
+    { onConflict: "order_id" },
+  );
+
+  if (contractError) {
+    return err("Failed to create contract preview.", 500);
+  }
+
+  return NextResponse.json(
+    { orderId: order.id, previewUrl: "/checkout/preview/" + order.id },
+    { status: 201 },
+  );
 }
