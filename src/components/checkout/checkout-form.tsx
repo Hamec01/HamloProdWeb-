@@ -39,8 +39,8 @@ const copy = {
     personalDataLabel: "Я даю согласие на обработку персональных данных",
     submit: "Оформить заказ",
     submitting: "Создаём заказ…",
-    successTitle: "Заказ создан",
-    successDesc: "Черновик заказа сохранён. Перейди в профиль для оплаты.",
+    successTitle: "Переходим к предпросмотру…",
+    successDesc: "Черновик заказа сохранён. Открываем договор.",
     toProfile: "В профиль",
     free: "Бесплатно",
   },
@@ -65,8 +65,8 @@ const copy = {
     personalDataLabel: "I consent to the processing of my personal data",
     submit: "Place Order",
     submitting: "Creating order…",
-    successTitle: "Order Created",
-    successDesc: "Draft order saved. Go to profile to proceed with payment.",
+    successTitle: "Redirecting to preview…",
+    successDesc: "Draft order saved. Opening contract preview.",
     toProfile: "Go to profile",
     free: "Free",
   },
@@ -131,29 +131,31 @@ export function CheckoutForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const payload = (await res.json().catch(() => null)) as { orderId?: string; error?: string } | null;
+      const payload = (await res.json().catch(() => null)) as {
+        orderId?: string;
+        previewUrl?: string;
+        error?: string;
+      } | null;
       if (!res.ok) {
         setServerError(payload?.error ?? "Ошибка при создании заказа.");
         return;
       }
-      setOrderId(payload?.orderId ?? "");
+      const id = payload?.orderId ?? "";
+      setOrderId(id);
+      // Redirect to contract preview; fall back to profile if URL is missing
+      router.push(payload?.previewUrl ?? `/checkout/preview/${id}`);
     } catch {
       setServerError("Сетевая ошибка. Попробуйте ещё раз.");
     }
   };
 
+  // NOTE: orderId state is kept for the edge-case where router.push is slow;
+  // the user sees a brief "redirecting" message instead of a blank form.
   if (orderId) {
     return (
       <div className="space-y-4 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6 text-center">
         <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.successTitle}</p>
         <p className="text-sm text-[var(--color-paper-200)]">{t.successDesc}</p>
-        <button
-          type="button"
-          onClick={() => router.push("/profile")}
-          className="mt-2 inline-block border border-[var(--color-line)] px-6 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-        >
-          {t.toProfile}
-        </button>
       </div>
     );
   }
