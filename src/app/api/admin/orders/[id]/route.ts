@@ -44,6 +44,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  revalidatePath("/");
   revalidatePath("/admin/orders");
 
   return NextResponse.json({ ok: true });
