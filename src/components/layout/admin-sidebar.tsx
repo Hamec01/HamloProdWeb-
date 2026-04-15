@@ -5,6 +5,7 @@ const adminNavigation = [
   { href: "/admin/beats", label: "Beats CRUD" },
   { href: "/admin/tracks", label: "Tracks CRUD" },
   { href: "/admin/artists", label: "Artists CRUD" },
+  { href: "/admin/orders", label: "Orders" },
 ];
 
 export function AdminSidebar() {

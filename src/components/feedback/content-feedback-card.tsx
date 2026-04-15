@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ export function ContentFeedbackCard({
     [locale],
   );
 
-  const loadFeedback = async () => {
+  const loadFeedback = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/feedback/${entity}/${contentId}`, { cache: "no-store" });
@@ -86,11 +86,11 @@ export function ContentFeedbackCard({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [contentId, entity, copy.failedLoad]);
 
   useEffect(() => {
     void loadFeedback();
-  }, [contentId, entity]);
+  }, [loadFeedback]);
 
   const submitRating = async (rating: number) => {
     if (!isAuthenticated) {

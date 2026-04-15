@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { mockArtists, mockBeats, mockTracks, siteSettings } from "@/services/mock-data";
-import type { Artist, Beat, SiteSettings, Track, TrackDownloadLog } from "@/types";
+import type { Artist, Beat, Order, SiteSettings, Track, TrackDownloadLog } from "@/types";
 
 type BeatRow = {
   id: string;
@@ -68,6 +68,25 @@ type SiteSettingsRow = {
   subtitle: string;
   archive_headline: string;
   archive_description: string;
+};
+
+type OrderRow = {
+  id: string;
+  beat_id: string;
+  buyer_user_id: string | null;
+  buyer_email: string;
+  buyer_name: string | null;
+  buyer_country: string | null;
+  buyer_city: string | null;
+  buyer_phone: string | null;
+  license_type: string;
+  contract_language: string;
+  base_price_usd: number;
+  discount_percent: number;
+  final_price_usd: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 };
 
 function mapBeat(row: BeatRow): Beat {
@@ -144,6 +163,27 @@ function mapSiteSettings(row: SiteSettingsRow): SiteSettings {
     subtitle: row.subtitle,
     archiveHeadline: row.archive_headline,
     archiveDescription: row.archive_description,
+  };
+}
+
+function mapOrder(row: OrderRow): Order {
+  return {
+    id: row.id,
+    beatId: row.beat_id,
+    buyerUserId: row.buyer_user_id,
+    buyerEmail: row.buyer_email,
+    buyerName: row.buyer_name,
+    buyerCountry: row.buyer_country,
+    buyerCity: row.buyer_city,
+    buyerPhone: row.buyer_phone,
+    licenseType: row.license_type as Order["licenseType"],
+    contractLanguage: row.contract_language as Order["contractLanguage"],
+    basePriceUsd: row.base_price_usd,
+    discountPercent: row.discount_percent,
+    finalPriceUsd: row.final_price_usd,
+    status: row.status as Order["status"],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -317,4 +357,24 @@ export async function getAdminTrackDownloads() {
 
     return data.map(mapTrackDownload);
   }, [] as TrackDownloadLog[]);
+}
+
+export async function getAdminOrders() {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_country, buyer_city, buyer_phone, license_type, contract_language, base_price_usd, discount_percent, final_price_usd, status, created_at, updated_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .returns<OrderRow[]>();
+
+    if (error || !data) {
+      return [];
+    }
+
+    return data.map(mapOrder);
+  }, [] as Order[]);
 }

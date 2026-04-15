@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { Locale } from "@/lib/i18n";
@@ -62,7 +62,7 @@ export function LoyaltyPurchasePanel({
     [locale],
   );
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     if (!isAuthenticated) {
       setIsLoading(false);
       return;
@@ -78,11 +78,11 @@ export function LoyaltyPurchasePanel({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     void loadStatus();
-  }, [isAuthenticated]);
+  }, [loadStatus]);
 
   const discountedPrice = Math.max(0, Math.round((basePriceUsd * (100 - status.discountPercent)) / 100));
 

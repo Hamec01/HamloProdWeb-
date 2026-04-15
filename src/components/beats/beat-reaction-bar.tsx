@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
@@ -31,17 +31,17 @@ export function BeatReactionBar({ beatId, locale }: { beatId: string; locale: Lo
     [locale],
   );
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const response = await fetch(`/api/beats/${beatId}/reaction`, { cache: "no-store" });
     const payload = (await response.json().catch(() => null)) as ReactionStats | null;
     if (response.ok && payload) {
       setStats(payload);
     }
-  };
+  }, [beatId]);
 
   useEffect(() => {
     void load();
-  }, [beatId]);
+  }, [load]);
 
   const submitReaction = async (reaction: "like" | "dislike") => {
     setIsLoading(true);
