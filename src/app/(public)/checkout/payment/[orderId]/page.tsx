@@ -7,14 +7,7 @@ import { getPublicSessionState } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-
-function formatUsd(value: number, locale: "ru" | "en") {
-  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+import { formatMoney } from "@/lib/utils/currency";
 
 export default async function CheckoutPaymentPage({
   params,
@@ -79,9 +72,9 @@ export default async function CheckoutPaymentPage({
             <p><span className="text-[var(--color-paper-400)]">Beat:</span> {beat.title}</p>
             <p><span className="text-[var(--color-paper-400)]">Email:</span> {order.buyer_email}</p>
             <p><span className="text-[var(--color-paper-400)]">License:</span> {order.license_type}</p>
-            <p><span className="text-[var(--color-paper-400)]">Base:</span> {formatUsd(order.base_price_usd, locale as "ru" | "en")}</p>
+            <p><span className="text-[var(--color-paper-400)]">Base:</span> {formatMoney(order.base_price_usd, order.currency ?? "USD", locale as "ru" | "en")}</p>
             <p><span className="text-[var(--color-paper-400)]">Discount:</span> {order.discount_percent}%</p>
-            <p><span className="text-[var(--color-paper-400)]">Final:</span> {formatUsd(order.final_price_usd, locale as "ru" | "en")}</p>
+            <p><span className="text-[var(--color-paper-400)]">Final:</span> {formatMoney(order.final_price_usd, order.currency ?? "USD", locale as "ru" | "en")}</p>
             <p><span className="text-[var(--color-paper-400)]">Status:</span> {order.status}</p>
           </div>
         </article>

@@ -10,14 +10,7 @@ import {
 } from "@/lib/contracts/preview";
 import { getLocale } from "@/lib/i18n-server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-
-function formatUsd(value: number, locale: "ru" | "en") {
-  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+import { formatMoney } from "@/lib/utils/currency";
 
 export default async function ContractPreviewPage({
   params,
@@ -97,7 +90,7 @@ export default async function ContractPreviewPage({
               <span className="text-[var(--color-paper-400)]">License:</span> {order.license_type}
             </p>
             <p>
-              <span className="text-[var(--color-paper-400)]">Total:</span> {formatUsd(order.final_price_usd, locale)}
+              <span className="text-[var(--color-paper-400)]">Total:</span> {formatMoney(order.final_price_usd, order.currency, locale)}
             </p>
             <p>
               <span className="text-[var(--color-paper-400)]">Email:</span> {order.buyer_email}
