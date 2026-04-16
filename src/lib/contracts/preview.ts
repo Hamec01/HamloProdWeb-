@@ -16,6 +16,7 @@ type OrderPreviewRow = {
   license_type: "basic" | "exclusive";
   contract_language: "ru" | "en";
   final_price_usd: number;
+  currency: string | null;
   status: string;
 };
 
@@ -131,7 +132,7 @@ export async function getOrderForPreview(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_country, buyer_city, buyer_phone, license_type, contract_language, final_price_usd, status",
+      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_country, buyer_city, buyer_phone, license_type, contract_language, final_price_usd, currency, status",
     )
     .eq("id", orderId)
     .eq("buyer_user_id", userId)

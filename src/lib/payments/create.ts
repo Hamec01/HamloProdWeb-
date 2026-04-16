@@ -196,12 +196,11 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
 
 async function createLavaPayment(order: PaymentOrderRow, beat: BeatPaymentRow): Promise<LavaPaymentDraft> {
   const apiBaseUrl = process.env.LAVA_API_BASE_URL?.trim();
-  const shopId = process.env.LAVA_SHOP_ID?.trim();
-  const signatureSecret = process.env.LAVA_API_KEY?.trim();
+  const apiKey = process.env.LAVA_API_KEY?.trim();
   const returnBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const webhookUrl = process.env.LAVA_WEBHOOK_URL?.trim() || `${returnBaseUrl}/api/lava/webhook`;
 
-  if (!shopId || !signatureSecret || !returnBaseUrl) {
+  if (!apiKey || !returnBaseUrl) {
     throw new Error("LAVA_NOT_CONFIGURED");
   }
 
@@ -210,23 +209,16 @@ async function createLavaPayment(order: PaymentOrderRow, beat: BeatPaymentRow): 
 
   const lava = await createLavaInvoice({
     apiBaseUrl,
-    signatureSecret,
+    apiKey,
     payload: {
-      shopId,
-      sum: order.final_price_usd,
-      orderId: order.id,
-      hookUrl: webhookUrl,
-      successUrl,
-      failUrl,
+      amount: order.final_price_usd,
+      currency: "RUB",
+      external_id: order.id,
+      description: `Beat purchase: ${beat.title}`,
+      hook_url: webhookUrl,
+      success_url: successUrl,
+      fail_url: failUrl,
       expire: 300,
-      customFields: JSON.stringify({
-        beatId: beat.id,
-        beatTitle: beat.title,
-        buyerEmail: order.buyer_email,
-        licenseType: order.license_type,
-      }),
-      comment: `HamloProd license for ${beat.title}`,
-      includeService: ["card", "sbp", "qiwi"],
     },
   });
 

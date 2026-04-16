@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -37,7 +38,6 @@ const copy = {
     loading: "Создаём платёж...",
     cta: "Создать платёж",
     retry: "Повторить",
-    zeroAmount: "Заказ со 100% скидкой переведён в отдельную backend-ветку pending_free_checkout. Автозавершение с клиента отключено.",
     missingUrl: "Платёж создан, но URL для редиректа не получен. Проверь конфигурацию Lava и ответ API.",
     fallbackError: "Не удалось подготовить оплату. Проверьте состояние заказа и конфигурацию Lava.",
   },
@@ -46,7 +46,6 @@ const copy = {
     loading: "Creating payment...",
     cta: "Create Payment",
     retry: "Retry",
-    zeroAmount: "This 100%-discount order was moved into a separate backend-controlled pending_free_checkout path. Client-side auto-completion is disabled.",
     missingUrl: "Payment was prepared, but no redirect URL was returned. Check Lava configuration and API response.",
     fallbackError: "Failed to prepare payment. Check order state and Lava configuration.",
   },
@@ -54,6 +53,7 @@ const copy = {
 
 export function PaymentCreatePanel({ orderId, locale, autoStart }: Props) {
   const t = copy[locale];
+  const router = useRouter();
   const attemptedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState(t.idle);
@@ -73,7 +73,7 @@ export function PaymentCreatePanel({ orderId, locale, autoStart }: Props) {
       }
 
       if (payload?.kind === "free") {
-        setMessage(t.zeroAmount);
+        router.push(`/checkout/rights/${orderId}`);
         return;
       }
 
