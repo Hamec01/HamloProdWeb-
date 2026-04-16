@@ -1,28 +1,22 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 type LavaInvoiceCreateRequest = {
-  shopId: string;
-  sum: number;
-  orderId: string;
-  hookUrl?: string;
-  successUrl?: string;
-  failUrl?: string;
+  amount: number;
+  currency: "RUB" | "USD";
+  external_id: string;
+  description?: string;
+  success_url?: string;
+  fail_url?: string;
+  hook_url?: string;
   expire?: number;
-  customFields?: string;
-  comment?: string;
-  includeService?: string[];
-  excludeService?: string[];
 };
 
 type LavaInvoiceCreateResponse = {
-  data?: {
-    id?: string;
-    url?: string;
-    amount?: number;
-    status?: string | number;
-  };
-  status?: number;
-  status_check?: boolean;
+  id?: string;
+  url?: string;
+  amount?: number;
+  currency?: string;
+  status?: string | number;
   error?: unknown;
 };
 
@@ -37,7 +31,7 @@ export type LavaWebhookPayload = {
 } & Record<string, unknown>;
 
 function normalizeBaseUrl(baseUrl: string | undefined) {
-  const fallback = "https://api.lava.ru";
+  const fallback = "https://gate.lava.top";
   return (baseUrl?.trim() || fallback).replace(/\/$/, "");
 }
 
@@ -61,28 +55,27 @@ export function createLavaSignature(rawJson: string, secret: string) {
 
 export async function createLavaInvoice(input: {
   apiBaseUrl?: string;
-  signatureSecret: string;
+  apiKey: string;
   payload: LavaInvoiceCreateRequest;
 }) {
   const apiBaseUrl = normalizeBaseUrl(input.apiBaseUrl);
-  const endpoint = `${apiBaseUrl}/business/invoice/create`;
+  const endpoint = `${apiBaseUrl}/invoice`;
 
   const body = JSON.stringify(input.payload);
-  const signature = createLavaSignature(body, input.signatureSecret);
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Signature: signature,
+      Authorization: `Bearer ${input.apiKey}`,
     },
     body,
   });
 
   const payload = (await response.json().catch(() => null)) as LavaInvoiceCreateResponse | null;
 
-  if (!response.ok || !payload || !payload.status_check || !payload.data?.id || !payload.data?.url) {
+  if (!response.ok || !payload || !payload.id || !payload.url) {
     return {
       ok: false as const,
       httpStatus: response.status,
@@ -94,8 +87,8 @@ export async function createLavaInvoice(input: {
     ok: true as const,
     httpStatus: response.status,
     payload,
-    externalId: payload.data.id,
-    paymentUrl: payload.data.url,
+    externalId: payload.id,
+    paymentUrl: payload.url,
   };
 }
 
