@@ -27,6 +27,23 @@ type BeatRow = {
   available_for_download: boolean;
 };
 
+type LegacyBeatRow = {
+  id: string;
+  title: string;
+  slug: string;
+  case_number: string;
+  cover_palette: string;
+  preview_url: string;
+  bpm: number;
+  mood: string;
+  description: string;
+  price_usd: number;
+  status: Beat["status"];
+  featured: boolean;
+  created_at: string;
+  duration: string;
+};
+
 type TrackRow = {
   id: string;
   title: string;
@@ -94,6 +111,32 @@ function mapBeat(row: BeatRow): Beat {
     createdAt: row.created_at,
     duration: row.duration,
     availableForDownload: row.available_for_download,
+  };
+}
+
+function mapLegacyBeat(row: LegacyBeatRow): Beat {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    caseNumber: row.case_number,
+    coverPalette: row.cover_palette,
+    coverImageUrl: null,
+    coverImagePath: null,
+    previewUrl: row.preview_url,
+    previewStoragePath: null,
+    wavFilePath: null,
+    zipFilePath: null,
+    bpm: row.bpm,
+    mood: row.mood,
+    description: row.description,
+    priceUsd: row.price_usd,
+    priceRub: 2500,
+    status: row.status,
+    featured: row.featured,
+    createdAt: row.created_at,
+    duration: row.duration,
+    availableForDownload: false,
   };
 }
 
@@ -191,21 +234,36 @@ export async function getBeatBySlug(slug: string) {
 export async function getBeats() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
+    const richQuery = supabase
       .from("beats")
       .select(
         "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
       )
       .neq("status", "private")
-      .order("created_at", { ascending: false })
-      .returns<BeatRow[]>();
+      .order("created_at", { ascending: false });
 
-    if (error || !data) {
-      return mockBeats;
+    const { data, error } = await richQuery.returns<BeatRow[]>();
+
+    if (!error && data) {
+      return data.map(mapBeat);
     }
 
-    return data.map(mapBeat);
-  }, mockBeats);
+    const legacyQuery = supabase
+      .from("beats")
+      .select(
+        "id, title, slug, case_number, cover_palette, preview_url, bpm, mood, description, price_usd, status, featured, created_at, duration",
+      )
+      .neq("status", "private")
+      .order("created_at", { ascending: false });
+
+    const legacy = await legacyQuery.returns<LegacyBeatRow[]>();
+
+    if (!legacy.error && legacy.data) {
+      return legacy.data.map(mapLegacyBeat);
+    }
+
+    return [] as Beat[];
+  }, mockBeats.filter((beat) => beat.status !== "private"));
 }
 
 export async function getTracks() {
@@ -249,19 +307,33 @@ export async function getArtists() {
 export async function getAdminBeats() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
+    const richQuery = supabase
       .from("beats")
       .select(
         "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
       )
-      .order("created_at", { ascending: false })
-      .returns<BeatRow[]>();
+      .order("created_at", { ascending: false });
 
-    if (error || !data) {
-      return mockBeats;
+    const { data, error } = await richQuery.returns<BeatRow[]>();
+
+    if (!error && data) {
+      return data.map(mapBeat);
     }
 
-    return data.map(mapBeat);
+    const legacyQuery = supabase
+      .from("beats")
+      .select(
+        "id, title, slug, case_number, cover_palette, preview_url, bpm, mood, description, price_usd, status, featured, created_at, duration",
+      )
+      .order("created_at", { ascending: false });
+
+    const legacy = await legacyQuery.returns<LegacyBeatRow[]>();
+
+    if (!legacy.error && legacy.data) {
+      return legacy.data.map(mapLegacyBeat);
+    }
+
+    return [] as Beat[];
   }, mockBeats);
 }
 
