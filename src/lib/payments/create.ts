@@ -49,6 +49,17 @@ type PaidOrderResult = {
 
 export type PaymentPreparationResult = FreeOrderResult | PaidOrderResult;
 
+function parseContractPaymentRow(value: Record<string, unknown> | null | undefined): ContractPaymentRow | null {
+  if (!value || typeof value.id !== "string") {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    html_snapshot: typeof value.html_snapshot === "string" ? value.html_snapshot : "",
+  };
+}
+
 function clampDiscountPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
@@ -99,14 +110,16 @@ export async function getOrderForPayment(orderId: string) {
       .maybeSingle<BeatPaymentRow>(),
     supabase
       .from("contracts")
-      .select("id, html_snapshot")
+      .select()
       .eq("order_id", orderId)
-      .maybeSingle<ContractPaymentRow>(),
+      .maybeSingle(),
   ]);
 
   if (beatError || !beat) {
     throw new Error("BEAT_NOT_FOUND");
   }
+
+  const parsedContract = parseContractPaymentRow(contract as Record<string, unknown> | null | undefined);
 
   if (contractError) {
     throw new Error("CONTRACT_LOOKUP_FAILED");
@@ -115,8 +128,8 @@ export async function getOrderForPayment(orderId: string) {
   return {
     order,
     beat,
-    contract,
-    contractSnapshotExists: Boolean(contract?.html_snapshot?.trim()),
+    contract: parsedContract,
+    contractSnapshotExists: Boolean(parsedContract?.html_snapshot?.trim()),
   };
 }
 

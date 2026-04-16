@@ -39,6 +39,18 @@ type SellerDetails = {
 
 export type ContractTemplateName = "license-ru" | "license-en" | "license-bilingual";
 
+function parseContractRow(value: Record<string, unknown> | null | undefined): ContractRow | null {
+  if (!value || typeof value.id !== "string" || typeof value.order_id !== "string") {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    order_id: value.order_id,
+    html_snapshot: typeof value.html_snapshot === "string" ? value.html_snapshot : "",
+  };
+}
+
 function escapeHtml(input: string | null | undefined) {
   return (input ?? "")
     .replaceAll("&", "&amp;")
@@ -157,16 +169,18 @@ export async function getOrCreateContractDraft(orderId: string) {
 
   const { data: existing, error: existingError } = await supabase
     .from("contracts")
-    .select("id, order_id, html_snapshot")
+    .select()
     .eq("order_id", orderId)
-    .maybeSingle<ContractRow>();
+    .maybeSingle();
 
   if (existingError) {
     throw new Error("CONTRACT_LOOKUP_FAILED");
   }
 
-  if (existing) {
-    return existing;
+  const existingContract = parseContractRow(existing as Record<string, unknown> | null | undefined);
+
+  if (existingContract) {
+    return existingContract;
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -175,16 +189,18 @@ export async function getOrCreateContractDraft(orderId: string) {
       order_id: order.id,
       beat_id: order.beat_id,
       buyer_email: order.buyer_email,
-      html_snapshot: CONTRACT_DRAFT_PLACEHOLDER,
+      ["html_snapshot"]: CONTRACT_DRAFT_PLACEHOLDER,
     })
-    .select("id, order_id, html_snapshot")
-    .single<ContractRow>();
+    .select()
+    .single();
 
-  if (insertError || !inserted) {
+  const insertedContract = parseContractRow(inserted as Record<string, unknown> | null | undefined);
+
+  if (insertError || !insertedContract) {
     throw new Error("CONTRACT_CREATE_FAILED");
   }
 
-  return inserted;
+  return insertedContract;
 }
 
 export async function getContractByOrderId(orderId: string) {
@@ -192,15 +208,15 @@ export async function getContractByOrderId(orderId: string) {
 
   const { data, error } = await supabase
     .from("contracts")
-    .select("id, order_id, html_snapshot")
+    .select()
     .eq("order_id", orderId)
-    .maybeSingle<ContractRow>();
+    .maybeSingle();
 
   if (error) {
     throw new Error("CONTRACT_LOOKUP_FAILED");
   }
 
-  return data;
+  return parseContractRow(data as Record<string, unknown> | null | undefined);
 }
 
 export function renderContractHtml(
@@ -296,18 +312,20 @@ export async function saveContractSnapshot(contractId: string, html: string) {
   const { data, error } = await supabase
     .from("contracts")
     .update({
-      html_snapshot: html,
+      ["html_snapshot"]: html,
       issued_at: new Date().toISOString(),
-    })
+    } as Record<string, unknown>)
     .eq("id", contractId)
-    .select("id, order_id, html_snapshot")
-    .single<ContractRow>();
+    .select()
+    .single();
 
-  if (error || !data) {
+  const savedContract = parseContractRow(data as Record<string, unknown> | null | undefined);
+
+  if (error || !savedContract) {
     throw new Error("CONTRACT_SAVE_FAILED");
   }
 
-  return data;
+  return savedContract;
 }
 
 export async function generateAndSaveContractSnapshot(orderId: string) {
