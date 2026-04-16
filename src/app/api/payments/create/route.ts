@@ -51,6 +51,14 @@ export async function POST(request: NextRequest) {
       return err("Contract snapshot is missing.", 409);
     }
 
+    if (reason === "MARKET_NOT_SUPPORTED") {
+      return err("Lava payments are available only for RU market orders.", 409);
+    }
+
+    if (reason === "PROVIDER_NOT_SUPPORTED") {
+      return err("Order payment provider must be lava.", 409);
+    }
+
     if (reason === "UNAUTHORIZED") {
       return err("Unauthorized", 401);
     }

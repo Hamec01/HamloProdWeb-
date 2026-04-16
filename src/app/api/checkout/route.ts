@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
     base_price_usd: basePrice,
     discount_percent: discountPercent,
     final_price_usd: finalPriceUsd,
+    market: market.market,
+    currency: market.currency,
+    provider: market.paymentProvider,
     payment_provider: market.paymentProvider,
     // Keep lifecycle backend-controlled even when final price is 0.
     status: "draft" as const,

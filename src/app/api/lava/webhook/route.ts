@@ -1,65 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  mapLavaWebhookToOrderStatus,
+  verifyLavaWebhookSignature,
+  type LavaWebhookPayload,
+} from "@/lib/payments/lava";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-function parseExternalId(payload: Record<string, unknown>) {
-  const data = (payload.data as Record<string, unknown> | undefined) ?? null;
-
-  return (
-    (typeof payload.invoiceId === "string" && payload.invoiceId) ||
-    (typeof payload.invoice_id === "string" && payload.invoice_id) ||
-    (typeof payload.paymentId === "string" && payload.paymentId) ||
-    (typeof payload.payment_id === "string" && payload.payment_id) ||
-    (typeof payload.id === "string" && payload.id) ||
-    (typeof data?.invoiceId === "string" && data.invoiceId) ||
-    (typeof data?.invoice_id === "string" && data.invoice_id) ||
-    (typeof data?.paymentId === "string" && data.paymentId) ||
-    (typeof data?.payment_id === "string" && data.payment_id) ||
-    null
-  );
-}
-
-function parseEvent(payload: Record<string, unknown>) {
-  return (
-    (typeof payload.event === "string" && payload.event) ||
-    (typeof payload.type === "string" && payload.type) ||
-    (typeof payload.status === "string" && payload.status) ||
-    ""
-  ).toLowerCase();
+function parseExternalId(payload: LavaWebhookPayload) {
+  return (typeof payload.invoice_id === "string" && payload.invoice_id) || null;
 }
 
 export async function POST(request: NextRequest) {
-  const expectedSecret = process.env.LAVA_WEBHOOK_SECRET?.trim();
-  const incomingSecret = request.headers.get("x-api-key")?.trim();
+  const webhookSecret = process.env.LAVA_WEBHOOK_SECRET?.trim();
+  const authHeader = request.headers.get("authorization");
 
-  if (!expectedSecret || !incomingSecret || incomingSecret !== expectedSecret) {
+  if (!webhookSecret) {
+    console.error("[lava:webhook] missing LAVA_WEBHOOK_SECRET");
+    return NextResponse.json({ error: "Webhook is not configured." }, { status: 503 });
+  }
+
+  const rawBody = await request.text();
+  if (!verifyLavaWebhookSignature({ rawBody, authorizationHeader: authHeader, webhookSecret })) {
+    console.warn("[lava:webhook] signature verification failed");
     return NextResponse.json({ error: "Unauthorized webhook." }, { status: 401 });
   }
 
-  const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const payload = ((): LavaWebhookPayload | null => {
+    try {
+      return JSON.parse(rawBody) as LavaWebhookPayload;
+    } catch {
+      return null;
+    }
+  })();
   if (!payload) {
     return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
   }
 
-  const event = parseEvent(payload);
   const externalId = parseExternalId(payload);
 
   if (!externalId) {
     return NextResponse.json({ error: "Missing external payment id." }, { status: 400 });
   }
 
-  let nextStatus: "paid" | "failed" | null = null;
-  if (event.includes("success") || event === "paid") {
-    nextStatus = "paid";
-  }
-  if (event.includes("failed") || event === "failed" || event.includes("cancel")) {
-    nextStatus = "failed";
-  }
+  const nextStatus = mapLavaWebhookToOrderStatus(payload);
 
   if (!nextStatus) {
-    return NextResponse.json({ ok: true, ignored: true });
+    return NextResponse.json({ ok: true, ignored: true, reason: "unsupported_status" });
   }
 
   const supabase = createSupabaseAdminClient();
+
+  const { data: currentOrder, error: currentOrderError } = await supabase
+    .from("orders")
+    .select("id, status, paid_at")
+    .eq("payment_external_id", externalId)
+    .maybeSingle<{ id: string; status: string; paid_at: string | null }>();
+
+  if (currentOrderError) {
+    console.error("[lava:webhook] order lookup failed", {
+      error: currentOrderError,
+      externalId,
+    });
+    return NextResponse.json({ error: "Failed to resolve order." }, { status: 500 });
+  }
+
+  if (!currentOrder) {
+    return NextResponse.json({ error: "Order not found for payment id." }, { status: 404 });
+  }
+
+  if (currentOrder.status === nextStatus) {
+    return NextResponse.json({ ok: true, orderId: currentOrder.id, status: nextStatus, idempotent: true });
+  }
+
+  if (currentOrder.status === "paid" && nextStatus === "failed") {
+    return NextResponse.json({ ok: true, orderId: currentOrder.id, status: currentOrder.status, idempotent: true });
+  }
 
   const patch: Record<string, unknown> = {
     status: nextStatus,
@@ -78,6 +93,11 @@ export async function POST(request: NextRequest) {
     .maybeSingle<{ id: string }>();
 
   if (orderError) {
+    console.error("[lava:webhook] order status update failed", {
+      error: orderError,
+      externalId,
+      nextStatus,
+    });
     return NextResponse.json({ error: "Failed to update order status." }, { status: 500 });
   }
 
@@ -85,5 +105,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Order not found for payment id." }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, orderId: order.id, status: nextStatus });
+  console.info("[lava:webhook] order status updated", {
+    orderId: order.id,
+    externalId,
+    nextStatus,
+  });
+
+  return NextResponse.json({ ok: true, orderId: order.id, status: nextStatus, idempotent: false });
 }

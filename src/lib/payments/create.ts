@@ -1,4 +1,5 @@
 import { getPublicSessionState } from "@/lib/auth/session";
+import { createLavaInvoice } from "@/lib/payments/lava";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,9 @@ type PaymentOrderRow = {
   status: "draft" | "pending_payment" | "paid" | "cancelled" | "failed" | "refunded" | "pending_free_checkout";
   payment_provider: string | null;
   payment_external_id: string | null;
+  market: string | null;
+  currency: string | null;
+  provider: string | null;
   license_type: "basic" | "exclusive";
   contract_language: "ru" | "en";
 };
@@ -23,6 +27,8 @@ type BeatPaymentRow = {
   id: string;
   title: string;
   slug: string;
+  price_rub: number | null;
+  price_usd: number;
 };
 
 type ContractPaymentRow = {
@@ -66,8 +72,8 @@ function clampDiscountPercent(value: number) {
   return Math.min(100, Math.max(0, value));
 }
 
-function recalculateFinalAmount(basePriceUsd: number, discountPercent: number) {
-  return Math.max(0, Math.round((basePriceUsd * (100 - clampDiscountPercent(discountPercent))) / 100));
+function recalculateFinalAmount(basePrice: number, discountPercent: number) {
+  return Math.max(0, Math.round((basePrice * (100 - clampDiscountPercent(discountPercent))) / 100));
 }
 
 async function getPaymentContext() {
@@ -94,7 +100,7 @@ export async function getOrderForPayment(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price_usd, discount_percent, final_price_usd, status, payment_provider, payment_external_id, license_type, contract_language",
+      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price_usd, discount_percent, final_price_usd, status, payment_provider, payment_external_id, market, currency, provider, license_type, contract_language",
     )
     .eq("id", orderId)
     .eq("buyer_user_id", userId)
@@ -107,7 +113,7 @@ export async function getOrderForPayment(orderId: string) {
   const [{ data: beat, error: beatError }, { data: contract, error: contractError }] = await Promise.all([
     supabase
       .from("beats")
-      .select("id, title, slug")
+      .select("id, title, slug, price_rub, price_usd")
       .eq("id", order.beat_id)
       .maybeSingle<BeatPaymentRow>(),
     supabase
@@ -135,12 +141,16 @@ export async function getOrderForPayment(orderId: string) {
   };
 }
 
-async function persistRecalculatedOrderAmount(orderId: string, finalPriceUsd: number) {
+async function persistRecalculatedOrderAmount(orderId: string, basePrice: number, finalPrice: number, currency: string) {
   const { supabase } = await getPaymentContext();
 
   const { error } = await supabase
     .from("orders")
-    .update({ final_price_usd: finalPriceUsd })
+    .update({
+      base_price_usd: basePrice,
+      final_price_usd: finalPrice,
+      currency,
+    })
     .eq("id", orderId);
 
   if (error) {
@@ -156,6 +166,7 @@ async function markFreeOrderPending(orderId: string) {
     .update({
       status: "pending_free_checkout",
       payment_provider: "internal",
+      provider: "internal",
       payment_external_id: null,
     })
     .eq("id", orderId);
@@ -173,6 +184,7 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
     .update({
       status: "pending_payment",
       payment_provider: "lava",
+      provider: "lava",
       payment_external_id: externalId,
     })
     .eq("id", orderId);
@@ -184,69 +196,52 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
 
 async function createLavaPayment(order: PaymentOrderRow, beat: BeatPaymentRow): Promise<LavaPaymentDraft> {
   const apiBaseUrl = process.env.LAVA_API_BASE_URL?.trim();
-  const apiKey = process.env.LAVA_API_KEY?.trim();
+  const shopId = process.env.LAVA_SHOP_ID?.trim();
+  const signatureSecret = process.env.LAVA_API_KEY?.trim();
   const returnBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const webhookUrl = process.env.LAVA_WEBHOOK_URL?.trim() || `${returnBaseUrl}/api/lava/webhook`;
 
-  if (!apiBaseUrl || !apiKey || !returnBaseUrl) {
+  if (!shopId || !signatureSecret || !returnBaseUrl) {
     throw new Error("LAVA_NOT_CONFIGURED");
   }
 
-  const apiUrl = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/invoices`;
   const successUrl = `${returnBaseUrl}/checkout/rights/${order.id}`;
   const failUrl = `${returnBaseUrl}/checkout/payment/${order.id}`;
 
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Api-Key": apiKey,
-    },
-    body: JSON.stringify({
+  const lava = await createLavaInvoice({
+    apiBaseUrl,
+    signatureSecret,
+    payload: {
+      shopId,
+      sum: order.final_price_usd,
       orderId: order.id,
-      amount: order.final_price_usd,
-      currency: order.contract_language === "ru" ? "RUB" : "USD",
-      description: `HamloProd license for ${beat.title}`,
-      customerEmail: order.buyer_email,
+      hookUrl: webhookUrl,
       successUrl,
       failUrl,
-      metadata: {
-        provider: order.payment_provider,
+      expire: 300,
+      customFields: JSON.stringify({
         beatId: beat.id,
+        beatTitle: beat.title,
+        buyerEmail: order.buyer_email,
         licenseType: order.license_type,
-        contractLanguage: order.contract_language,
-      },
-    }),
+      }),
+      comment: `HamloProd license for ${beat.title}`,
+      includeService: ["card", "sbp", "qiwi"],
+    },
   });
 
-  if (!response.ok) {
+  if (!lava.ok) {
+    console.error("[lava] invoice create failed", {
+      httpStatus: lava.httpStatus,
+      payload: lava.payload,
+      orderId: order.id,
+    });
     throw new Error("LAVA_REQUEST_FAILED");
   }
 
-  const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  const paymentUrl =
-    typeof payload?.paymentUrl === "string"
-      ? payload.paymentUrl
-      : typeof payload?.payment_url === "string"
-        ? payload.payment_url
-        : typeof payload?.url === "string"
-          ? payload.url
-          : null;
-  const externalId =
-    typeof payload?.id === "string"
-      ? payload.id
-      : typeof payload?.invoiceId === "string"
-        ? payload.invoiceId
-        : typeof payload?.invoice_id === "string"
-          ? payload.invoice_id
-          : null;
-
-  if (!paymentUrl) {
-    throw new Error("LAVA_RESPONSE_INVALID");
-  }
-
   return {
-    paymentUrl,
-    externalId,
+    paymentUrl: lava.paymentUrl,
+    externalId: lava.externalId,
   };
 }
 
@@ -261,9 +256,19 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
     throw new Error("CONTRACT_SNAPSHOT_MISSING");
   }
 
-  const recalculatedFinalAmount = recalculateFinalAmount(order.base_price_usd, order.discount_percent);
-  if (recalculatedFinalAmount !== order.final_price_usd) {
-    await persistRecalculatedOrderAmount(order.id, recalculatedFinalAmount);
+  if (order.market !== "ru") {
+    throw new Error("MARKET_NOT_SUPPORTED");
+  }
+
+  if (order.provider !== "lava") {
+    throw new Error("PROVIDER_NOT_SUPPORTED");
+  }
+
+  const marketBasePrice = beat.price_rub ?? order.base_price_usd;
+  const recalculatedFinalAmount = recalculateFinalAmount(marketBasePrice, order.discount_percent);
+
+  if (marketBasePrice !== order.base_price_usd || recalculatedFinalAmount !== order.final_price_usd || order.currency !== "RUB") {
+    await persistRecalculatedOrderAmount(order.id, marketBasePrice, recalculatedFinalAmount, "RUB");
   }
 
   if (recalculatedFinalAmount === 0) {
