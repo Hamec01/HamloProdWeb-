@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE, type Locale } from "@/lib/i18n";
 
 export function LanguageGateway({ locale }: { locale: Locale }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  const [open, setOpen] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
     try {
       const seen = window.localStorage.getItem("hp_locale_confirmed");
-      if (!seen) setOpen(true);
+      return !seen;
     } catch {
-      setOpen(true);
+      return true;
     }
-  }, []);
+  });
 
   const choose = (nextLocale: Locale) => {
     document.cookie = `${LOCALE_COOKIE}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
