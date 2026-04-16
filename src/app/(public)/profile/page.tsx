@@ -18,6 +18,7 @@ type OrderRow = {
   final_price_usd: number;
   license_type: string;
   status: string;
+  rights_form_status: "not_started" | "deferred" | "completed_partial" | null;
   created_at: string;
 };
 
@@ -99,7 +100,7 @@ export default async function ProfilePage() {
       .maybeSingle<PointsRow>(),
     supabase
       .from("orders")
-      .select("id, beat_id, buyer_email, base_price_usd, discount_percent, final_price_usd, license_type, status, created_at")
+      .select("id, beat_id, buyer_email, base_price_usd, discount_percent, final_price_usd, license_type, status, rights_form_status, created_at")
       .eq("buyer_user_id", session.userId)
       .order("created_at", { ascending: false })
       .limit(50)
@@ -199,6 +200,20 @@ export default async function ProfilePage() {
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
                   <span className="text-[var(--color-paper-100)]">{order.final_price_usd === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatUsd(order.final_price_usd, locale)}</span>
                   <span className="uppercase tracking-[0.1em]">{order.license_type}</span>
+                  {(order.status === "paid" || order.status === "pending_free_checkout") && (
+                    <Link
+                      href={`/checkout/rights/${order.id}`}
+                      className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline decoration-dotted"
+                    >
+                      {locale === "ru"
+                        ? order.rights_form_status === "not_started" || !order.rights_form_status
+                          ? "Заполнить передачу прав"
+                          : "Открыть форму передачи прав"
+                        : order.rights_form_status === "not_started" || !order.rights_form_status
+                          ? "Fill Rights Form"
+                          : "Open Rights Form"}
+                    </Link>
+                  )}
                 </div>
               </div>
             );

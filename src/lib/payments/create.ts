@@ -7,6 +7,8 @@ type PaymentOrderRow = {
   beat_id: string;
   buyer_user_id: string | null;
   buyer_email: string;
+  buyer_name: string | null;
+  buyer_city: string | null;
   base_price_usd: number;
   discount_percent: number;
   final_price_usd: number;
@@ -92,7 +94,7 @@ export async function getOrderForPayment(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, beat_id, buyer_user_id, buyer_email, base_price_usd, discount_percent, final_price_usd, status, payment_provider, payment_external_id, license_type, contract_language",
+      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price_usd, discount_percent, final_price_usd, status, payment_provider, payment_external_id, license_type, contract_language",
     )
     .eq("id", orderId)
     .eq("buyer_user_id", userId)
@@ -181,34 +183,34 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
 }
 
 async function createLavaPayment(order: PaymentOrderRow, beat: BeatPaymentRow): Promise<LavaPaymentDraft> {
-  const apiUrl = process.env.LAVA_API_URL?.trim();
+  const apiBaseUrl = process.env.LAVA_API_BASE_URL?.trim();
   const apiKey = process.env.LAVA_API_KEY?.trim();
-  const returnBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const returnBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-  if (!apiUrl || !apiKey || !returnBaseUrl) {
+  if (!apiBaseUrl || !apiKey || !returnBaseUrl) {
     throw new Error("LAVA_NOT_CONFIGURED");
   }
 
-  const successUrl = `${returnBaseUrl}/profile`;
+  const apiUrl = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/invoices`;
+  const successUrl = `${returnBaseUrl}/checkout/rights/${order.id}`;
   const failUrl = `${returnBaseUrl}/checkout/payment/${order.id}`;
 
-  // TODO: Align endpoint, headers, auth scheme, and payload fields with the real Lava API contract.
-  // TODO: Replace placeholder metadata field names below with the exact Lava payload once confirmed.
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      "X-Api-Key": apiKey,
     },
     body: JSON.stringify({
       orderId: order.id,
       amount: order.final_price_usd,
-      currency: "USD",
+      currency: order.contract_language === "ru" ? "RUB" : "USD",
       description: `HamloProd license for ${beat.title}`,
       customerEmail: order.buyer_email,
       successUrl,
       failUrl,
       metadata: {
+        provider: order.payment_provider,
         beatId: beat.id,
         licenseType: order.license_type,
         contractLanguage: order.contract_language,
