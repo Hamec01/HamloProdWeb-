@@ -36,14 +36,36 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
 
+    console.error("[contracts/preview] failed", {
+      orderId: parsed.data.orderId,
+      reason,
+    });
+
     if (reason === "ORDER_NOT_FOUND" || reason === "BEAT_NOT_FOUND") {
-      return err("Order not found.", 404);
+      return NextResponse.json({ error: "Order not found.", code: reason }, { status: 404 });
     }
 
     if (reason === "UNAUTHORIZED") {
-      return err("Unauthorized", 401);
+      return NextResponse.json({ error: "Unauthorized", code: reason }, { status: 401 });
     }
 
-    return err("Failed to generate contract preview.", 500);
+    if (reason === "ORDER_FINAL_PRICE_MISSING") {
+      return NextResponse.json(
+        { error: "Order price is missing for contract preview.", code: reason },
+        { status: 422 },
+      );
+    }
+
+    if (reason === "BUYER_EMAIL_MISSING" || reason === "BEAT_TITLE_MISSING") {
+      return NextResponse.json(
+        { error: "Required contract preview data is missing.", code: reason },
+        { status: 422 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to generate contract preview.", code: reason },
+      { status: 500 },
+    );
   }
 }

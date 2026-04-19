@@ -43,7 +43,9 @@ export function renderExclusiveRightsRuTemplate(data: ExclusiveRightsRuTemplateD
   const buyerCity = getFieldValue(data.buyer_city, data.mode);
   const buyerStageName = getFieldValue(data.buyer_stage_name, data.mode);
   const sellerPassport = data.revealSellerPassport ? `, паспорт: ${escapeHtml(data.seller_passport)}` : "";
-  const sellerSignature = `<img src="${data.seller_signature_image}" alt="Подпись правообладателя" class="seller-signature" />`;
+  const sellerSignature = data.seller_signature_image?.trim()
+    ? `<img src="${data.seller_signature_image}" alt="Подпись правообладателя" class="seller-signature" />`
+    : `<div class="fill-line signature-fallback">&nbsp;</div>`;
 
   return `
 <!doctype html>
@@ -113,6 +115,11 @@ export function renderExclusiveRightsRuTemplate(data: ExclusiveRightsRuTemplateD
         display: block;
         max-height: 58px;
         width: auto;
+        margin: 10px 0 8px;
+      }
+      .signature-fallback {
+        display: block;
+        min-width: 180px;
         margin: 10px 0 8px;
       }
       .small { font-size: 10.5pt; }

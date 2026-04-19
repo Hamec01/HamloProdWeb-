@@ -1,8 +1,7 @@
 import { getPublicSessionState } from "@/lib/auth/session";
 import { getSellerIdentity } from "@/lib/contracts/seller";
 import { renderExclusiveRightsRuTemplate } from "@/lib/contracts/templates/exclusive-rights-ru";
-import { formatMarketMoney } from "@/lib/market";
-import { resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
+import { formatMarketMoney, type CurrencyCode } from "@/lib/market";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -24,6 +23,7 @@ type OrderPreviewRow = {
   base_price_usd: number | null;
   final_price_usd: number | null;
   currency: string | null;
+  market: string | null;
   status: string;
 };
 
@@ -69,6 +69,49 @@ export function resolveContractTemplate(_: "ru" | "en"): ContractTemplateName {
   return "exclusive-rights-ru";
 }
 
+function resolvePreviewCurrency(order: Pick<OrderPreviewRow, "currency" | "market" | "contract_language">): CurrencyCode {
+  const normalizedCurrency = order.currency?.trim().toUpperCase();
+
+  if (normalizedCurrency === "RUB" || normalizedCurrency === "USD") {
+    return normalizedCurrency;
+  }
+
+  if (order.market === "ru" || order.contract_language === "ru") {
+    return "RUB";
+  }
+
+  return "USD";
+}
+
+function resolvePreviewAmount(order: Pick<OrderPreviewRow, "final_price" | "base_price" | "final_price_usd" | "base_price_usd">) {
+  const amount =
+    typeof order.final_price === "number"
+      ? order.final_price
+      : typeof order.base_price === "number"
+        ? order.base_price
+        : typeof order.final_price_usd === "number"
+          ? order.final_price_usd
+          : typeof order.base_price_usd === "number"
+            ? order.base_price_usd
+            : null;
+
+  if (amount === null || !Number.isFinite(amount)) {
+    throw new Error("ORDER_FINAL_PRICE_MISSING");
+  }
+
+  return Math.max(0, amount);
+}
+
+function validatePreviewPayload(order: OrderPreviewRow, beat: BeatPreviewRow) {
+  if (!beat.title?.trim()) {
+    throw new Error("BEAT_TITLE_MISSING");
+  }
+
+  if (!order.buyer_email?.trim()) {
+    throw new Error("BUYER_EMAIL_MISSING");
+  }
+}
+
 async function getPreviewContext() {
   if (!hasSupabaseEnv()) {
     throw new Error("SUPABASE_NOT_CONFIGURED");
@@ -93,7 +136,7 @@ export async function getOrderForPreview(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_country, buyer_city, buyer_phone, license_type, contract_language, base_price, final_price, base_price_usd, final_price_usd, currency, status",
+      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_country, buyer_city, buyer_phone, license_type, contract_language, base_price, final_price, base_price_usd, final_price_usd, currency, market, status",
     )
     .eq("id", orderId)
     .eq("buyer_user_id", userId)
@@ -186,9 +229,11 @@ export async function renderContractHtml(
   beat: BeatPreviewRow,
   _: ContractTemplateName,
 ) {
-  const seller = await getSellerIdentity();
-  const currency = resolveOrderCurrency(order);
-  const finalPrice = resolveOrderFinalPrice(order);
+  validatePreviewPayload(order, beat);
+
+  const seller = await getSellerIdentity({ strict: false, includeSignature: false });
+  const currency = resolvePreviewCurrency(order);
+  const finalPrice = resolvePreviewAmount(order);
 
   return renderExclusiveRightsRuTemplate({
     contract_number: getContractNumber(order.id),

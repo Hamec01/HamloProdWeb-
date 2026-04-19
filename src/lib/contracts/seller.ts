@@ -11,8 +11,13 @@ export type SellerIdentity = {
   seller_signature_image: string;
 };
 
-function getRequiredValue(envName: string) {
-  return process.env[envName]?.trim() || "";
+type SellerIdentityOptions = {
+  strict?: boolean;
+  includeSignature?: boolean;
+};
+
+function getValue(envName: string, fallback = "") {
+  return process.env[envName]?.trim() || fallback;
 }
 
 function buildConfigError(missing: string[]) {
@@ -20,14 +25,18 @@ function buildConfigError(missing: string[]) {
   return new Error(process.env.NODE_ENV === "production" ? "SELLER_CONFIG_MISSING" : `SELLER_CONFIG_MISSING:${details}`);
 }
 
-async function readSignatureDataUri(signaturePath: string) {
+async function readSignatureDataUri(signaturePath: string, strict: boolean) {
   const absolutePath = path.isAbsolute(signaturePath)
     ? signaturePath
     : path.join(process.cwd(), "public", "signatures", path.basename(signaturePath));
   const buffer = await readFile(absolutePath).catch(() => null);
 
   if (!buffer) {
-    throw new Error(process.env.NODE_ENV === "production" ? "SELLER_SIGNATURE_MISSING" : `SELLER_SIGNATURE_MISSING:${absolutePath}`);
+    if (strict) {
+      throw new Error(process.env.NODE_ENV === "production" ? "SELLER_SIGNATURE_MISSING" : `SELLER_SIGNATURE_MISSING:${absolutePath}`);
+    }
+
+    return "";
   }
 
   const ext = path.extname(absolutePath).toLowerCase();
@@ -36,31 +45,37 @@ async function readSignatureDataUri(signaturePath: string) {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
-export async function getSellerIdentity(): Promise<SellerIdentity> {
-  const seller_name = getRequiredValue("SELLER_NAME");
-  const seller_country = getRequiredValue("SELLER_COUNTRY");
-  const seller_city = getRequiredValue("SELLER_CITY");
-  const seller_email = getRequiredValue("SELLER_EMAIL");
-  const seller_telegram = getRequiredValue("SELLER_TELEGRAM");
-  const seller_passport = getRequiredValue("SELLER_PASSPORT");
+export async function getSellerIdentity(options: SellerIdentityOptions = {}): Promise<SellerIdentity> {
+  const { strict = true, includeSignature = true } = options;
 
-  const missing = [
-    ["SELLER_NAME", seller_name],
-    ["SELLER_COUNTRY", seller_country],
-    ["SELLER_CITY", seller_city],
-    ["SELLER_EMAIL", seller_email],
-    ["SELLER_TELEGRAM", seller_telegram],
-    ["SELLER_PASSPORT", seller_passport],
-  ]
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
+  const seller_name = getValue("SELLER_NAME", "HamloProd");
+  const seller_country = getValue("SELLER_COUNTRY", "Not specified");
+  const seller_city = getValue("SELLER_CITY", "Not specified");
+  const seller_email = getValue("SELLER_EMAIL", "Not specified");
+  const seller_telegram = getValue("SELLER_TELEGRAM", "Not specified");
+  const seller_passport = getValue("SELLER_PASSPORT", "Not specified");
 
-  if (missing.length > 0) {
-    throw buildConfigError(missing);
+  if (strict) {
+    const missing = [
+      ["SELLER_NAME", process.env.SELLER_NAME?.trim()],
+      ["SELLER_COUNTRY", process.env.SELLER_COUNTRY?.trim()],
+      ["SELLER_CITY", process.env.SELLER_CITY?.trim()],
+      ["SELLER_EMAIL", process.env.SELLER_EMAIL?.trim()],
+      ["SELLER_TELEGRAM", process.env.SELLER_TELEGRAM?.trim()],
+      ["SELLER_PASSPORT", process.env.SELLER_PASSPORT?.trim()],
+    ] as const;
+
+    const missingKeys = missing
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingKeys.length > 0) {
+      throw buildConfigError([...missingKeys]);
+    }
   }
 
   const signaturePath = process.env.SELLER_SIGNATURE_PATH?.trim() || "seller-signature.png";
-  const seller_signature_image = await readSignatureDataUri(signaturePath);
+  const seller_signature_image = includeSignature ? await readSignatureDataUri(signaturePath, strict) : "";
 
   return {
     seller_name,
