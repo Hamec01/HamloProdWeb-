@@ -194,12 +194,16 @@ function mapSiteSettings(row: SiteSettingsRow): SiteSettings {
 
 async function withSupabaseFallback<T>(resolver: () => Promise<T>, fallback: T): Promise<T> {
   if (!hasSupabaseEnv()) {
+    console.warn("[content] supabase env missing, using fallback data");
     return fallback;
   }
 
   try {
     return await resolver();
-  } catch {
+  } catch (error) {
+    console.warn("[content] supabase resolver failed, using fallback data", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return fallback;
   }
 }
@@ -227,43 +231,77 @@ export async function getFeaturedBeats() {
 }
 
 export async function getBeatBySlug(slug: string) {
+  console.info("[content] getBeatBySlug", { slug });
   const beats = await getBeats();
-  return beats.find((beat) => beat.slug === slug) ?? null;
+  const beat = beats.find((entry) => entry.slug === slug) ?? null;
+
+  console.info("[content] getBeatBySlug result", {
+    slug,
+    found: Boolean(beat),
+    beatId: beat?.id ?? null,
+    beatSlug: beat?.slug ?? null,
+    status: beat?.status ?? null,
+  });
+
+  return beat;
 }
 
 export async function getBeats() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
+
+    console.info("[content] querying beats", {
+      table: "beats",
+      filters: { statusIn: ["available", "reserved"] },
+      order: "created_at desc",
+    });
+
     const richQuery = supabase
       .from("beats")
       .select(
         "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
       )
-      .neq("status", "private")
+      .in("status", ["available", "reserved"])
       .order("created_at", { ascending: false });
 
     const { data, error } = await richQuery.returns<BeatRow[]>();
 
     if (!error && data) {
+      console.info("[content] beats query result", {
+        source: "rich",
+        count: data.length,
+      });
       return data.map(mapBeat);
     }
+
+    console.warn("[content] rich beats query failed, trying legacy shape", {
+      error: error?.message ?? null,
+    });
 
     const legacyQuery = supabase
       .from("beats")
       .select(
         "id, title, slug, case_number, cover_palette, preview_url, bpm, mood, description, price_usd, status, featured, created_at, duration",
       )
-      .neq("status", "private")
+      .in("status", ["available", "reserved"])
       .order("created_at", { ascending: false });
 
     const legacy = await legacyQuery.returns<LegacyBeatRow[]>();
 
     if (!legacy.error && legacy.data) {
+      console.info("[content] beats query result", {
+        source: "legacy",
+        count: legacy.data.length,
+      });
       return legacy.data.map(mapLegacyBeat);
     }
 
+    console.warn("[content] legacy beats query failed", {
+      error: legacy.error?.message ?? null,
+    });
+
     return [] as Beat[];
-  }, mockBeats.filter((beat) => beat.status !== "private"));
+  }, mockBeats.filter((beat) => beat.status === "available" || beat.status === "reserved"));
 }
 
 export async function getTracks() {

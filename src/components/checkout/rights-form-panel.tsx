@@ -11,7 +11,7 @@ type Props = {
   defaultStageName: string;
 };
 
-type Mode = "deferred" | "filled-now";
+type Mode = "deferred" | "partial";
 
 type Payload = {
   contractUrl?: string;
@@ -20,7 +20,7 @@ type Payload = {
 
 const copy = {
   ru: {
-    title: "Форма передачи прав",
+    title: "Форма отчуждения прав",
     deferred: "Заполнить позже",
     now: "Заполнить сейчас",
     fullName: "ФИО",
@@ -34,7 +34,7 @@ const copy = {
     failed: "Не удалось сформировать PDF. Попробуйте ещё раз.",
   },
   en: {
-    title: "Rights Transfer Form",
+    title: "Exclusive Rights Transfer Form",
     deferred: "Fill Later",
     now: "Fill Now",
     fullName: "Full Name",
@@ -68,7 +68,7 @@ export function RightsFormPanel({ orderId, locale, defaultFullName, defaultCity,
     setError(null);
     setContractUrl(null);
 
-    if (mode === "filled-now") {
+    if (mode === "partial") {
       if (!fullName.trim() || !city.trim() || !stageName.trim()) {
         setError(t.invalid);
         setIsLoading(false);
@@ -85,9 +85,9 @@ export function RightsFormPanel({ orderId, locale, defaultFullName, defaultCity,
         body: JSON.stringify({
           orderId,
           mode,
-          buyerFullName: mode === "filled-now" ? fullName : undefined,
-          buyerCity: mode === "filled-now" ? city : undefined,
-          buyerStageName: mode === "filled-now" ? stageName : undefined,
+          buyerFullName: mode === "partial" ? fullName : undefined,
+          buyerCity: mode === "partial" ? city : undefined,
+          buyerStageName: mode === "partial" ? stageName : undefined,
         }),
       });
 
@@ -122,15 +122,15 @@ export function RightsFormPanel({ orderId, locale, defaultFullName, defaultCity,
         </Button>
         <Button
           type="button"
-          variant={mode === "filled-now" ? "primary" : "ghost"}
-          onClick={() => setMode("filled-now")}
+          variant={mode === "partial" ? "primary" : "ghost"}
+          onClick={() => setMode("partial")}
           disabled={isLoading}
         >
           {t.now}
         </Button>
       </div>
 
-      {mode === "filled-now" ? (
+      {mode === "partial" ? (
         <div className="grid gap-4 md:grid-cols-3">
           <label className="space-y-2 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-300)]">
             {t.fullName}

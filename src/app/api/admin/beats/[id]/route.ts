@@ -9,6 +9,23 @@ function unauthorizedResponse(message: string, status = 401) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function revalidateBeatPaths(slug?: string) {
+  revalidatePath("/");
+  revalidatePath("/beats");
+  revalidatePath("/admin/beats");
+  revalidatePath("/ru/beats");
+  revalidatePath("/en/beats");
+
+  if (!slug) {
+    return;
+  }
+
+  revalidatePath(`/beats/${slug}`);
+  revalidatePath(`/checkout/${slug}`);
+  revalidatePath(`/ru/beats/${slug}`);
+  revalidatePath(`/en/beats/${slug}`);
+}
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);
@@ -29,6 +46,12 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
   const values = parsed.data;
+
+  const { data: existingBeat } = await supabase
+    .from("beats")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle<{ slug: string }>();
 
   const { error } = await supabase
     .from("beats")
@@ -59,9 +82,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  revalidatePath("/");
-  revalidatePath("/beats");
-  revalidatePath("/admin/beats");
+  revalidateBeatPaths(values.slug);
+  if (existingBeat?.slug && existingBeat.slug !== values.slug) {
+    revalidateBeatPaths(existingBeat.slug);
+  }
 
   return NextResponse.json({ ok: true });
 }
@@ -78,15 +102,20 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
 
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
+
+  const { data: existingBeat } = await supabase
+    .from("beats")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle<{ slug: string }>();
+
   const { error } = await supabase.from("beats").delete().eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  revalidatePath("/");
-  revalidatePath("/beats");
-  revalidatePath("/admin/beats");
+  revalidateBeatPaths(existingBeat?.slug);
 
   return NextResponse.json({ ok: true });
 }

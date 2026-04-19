@@ -1,4 +1,5 @@
 import { getPublicSessionState } from "@/lib/auth/session";
+import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { createLavaInvoice } from "@/lib/payments/lava";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -10,9 +11,11 @@ type PaymentOrderRow = {
   buyer_email: string;
   buyer_name: string | null;
   buyer_city: string | null;
-  base_price_usd: number;
+  base_price: number | null;
+  base_price_usd: number | null;
   discount_percent: number;
-  final_price_usd: number;
+  final_price: number | null;
+  final_price_usd: number | null;
   status: "draft" | "pending_payment" | "paid" | "cancelled" | "failed" | "refunded" | "pending_free_checkout";
   payment_provider: string | null;
   payment_external_id: string | null;
@@ -100,7 +103,7 @@ export async function getOrderForPayment(orderId: string) {
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .select(
-      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price_usd, discount_percent, final_price_usd, status, payment_provider, payment_external_id, market, currency, provider, license_type, contract_language",
+      "id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price, base_price_usd, discount_percent, final_price, final_price_usd, status, payment_provider, payment_external_id, market, currency, provider, license_type, contract_language",
     )
     .eq("id", orderId)
     .eq("buyer_user_id", userId)
@@ -147,6 +150,8 @@ async function persistRecalculatedOrderAmount(orderId: string, basePrice: number
   const { error } = await supabase
     .from("orders")
     .update({
+      base_price: basePrice,
+      final_price: finalPrice,
       base_price_usd: basePrice,
       final_price_usd: finalPrice,
       currency,
@@ -168,6 +173,7 @@ async function markFreeOrderPending(orderId: string) {
       payment_provider: "internal",
       provider: "internal",
       payment_external_id: null,
+      payment_url: null,
     })
     .eq("id", orderId);
 
@@ -176,7 +182,7 @@ async function markFreeOrderPending(orderId: string) {
   }
 }
 
-async function markPaidOrderPending(orderId: string, externalId: string | null) {
+async function markPaidOrderPending(orderId: string, externalId: string | null, paymentUrl: string) {
   const { supabase } = await getPaymentContext();
 
   const { error } = await supabase
@@ -186,6 +192,7 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
       payment_provider: "lava",
       provider: "lava",
       payment_external_id: externalId,
+      payment_url: paymentUrl,
     })
     .eq("id", orderId);
 
@@ -196,37 +203,22 @@ async function markPaidOrderPending(orderId: string, externalId: string | null) 
 
 async function createLavaPayment(order: PaymentOrderRow, beat: BeatPaymentRow): Promise<LavaPaymentDraft> {
   const apiBaseUrl = process.env.LAVA_API_BASE_URL?.trim();
-  const shopId = process.env.LAVA_SHOP_ID?.trim();
-  const signatureSecret = process.env.LAVA_API_KEY?.trim();
-  const returnBaseUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const webhookUrl = process.env.LAVA_WEBHOOK_URL?.trim() || `${returnBaseUrl}/api/lava/webhook`;
+  const apiKey = process.env.LAVA_API_KEY?.trim();
 
-  if (!shopId || !signatureSecret || !returnBaseUrl) {
+  if (!apiKey) {
     throw new Error("LAVA_NOT_CONFIGURED");
   }
 
-  const successUrl = `${returnBaseUrl}/checkout/rights/${order.id}`;
-  const failUrl = `${returnBaseUrl}/checkout/payment/${order.id}`;
-
   const lava = await createLavaInvoice({
     apiBaseUrl,
-    signatureSecret,
+    apiKey,
     payload: {
-      shopId,
-      sum: order.final_price_usd,
-      orderId: order.id,
-      hookUrl: webhookUrl,
-      successUrl,
-      failUrl,
-      expire: 300,
-      customFields: JSON.stringify({
-        beatId: beat.id,
-        beatTitle: beat.title,
-        buyerEmail: order.buyer_email,
-        licenseType: order.license_type,
-      }),
-      comment: `HamloProd license for ${beat.title}`,
-      includeService: ["card", "sbp", "qiwi"],
+      amount: resolveOrderFinalPrice(order),
+      currency: "RUB",
+      description: `Beat purchase: ${beat.title}`,
+      external_id: order.id,
+      success_url: "https://hamloprod.org/payment/success",
+      fail_url: "https://hamloprod.org/payment/fail",
     },
   });
 
@@ -264,10 +256,13 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
     throw new Error("PROVIDER_NOT_SUPPORTED");
   }
 
-  const marketBasePrice = beat.price_rub ?? order.base_price_usd;
+  const currentBasePrice = resolveOrderBasePrice(order);
+  const currentFinalPrice = resolveOrderFinalPrice(order);
+  const currentCurrency = resolveOrderCurrency(order);
+  const marketBasePrice = beat.price_rub ?? currentBasePrice;
   const recalculatedFinalAmount = recalculateFinalAmount(marketBasePrice, order.discount_percent);
 
-  if (marketBasePrice !== order.base_price_usd || recalculatedFinalAmount !== order.final_price_usd || order.currency !== "RUB") {
+  if (marketBasePrice !== currentBasePrice || recalculatedFinalAmount !== currentFinalPrice || currentCurrency !== "RUB") {
     await persistRecalculatedOrderAmount(order.id, marketBasePrice, recalculatedFinalAmount, "RUB");
   }
 
@@ -285,12 +280,13 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
   const lavaPayment = await createLavaPayment(
     {
       ...order,
+      final_price: recalculatedFinalAmount,
       final_price_usd: recalculatedFinalAmount,
     },
     beat,
   );
 
-  await markPaidOrderPending(order.id, lavaPayment.externalId);
+  await markPaidOrderPending(order.id, lavaPayment.externalId, lavaPayment.paymentUrl);
 
   return {
     kind: "paid",

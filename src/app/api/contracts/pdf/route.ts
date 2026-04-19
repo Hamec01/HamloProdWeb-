@@ -45,7 +45,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (reason === "MISSING_REQUIRED_FIELDS") {
-      return err("Full name, city and stage name are required for filled-now mode.", 400);
+      return err("Full name, city and stage name are required for partial mode.", 400);
+    }
+
+    if (reason.startsWith("SELLER_CONFIG_MISSING") || reason.startsWith("SELLER_SIGNATURE_MISSING")) {
+      return err("Seller contract data is not configured on the server.", 500);
     }
 
     if (reason === "PDF_RENDER_FAILED") {

@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     buyer_phone,
     license_type,
     contract_language,
+    use_loyalty_points,
   } = parsed.data;
 
   const [supabase, locale] = await Promise.all([createSupabaseServerClient(), getLocale()]);
@@ -70,10 +71,10 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   const points = loyalty?.points ?? 0;
-  const discountPercent = getDiscountPercent(points);
+  const discountPercent = use_loyalty_points ? getDiscountPercent(points) : 0;
 
-  const basePrice = locale === "ru" ? (beat.price_rub ?? 2500) : beat.price_usd;
-  const finalPriceUsd = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
+  const basePrice = market.currency === "RUB" ? (beat.price_rub ?? 2500) : beat.price_usd;
+  const finalPrice = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
 
   const orderPayload = {
     beat_id,
@@ -85,9 +86,12 @@ export async function POST(request: NextRequest) {
     buyer_phone,
     license_type,
     contract_language,
+    base_price: basePrice,
+    final_price: finalPrice,
+    // Temporary legacy mirrors for in-flight migration compatibility.
     base_price_usd: basePrice,
     discount_percent: discountPercent,
-    final_price_usd: finalPriceUsd,
+    final_price_usd: finalPrice,
     market: market.market,
     currency: market.currency,
     provider: market.paymentProvider,

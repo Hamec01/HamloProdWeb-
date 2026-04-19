@@ -9,15 +9,9 @@ import {
   getOrderForPreview,
 } from "@/lib/contracts/preview";
 import { getLocale } from "@/lib/i18n-server";
+import { formatMarketMoney } from "@/lib/market";
+import { resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-
-function formatUsd(value: number, locale: "ru" | "en") {
-  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 export default async function ContractPreviewPage({
   params,
@@ -51,7 +45,13 @@ export default async function ContractPreviewPage({
 
     let snapshotHtml = contract?.html_snapshot?.trim() ?? "";
 
-    if (!snapshotHtml || snapshotHtml.includes("placeholder")) {
+    if (
+      !snapshotHtml ||
+      snapshotHtml.includes("placeholder") ||
+      snapshotHtml.includes("contract_number:") ||
+      snapshotHtml.includes("Лицензионный договор") ||
+      snapshotHtml.includes("License Agreement")
+    ) {
       const regenerated = await generateAndSaveContractSnapshot(orderId);
       snapshotHtml = regenerated.contract.html_snapshot;
     }
@@ -94,10 +94,10 @@ export default async function ContractPreviewPage({
               <span className="text-[var(--color-paper-400)]">Beat:</span> {beat.title}
             </p>
             <p>
-              <span className="text-[var(--color-paper-400)]">License:</span> {order.license_type}
+              <span className="text-[var(--color-paper-400)]">Transfer:</span> {locale === "ru" ? "Полное отчуждение прав" : "Full rights transfer"}
             </p>
             <p>
-              <span className="text-[var(--color-paper-400)]">Total:</span> {formatUsd(order.final_price_usd, locale)}
+              <span className="text-[var(--color-paper-400)]">Total:</span> {formatMarketMoney(resolveOrderFinalPrice(order), resolveOrderCurrency(order), locale)}
             </p>
             <p>
               <span className="text-[var(--color-paper-400)]">Email:</span> {order.buyer_email}
@@ -115,7 +115,11 @@ export default async function ContractPreviewPage({
         </article>
       </section>
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && (error.message.startsWith("SELLER_CONFIG_MISSING") || error.message.startsWith("SELLER_SIGNATURE_MISSING"))) {
+      throw error;
+    }
+
     notFound();
   }
 }

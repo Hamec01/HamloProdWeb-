@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         orderId: result.orderId,
         kind: result.kind,
         status: result.status,
+        payment_url: result.paymentUrl,
         paymentUrl: result.paymentUrl,
       },
       { status: 200 },

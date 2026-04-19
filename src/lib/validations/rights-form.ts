@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const rightsFormModeSchema = z.enum(["deferred", "filled-now"]);
+export const rightsFormModeSchema = z.enum(["deferred", "partial", "filled-now"]).transform((value) => {
+  return value === "filled-now" ? "partial" : value;
+});
 
 export const contractPdfCreateSchema = z.object({
   orderId: z.uuid(),

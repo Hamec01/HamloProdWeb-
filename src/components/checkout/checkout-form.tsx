@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ type Props = {
   discountPercent: number;
   finalPriceUsd: number;
   currency: "USD" | "RUB";
+  availablePoints: number;
   prefillEmail: string;
   locale: "ru" | "en";
 };
@@ -23,6 +24,9 @@ const copy = {
     orderSummary: "Заказ",
     base: "Базовая цена",
     discount: "Скидка (лояльность)",
+    usePoints: "Использовать баллы лояльности для этой покупки",
+    pointsAvailable: "Доступно баллов",
+    pointsHint: "Вы можете оставить баллы на потом и оплатить заказ без скидки.",
     final: "Итого к оплате",
     personal: "Персональные данные",
     buyerName: "Полное имя / ФИО",
@@ -36,7 +40,7 @@ const copy = {
     contractLang: "Язык договора",
     langRu: "Русский",
     langEn: "English",
-    acceptLabel: "Я принимаю условия лицензионного соглашения",
+    acceptLabel: "Я принимаю условия договора об отчуждении исключительных прав",
     personalDataLabel: "Я даю согласие на обработку персональных данных",
     submit: "Оформить заказ",
     generatingPreview: "Формируем договор...",
@@ -47,6 +51,9 @@ const copy = {
     orderSummary: "Order Summary",
     base: "Base price",
     discount: "Discount (loyalty)",
+    usePoints: "Use loyalty points for this purchase",
+    pointsAvailable: "Points available",
+    pointsHint: "You can keep your points for later and pay full price now.",
     final: "Total due",
     personal: "Personal Details",
     buyerName: "Full Name",
@@ -60,7 +67,7 @@ const copy = {
     contractLang: "Contract Language",
     langRu: "Russian",
     langEn: "English",
-    acceptLabel: "I accept the license agreement terms",
+    acceptLabel: "I accept the exclusive rights transfer agreement terms",
     personalDataLabel: "I consent to the processing of my personal data",
     submit: "Place Order",
     generatingPreview: "Generating contract...",
@@ -99,6 +106,7 @@ export function CheckoutForm({
   discountPercent,
   finalPriceUsd,
   currency,
+  availablePoints,
   prefillEmail,
   locale,
 }: Props) {
@@ -108,6 +116,7 @@ export function CheckoutForm({
 
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
@@ -117,8 +126,17 @@ export function CheckoutForm({
       buyer_email: prefillEmail,
       license_type: "basic",
       contract_language: locale,
+      use_loyalty_points: false,
     },
   });
+
+  const useLoyaltyPoints = watch("use_loyalty_points");
+  const appliedDiscountPercent = useMemo(() => {
+    return useLoyaltyPoints ? discountPercent : 0;
+  }, [discountPercent, useLoyaltyPoints]);
+  const payableNow = useMemo(() => {
+    return Math.max(0, Math.round((basePriceUsd * (100 - appliedDiscountPercent)) / 100));
+  }, [appliedDiscountPercent, basePriceUsd]);
 
   const onSubmit = async (values: CheckoutFormValues) => {
     setServerError(null);
@@ -169,15 +187,32 @@ export function CheckoutForm({
             <span className="uppercase tracking-[0.12em]">{t.base}</span>
             <span>{formatUsd(basePriceUsd, locale, currency)}</span>
           </div>
-          {discountPercent > 0 && (
+          {discountPercent > 0 ? (
+            <div className="space-y-3 rounded border border-[var(--color-line)] bg-[rgba(0,0,0,0.18)] p-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  {...register("use_loyalty_points")}
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-paper-200)]"
+                />
+                <span className="text-sm leading-5 text-[var(--color-paper-200)]">{t.usePoints}</span>
+              </label>
+              <div className="flex justify-between text-xs uppercase tracking-[0.14em] text-[var(--color-paper-400)]">
+                <span>{t.pointsAvailable}</span>
+                <span>{availablePoints}</span>
+              </div>
+              <p className="text-xs text-[var(--color-paper-400)]">{t.pointsHint}</p>
+            </div>
+          ) : null}
+          {appliedDiscountPercent > 0 && (
             <div className="flex justify-between text-amber-400">
               <span className="uppercase tracking-[0.12em]">{t.discount}</span>
-              <span>-{discountPercent}%</span>
+              <span>-{appliedDiscountPercent}%</span>
             </div>
           )}
           <div className="flex justify-between border-t border-[var(--color-line)] pt-2 text-[var(--color-paper-100)]">
             <span className="uppercase tracking-[0.12em]">{t.final}</span>
-            <span className="font-semibold">{finalPriceUsd === 0 ? t.free : formatUsd(finalPriceUsd, locale, currency)}</span>
+            <span className="font-semibold">{payableNow === 0 ? t.free : formatUsd(payableNow, locale, currency)}</span>
           </div>
         </div>
       </section>

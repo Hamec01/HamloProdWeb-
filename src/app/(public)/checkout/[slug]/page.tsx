@@ -4,22 +4,13 @@ import { ArrowLeft } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
+import type { Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { getDiscountPercent } from "@/lib/loyalty";
 import { getMarketContext } from "@/lib/market";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Locale } from "@/lib/i18n";
-
-type BeatRow = {
-  id: string;
-  title: string;
-  slug: string;
-  case_number: string;
-  price_usd: number;
-  price_rub: number | null;
-  status: string;
-};
+import { getBeatBySlug } from "@/services/content";
 
 type LoyaltyRow = { points: number };
 
@@ -31,7 +22,13 @@ export default async function CheckoutPage({
   const { slug } = await params;
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
 
-  // Must be logged in
+  console.info("[checkout] incoming request", {
+    slug,
+    locale,
+    isAuthenticated: session.isAuthenticated,
+    userId: session.userId ?? null,
+  });
+
   if (!session.isAuthenticated || !session.userId) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}`)}`);
   }
@@ -40,31 +37,37 @@ export default async function CheckoutPage({
     return (
       <section className="space-y-8">
         <SectionHeading eyebrow="Checkout" title="Оформление заказа" />
-        <p className="text-sm text-[var(--color-paper-300)]">
-          Supabase не подключён.
-        </p>
+        <p className="text-sm text-[var(--color-paper-300)]">Supabase не подключён.</p>
       </section>
     );
   }
 
-  const supabase = await createSupabaseServerClient();
+  const [supabase, beat] = await Promise.all([createSupabaseServerClient(), getBeatBySlug(slug)]);
 
-  const { data: beat } = await supabase
-    .from("beats")
-    .select("id, title, slug, case_number, price_usd, price_rub, status")
-    .eq("slug", slug)
-    .maybeSingle<BeatRow>();
+  console.info("[checkout] beat lookup result", {
+    slug,
+    query: "getBeatBySlug -> getBeats -> beats where status != private",
+    found: Boolean(beat),
+    beatId: beat?.id ?? null,
+    beatSlug: beat?.slug ?? null,
+    beatStatus: beat?.status ?? null,
+  });
 
-  if (!beat) notFound();
+  if (!beat) {
+    console.warn("[checkout] notFound triggered", {
+      slug,
+      branch: "beat_not_found_after_shared_lookup",
+    });
+    notFound();
+  }
 
   if (beat.status === "sold" || beat.status === "private") {
     redirect(`/${locale}/beats/${slug}`);
   }
 
   const market = getMarketContext(locale as Locale);
-  const basePrice = locale === "ru" ? (beat.price_rub ?? 2500) : beat.price_usd;
+  const basePrice = locale === "ru" ? (beat.priceRub ?? 2500) : beat.priceUsd;
 
-  // Loyalty points → discount
   const { data: loyalty } = await supabase
     .from("user_loyalty_points")
     .select("points")
@@ -76,7 +79,7 @@ export default async function CheckoutPage({
   const finalPriceUsd = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
 
   const heading = locale === "ru" ? "Оформление заказа" : "Checkout";
-  const eyebrow = locale === "ru" ? "Покупка лицензии" : "License Purchase";
+  const eyebrow = locale === "ru" ? "Покупка прав" : "Rights Purchase";
   const backLabel = locale === "ru" ? "Назад к биту" : "Back to Beat";
 
   return (
@@ -97,11 +100,12 @@ export default async function CheckoutPage({
         <CheckoutForm
           beatId={beat.id}
           beatTitle={beat.title}
-          beatCaseNumber={beat.case_number}
+          beatCaseNumber={beat.caseNumber}
           basePriceUsd={basePrice}
           discountPercent={discountPercent}
           finalPriceUsd={finalPriceUsd}
           currency={market.currency}
+          availablePoints={points}
           prefillEmail={session.email ?? ""}
           locale={locale as Locale}
         />

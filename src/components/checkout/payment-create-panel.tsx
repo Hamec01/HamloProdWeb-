@@ -10,6 +10,7 @@ type Props = {
 };
 
 type PaymentResponse = {
+  payment_url?: string | null;
   paymentUrl?: string | null;
   status?: string;
   kind?: "free" | "paid";
@@ -77,8 +78,10 @@ export function PaymentCreatePanel({ orderId, locale, autoStart }: Props) {
         return;
       }
 
-      if (payload?.paymentUrl) {
-        window.location.assign(payload.paymentUrl);
+      const paymentUrl = payload?.payment_url ?? payload?.paymentUrl;
+
+      if (paymentUrl) {
+        window.location.assign(paymentUrl);
         return;
       }
 

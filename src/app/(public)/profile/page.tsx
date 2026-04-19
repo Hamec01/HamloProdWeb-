@@ -4,6 +4,8 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
+import { formatMarketMoney } from "@/lib/market";
+import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -13,9 +15,14 @@ type OrderRow = {
   id: string;
   beat_id: string;
   buyer_email: string;
-  base_price_usd: number;
+  base_price: number | null;
+  final_price: number | null;
+  base_price_usd: number | null;
   discount_percent: number;
-  final_price_usd: number;
+  final_price_usd: number | null;
+  currency: string | null;
+  market: string | null;
+  provider: string | null;
   license_type: string;
   status: string;
   rights_form_status: "not_started" | "deferred" | "completed_partial" | null;
@@ -59,12 +66,8 @@ function getNextThreshold(points: number) {
   return null;
 }
 
-function formatUsd(value: number, locale: string) {
-  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
+function formatOrderMoney(value: number, currency: "USD" | "RUB", locale: string) {
+  return formatMarketMoney(value, currency, locale === "ru" ? "ru" : "en");
 }
 
 function formatDate(value: string, locale: string) {
@@ -100,7 +103,7 @@ export default async function ProfilePage() {
       .maybeSingle<PointsRow>(),
     supabase
       .from("orders")
-      .select("id, beat_id, buyer_email, base_price_usd, discount_percent, final_price_usd, license_type, status, rights_form_status, created_at")
+      .select("id, beat_id, buyer_email, base_price, final_price, base_price_usd, discount_percent, final_price_usd, currency, market, provider, license_type, status, rights_form_status, created_at")
       .eq("buyer_user_id", session.userId)
       .order("created_at", { ascending: false })
       .limit(50)
@@ -177,6 +180,9 @@ export default async function ProfilePage() {
           {orders.length === 0 ? <p className="text-sm text-[var(--color-paper-300)]">{t.profileNoPurchases}</p> : null}
           {orders.map((order) => {
             const beat = orderBeatMap.get(order.beat_id);
+            const currency = resolveOrderCurrency(order);
+            const basePrice = resolveOrderBasePrice(order);
+            const finalPrice = resolveOrderFinalPrice(order);
             const statusColor = order.status === "paid" ? "text-green-400" : order.status === "cancelled" || order.status === "failed" ? "text-red-400" : "text-amber-400";
             return (
               <div key={order.id} className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
@@ -196,10 +202,10 @@ export default async function ProfilePage() {
                   </p>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-4 text-xs text-[var(--color-paper-300)]">
-                  <span>{formatUsd(order.base_price_usd, locale)}</span>
+                  <span>{formatOrderMoney(basePrice, currency, locale)}</span>
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
-                  <span className="text-[var(--color-paper-100)]">{order.final_price_usd === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatUsd(order.final_price_usd, locale)}</span>
-                  <span className="uppercase tracking-[0.1em]">{order.license_type}</span>
+                  <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
+                  <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "отчуждение прав" : "rights transfer"}</span>
                   {(order.status === "paid" || order.status === "pending_free_checkout") && (
                     <Link
                       href={`/checkout/rights/${order.id}`}

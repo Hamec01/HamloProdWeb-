@@ -1,29 +1,31 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 type LavaInvoiceCreateRequest = {
-  shopId: string;
-  sum: number;
-  orderId: string;
-  hookUrl?: string;
-  successUrl?: string;
-  failUrl?: string;
-  expire?: number;
-  customFields?: string;
-  comment?: string;
-  includeService?: string[];
-  excludeService?: string[];
+  amount: number;
+  currency: "RUB";
+  description: string;
+  external_id: string;
+  success_url: string;
+  fail_url: string;
 };
 
 type LavaInvoiceCreateResponse = {
+  id?: string | number;
+  url?: string;
+  payment_url?: string;
+  invoice_url?: string;
+  status?: string | number;
   data?: {
-    id?: string;
+    id?: string | number;
     url?: string;
+    payment_url?: string;
+    invoice_url?: string;
+    pay_url?: string;
     amount?: number;
     status?: string | number;
   };
-  status?: number;
-  status_check?: boolean;
   error?: unknown;
+  message?: string;
 };
 
 export type LavaWebhookPayload = {
@@ -59,30 +61,57 @@ export function createLavaSignature(rawJson: string, secret: string) {
   return createHmac("sha256", secret).update(rawJson).digest("hex");
 }
 
+function readResponseId(payload: LavaInvoiceCreateResponse | null) {
+  const rawId = payload?.data?.id ?? payload?.id;
+
+  if (typeof rawId === "number" && Number.isFinite(rawId)) {
+    return String(rawId);
+  }
+
+  if (typeof rawId === "string" && rawId.trim()) {
+    return rawId;
+  }
+
+  return null;
+}
+
+function readResponseUrl(payload: LavaInvoiceCreateResponse | null) {
+  const url =
+    payload?.data?.payment_url ??
+    payload?.data?.url ??
+    payload?.data?.invoice_url ??
+    payload?.data?.pay_url ??
+    payload?.payment_url ??
+    payload?.url ??
+    payload?.invoice_url ??
+    null;
+
+  return typeof url === "string" && url.trim() ? url : null;
+}
+
 export async function createLavaInvoice(input: {
   apiBaseUrl?: string;
-  signatureSecret: string;
+  apiKey: string;
   payload: LavaInvoiceCreateRequest;
 }) {
   const apiBaseUrl = normalizeBaseUrl(input.apiBaseUrl);
   const endpoint = `${apiBaseUrl}/business/invoice/create`;
-
-  const body = JSON.stringify(input.payload);
-  const signature = createLavaSignature(body, input.signatureSecret);
 
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Signature: signature,
+      Authorization: `Bearer ${input.apiKey}`,
     },
-    body,
+    body: JSON.stringify(input.payload),
   });
 
   const payload = (await response.json().catch(() => null)) as LavaInvoiceCreateResponse | null;
+  const externalId = readResponseId(payload);
+  const paymentUrl = readResponseUrl(payload);
 
-  if (!response.ok || !payload || !payload.status_check || !payload.data?.id || !payload.data?.url) {
+  if (!response.ok || !payload || !externalId || !paymentUrl) {
     return {
       ok: false as const,
       httpStatus: response.status,
@@ -94,8 +123,8 @@ export async function createLavaInvoice(input: {
     ok: true as const,
     httpStatus: response.status,
     payload,
-    externalId: payload.data.id,
-    paymentUrl: payload.data.url,
+    externalId,
+    paymentUrl,
   };
 }
 

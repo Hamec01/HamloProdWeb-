@@ -9,6 +9,23 @@ function unauthorizedResponse(message: string, status = 401) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function revalidateBeatPaths(slug?: string) {
+  revalidatePath("/");
+  revalidatePath("/beats");
+  revalidatePath("/admin/beats");
+  revalidatePath("/ru/beats");
+  revalidatePath("/en/beats");
+
+  if (!slug) {
+    return;
+  }
+
+  revalidatePath(`/beats/${slug}`);
+  revalidatePath(`/checkout/${slug}`);
+  revalidatePath(`/ru/beats/${slug}`);
+  revalidatePath(`/en/beats/${slug}`);
+}
+
 export async function POST(request: Request) {
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);
@@ -55,9 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  revalidatePath("/");
-  revalidatePath("/beats");
-  revalidatePath("/admin/beats");
+  revalidateBeatPaths(values.slug);
 
   return NextResponse.json({ ok: true });
 }

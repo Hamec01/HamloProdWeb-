@@ -24,12 +24,16 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { id } = await params;
   const { data: beat, error: beatError } = await supabase
     .from("beats")
-    .select("id, title, price_usd")
+    .select("id, title, price_usd, status")
     .eq("id", id)
-    .maybeSingle<{ id: string; title: string; price_usd: number }>();
+    .maybeSingle<{ id: string; title: string; price_usd: number; status: string }>();
 
   if (beatError || !beat) {
     return errorResponse("Beat not found.", 404);
+  }
+
+  if (beat.status === "sold" || beat.status === "private") {
+    return errorResponse("Beat is not available for purchase.", 409);
   }
 
   const { data: pointsRow } = await supabase

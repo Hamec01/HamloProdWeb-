@@ -1,6 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { getPublicSessionState } from "@/lib/auth/session";
+import { getSellerIdentity } from "@/lib/contracts/seller";
+import { renderExclusiveRightsRuTemplate, type ExclusiveRightsRenderMode } from "@/lib/contracts/templates/exclusive-rights-ru";
+import { formatMarketMoney } from "@/lib/market";
+import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { CONTRACTS_PDF_BUCKET } from "@/lib/storage/media";
@@ -13,8 +15,10 @@ type OrderPdfRow = {
   buyer_email: string;
   buyer_name: string | null;
   buyer_city: string | null;
-  base_price_usd: number;
-  final_price_usd: number;
+  base_price: number | null;
+  final_price: number | null;
+  base_price_usd: number | null;
+  final_price_usd: number | null;
   currency: string | null;
   status: string;
 };
@@ -56,22 +60,12 @@ async function getContext() {
   return { supabase, userId: session.userId };
 }
 
-async function readSellerSignatureDataUri() {
-  const signaturePath = process.env.SELLER_SIGNATURE_PATH?.trim() || "public/signatures/seller-signature.png";
-  const assetsRoot = path.join(process.cwd(), "public", "signatures");
-  const absolute = path.isAbsolute(signaturePath)
-    ? signaturePath
-    : path.join(assetsRoot, path.basename(signaturePath));
+function getContractNumber(orderId: string) {
+  return `HP-${orderId.slice(0, 8).toUpperCase()}`;
+}
 
-  const buffer = await readFile(absolute).catch(() => null);
-  if (!buffer) {
-    return "";
-  }
-
-  const ext = path.extname(absolute).toLowerCase();
-  const mimeType = ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" : "image/png";
-
-  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+function normalizePdfMode(mode: ContractPdfCreatePayload["mode"]): ExclusiveRightsRenderMode {
+  return mode === "deferred" ? "deferred" : "partial";
 }
 
 async function renderPdfFromHtml(html: string) {
@@ -107,76 +101,13 @@ async function renderPdfFromHtml(html: string) {
   }
 }
 
-function buildRightsContractHtml(args: {
-  orderId: string;
-  beatTitle: string;
-  issueDate: string;
-  basePrice: number;
-  finalPrice: number;
-  currency: string;
-  sellerName: string;
-  sellerCountry: string;
-  sellerCity: string;
-  sellerEmail: string;
-  sellerSignatureDataUri: string;
-  mode: "deferred" | "filled-now";
-  buyerFullName: string;
-  buyerCity: string;
-  buyerStageName: string;
-}) {
-  const buyerFullName = args.mode === "deferred" ? "______________________" : escapeHtml(args.buyerFullName || "______________________");
-  const buyerCity = args.mode === "deferred" ? "______________________" : escapeHtml(args.buyerCity || "______________________");
-  const buyerStageName = args.mode === "deferred" ? "______________________" : escapeHtml(args.buyerStageName || "______________________");
-
-  const sellerSignBlock = args.sellerSignatureDataUri
-    ? `<img src="${args.sellerSignatureDataUri}" alt="Seller signature" style="height: 54px; width: auto; display: inline-block; vertical-align: middle;" />`
-    : "______________________";
-
-  return `
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      body { font-family: "Times New Roman", serif; color: #101010; font-size: 12pt; line-height: 1.42; }
-      h1 { font-size: 17pt; margin: 0 0 14px; text-align: center; }
-      .meta { margin-bottom: 14px; }
-      .box { border: 1px solid #1f1f1f; padding: 12px; margin: 14px 0; }
-      .row { margin: 8px 0; }
-      .muted { color: #444; font-size: 10pt; }
-    </style>
-  </head>
-  <body>
-    <h1>ДОГОВОР ПЕРЕДАЧИ ПРАВ НА МУЗЫКАЛЬНЫЙ БИТ</h1>
-    <p class="meta">Номер: HP-${escapeHtml(args.orderId.slice(0, 8).toUpperCase())}<br />Дата: ${escapeHtml(args.issueDate)}</p>
-
-    <div class="box">
-      <div class="row"><strong>Продавец:</strong> ${escapeHtml(args.sellerName)}, ${escapeHtml(args.sellerCity)}, ${escapeHtml(args.sellerCountry)}, e-mail: ${escapeHtml(args.sellerEmail)}</div>
-      <div class="row"><strong>Покупатель:</strong> ${buyerFullName}</div>
-      <div class="row"><strong>Город покупателя:</strong> ${buyerCity}</div>
-      <div class="row"><strong>Псевдоним артиста:</strong> ${buyerStageName}</div>
-    </div>
-
-    <p><strong>Объект:</strong> бит «${escapeHtml(args.beatTitle)}».</p>
-    <p><strong>Стоимость:</strong> ${money(args.basePrice, args.currency)} (базовая), ${money(args.finalPrice, args.currency)} (итоговая).</p>
-
-    <div class="box">
-      <p><strong>Паспорт покупателя:</strong> ______________________</p>
-      <p><strong>Подпись покупателя:</strong> ______________________</p>
-      <p><strong>Подпись продавца:</strong> ${sellerSignBlock}</p>
-    </div>
-
-    <p class="muted">Документ с незаполненными ключевыми полями покупателя и без подписи покупателя является шаблоном/черновиком до завершения письменной формы.</p>
-  </body>
-</html>`;
-}
 
 export async function createRightsContractPdf(payload: ContractPdfCreatePayload) {
   const { supabase, userId } = await getContext();
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price_usd, final_price_usd, currency, status")
+    .select("id, beat_id, buyer_user_id, buyer_email, buyer_name, buyer_city, base_price, final_price, base_price_usd, final_price_usd, currency, status")
     .eq("id", payload.orderId)
     .eq("buyer_user_id", userId)
     .maybeSingle<OrderPdfRow>();
@@ -199,35 +130,35 @@ export async function createRightsContractPdf(payload: ContractPdfCreatePayload)
     throw new Error("BEAT_NOT_FOUND");
   }
 
-  if (payload.mode === "filled-now") {
+  const mode = normalizePdfMode(payload.mode);
+
+  if (mode === "partial") {
     if (!payload.buyerFullName?.trim() || !payload.buyerCity?.trim() || !payload.buyerStageName?.trim()) {
       throw new Error("MISSING_REQUIRED_FIELDS");
     }
   }
 
-  const sellerSignatureDataUri = await readSellerSignatureDataUri();
+  const seller = await getSellerIdentity();
   const issueDate = new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   }).format(new Date());
 
-  const html = buildRightsContractHtml({
-    orderId: order.id,
-    beatTitle: beat.title,
-    issueDate,
-    basePrice: order.base_price_usd,
-    finalPrice: order.final_price_usd,
-    currency: order.currency?.trim() || "USD",
-    sellerName: process.env.SELLER_NAME?.trim() || "HamloProd",
-    sellerCountry: process.env.SELLER_COUNTRY?.trim() || "Finland",
-    sellerCity: process.env.SELLER_CITY?.trim() || "Turku",
-    sellerEmail: process.env.SELLER_EMAIL?.trim() || "Not specified",
-    sellerSignatureDataUri,
-    mode: payload.mode,
-    buyerFullName: payload.buyerFullName?.trim() || order.buyer_name || "",
-    buyerCity: payload.buyerCity?.trim() || order.buyer_city || "",
-    buyerStageName: payload.buyerStageName?.trim() || "",
+  const currency = resolveOrderCurrency(order);
+  const html = renderExclusiveRightsRuTemplate({
+    contract_number: getContractNumber(order.id),
+    current_date: issueDate,
+    beat_title: beat.title,
+    price: formatMarketMoney(resolveOrderFinalPrice(order), currency, currency === "RUB" ? "ru" : "en"),
+    currency,
+    ...seller,
+    seller_signature_image: seller.seller_signature_image,
+    mode,
+    buyer_full_name: payload.buyerFullName?.trim() || order.buyer_name || "",
+    buyer_city: payload.buyerCity?.trim() || order.buyer_city || "",
+    buyer_stage_name: payload.buyerStageName?.trim() || "",
+    revealSellerPassport: true,
   });
 
   const pdfBuffer = await renderPdfFromHtml(html).catch(() => null);
@@ -236,7 +167,7 @@ export async function createRightsContractPdf(payload: ContractPdfCreatePayload)
   }
 
   const timestamp = Date.now();
-  const storagePath = `orders/${order.id}/contract-${payload.mode}-${timestamp}.pdf`;
+  const storagePath = `orders/${order.id}/contract-${mode}-${timestamp}.pdf`;
 
   const { error: uploadError } = await supabase.storage
     .from(CONTRACTS_PDF_BUCKET)
@@ -249,17 +180,17 @@ export async function createRightsContractPdf(payload: ContractPdfCreatePayload)
     throw new Error("PDF_UPLOAD_FAILED");
   }
 
-  const rightsFormStatus = payload.mode === "deferred" ? "deferred" : "completed_partial";
+  const rightsFormStatus = mode === "deferred" ? "deferred" : "completed_partial";
 
   const { error: updateOrderError } = await supabase
     .from("orders")
     .update({
       rights_form_status: rightsFormStatus,
-      buyer_full_name: payload.mode === "filled-now" ? payload.buyerFullName?.trim() ?? null : null,
-      buyer_city: payload.mode === "filled-now" ? payload.buyerCity?.trim() ?? null : order.buyer_city,
-      buyer_stage_name: payload.mode === "filled-now" ? payload.buyerStageName?.trim() ?? null : null,
+      buyer_full_name: mode === "partial" ? payload.buyerFullName?.trim() ?? null : null,
+      buyer_city: mode === "partial" ? payload.buyerCity?.trim() ?? null : order.buyer_city,
+      buyer_stage_name: mode === "partial" ? payload.buyerStageName?.trim() ?? null : null,
       contract_pdf_path: storagePath,
-      contract_template_type: payload.mode,
+      contract_template_type: mode,
     })
     .eq("id", order.id);
 
@@ -286,7 +217,7 @@ export async function createRightsContractPdf(payload: ContractPdfCreatePayload)
 
   return {
     orderId: order.id,
-    mode: payload.mode,
+    mode,
     storagePath,
     downloadUrl: signed.signedUrl,
   };

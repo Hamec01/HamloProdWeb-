@@ -6,15 +6,9 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
+import { formatMarketMoney } from "@/lib/market";
+import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-
-function formatUsd(value: number, locale: "ru" | "en") {
-  return new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 export default async function CheckoutPaymentPage({
   params,
@@ -48,6 +42,9 @@ export default async function CheckoutPaymentPage({
   }
 
   const { order, beat, contractSnapshotExists } = paymentData;
+  const currency = resolveOrderCurrency(order);
+  const basePrice = resolveOrderBasePrice(order);
+  const finalPrice = resolveOrderFinalPrice(order);
   const autoStart = start === "1" && order.status === "draft";
 
   return (
@@ -78,10 +75,11 @@ export default async function CheckoutPaymentPage({
           <div className="mt-4 space-y-3 text-sm text-[var(--color-paper-200)]">
             <p><span className="text-[var(--color-paper-400)]">Beat:</span> {beat.title}</p>
             <p><span className="text-[var(--color-paper-400)]">Email:</span> {order.buyer_email}</p>
-            <p><span className="text-[var(--color-paper-400)]">License:</span> {order.license_type}</p>
-            <p><span className="text-[var(--color-paper-400)]">Base:</span> {formatUsd(order.base_price_usd, locale as "ru" | "en")}</p>
+            <p><span className="text-[var(--color-paper-400)]">Transfer:</span> {locale === "ru" ? "Полное отчуждение прав" : "Full rights transfer"}</p>
+            <p><span className="text-[var(--color-paper-400)]">Base:</span> {formatMarketMoney(basePrice, currency, locale as "ru" | "en")}</p>
             <p><span className="text-[var(--color-paper-400)]">Discount:</span> {order.discount_percent}%</p>
-            <p><span className="text-[var(--color-paper-400)]">Final:</span> {formatUsd(order.final_price_usd, locale as "ru" | "en")}</p>
+            <p><span className="text-[var(--color-paper-400)]">Final:</span> {formatMarketMoney(finalPrice, currency, locale as "ru" | "en")}</p>
+            <p><span className="text-[var(--color-paper-400)]">Currency:</span> {currency}</p>
             <p><span className="text-[var(--color-paper-400)]">Status:</span> {order.status}</p>
           </div>
         </article>

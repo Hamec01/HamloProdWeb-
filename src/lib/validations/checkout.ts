@@ -9,6 +9,7 @@ export const checkoutFormSchema = z.object({
   buyer_phone: z.string().trim().min(7, "Укажите телефон"),
   license_type: z.enum(["basic", "exclusive"]),
   contract_language: z.enum(["ru", "en"]),
+  use_loyalty_points: z.boolean().optional(),
   acceptance: z.literal(true, {
     message: "Необходимо принять условия лицензии",
   }),

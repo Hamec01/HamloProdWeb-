@@ -10,6 +10,27 @@ function parseExternalId(payload: LavaWebhookPayload) {
   return (typeof payload.invoice_id === "string" && payload.invoice_id) || null;
 }
 
+async function ensureBeatSold(supabase: ReturnType<typeof createSupabaseAdminClient>, beatId: string, orderId: string) {
+  const { error } = await supabase
+    .from("beats")
+    .update({
+      status: "sold",
+      available_for_download: false,
+    })
+    .eq("id", beatId);
+
+  if (error) {
+    console.error("[lava:webhook] beat status update failed", {
+      error,
+      beatId,
+      orderId,
+    });
+    return false;
+  }
+
+  return true;
+}
+
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.LAVA_WEBHOOK_SECRET?.trim();
   const authHeader = request.headers.get("authorization");
@@ -52,9 +73,9 @@ export async function POST(request: NextRequest) {
 
   const { data: currentOrder, error: currentOrderError } = await supabase
     .from("orders")
-    .select("id, status, paid_at")
+    .select("id, beat_id, status, paid_at")
     .eq("payment_external_id", externalId)
-    .maybeSingle<{ id: string; status: string; paid_at: string | null }>();
+    .maybeSingle<{ id: string; beat_id: string; status: string; paid_at: string | null }>();
 
   if (currentOrderError) {
     console.error("[lava:webhook] order lookup failed", {
@@ -69,6 +90,13 @@ export async function POST(request: NextRequest) {
   }
 
   if (currentOrder.status === nextStatus) {
+    if (nextStatus === "paid") {
+      const beatUpdated = await ensureBeatSold(supabase, currentOrder.beat_id, currentOrder.id);
+      if (!beatUpdated) {
+        return NextResponse.json({ error: "Failed to lock sold beat." }, { status: 500 });
+      }
+    }
+
     return NextResponse.json({ ok: true, orderId: currentOrder.id, status: nextStatus, idempotent: true });
   }
 
@@ -89,8 +117,8 @@ export async function POST(request: NextRequest) {
     .from("orders")
     .update(patch)
     .eq("payment_external_id", externalId)
-    .select("id")
-    .maybeSingle<{ id: string }>();
+    .select("id, beat_id")
+    .maybeSingle<{ id: string; beat_id: string }>();
 
   if (orderError) {
     console.error("[lava:webhook] order status update failed", {
@@ -103,6 +131,13 @@ export async function POST(request: NextRequest) {
 
   if (!order) {
     return NextResponse.json({ error: "Order not found for payment id." }, { status: 404 });
+  }
+
+  if (nextStatus === "paid") {
+    const beatUpdated = await ensureBeatSold(supabase, order.beat_id, order.id);
+    if (!beatUpdated) {
+      return NextResponse.json({ error: "Failed to lock sold beat." }, { status: 500 });
+    }
   }
 
   console.info("[lava:webhook] order status updated", {
