@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { mockArtists, mockBeats, mockTracks, siteSettings } from "@/services/mock-data";
-import type { Artist, Beat, SiteSettings, Track, TrackDownloadLog } from "@/types";
+import { mockArtists, mockBeats, mockPosts, mockTracks, siteSettings } from "@/services/mock-data";
+import type { Artist, Beat, Post, SiteSettings, Track, TrackDownloadLog } from "@/types";
 
 type BeatRow = {
   id: string;
@@ -79,6 +79,23 @@ type ArtistRow = {
   apple_music_url: string;
   youtube_url: string;
   created_at: string;
+};
+
+type PostRow = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  section: Post["section"];
+  cover_palette: string;
+  cta_label: string | null;
+  cta_url: string | null;
+  published: boolean;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type SiteSettingsRow = {
@@ -183,6 +200,25 @@ function mapArtist(row: ArtistRow): Artist {
   };
 }
 
+function mapPost(row: PostRow): Post {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    content: row.content,
+    category: row.category,
+    section: row.section,
+    coverPalette: row.cover_palette,
+    ctaLabel: row.cta_label,
+    ctaUrl: row.cta_url,
+    published: row.published,
+    featured: row.featured,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapSiteSettings(row: SiteSettingsRow): SiteSettings {
   return {
     title: row.title,
@@ -206,6 +242,14 @@ async function withSupabaseFallback<T>(resolver: () => Promise<T>, fallback: T):
     });
     return fallback;
   }
+}
+
+function filterPostsBySection(posts: Post[], section?: Post["section"]) {
+  if (!section) {
+    return posts.filter((post) => post.published);
+  }
+
+  return posts.filter((post) => post.published && (post.section === section || post.section === "general"));
 }
 
 export async function getSiteSettings() {
@@ -342,6 +386,27 @@ export async function getArtists() {
   }, mockArtists);
 }
 
+export async function getPosts(section?: Post["section"]) {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("posts")
+      .select(
+        "id, title, slug, excerpt, content, category, section, cover_palette, cta_label, cta_url, published, featured, created_at, updated_at",
+      )
+      .eq("published", true)
+      .order("featured", { ascending: false })
+      .order("created_at", { ascending: false })
+      .returns<PostRow[]>();
+
+    if (error || !data) {
+      return filterPostsBySection(mockPosts, section);
+    }
+
+    return filterPostsBySection(data.map(mapPost), section);
+  }, filterPostsBySection(mockPosts, section));
+}
+
 export async function getAdminBeats() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
@@ -411,6 +476,26 @@ export async function getAdminArtists() {
 
     return data.map(mapArtist);
   }, mockArtists);
+}
+
+export async function getAdminPosts() {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("posts")
+      .select(
+        "id, title, slug, excerpt, content, category, section, cover_palette, cta_label, cta_url, published, featured, created_at, updated_at",
+      )
+      .order("featured", { ascending: false })
+      .order("created_at", { ascending: false })
+      .returns<PostRow[]>();
+
+    if (error || !data) {
+      return mockPosts;
+    }
+
+    return data.map(mapPost);
+  }, mockPosts);
 }
 
 export async function getAdminTrackDownloads() {

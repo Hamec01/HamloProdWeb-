@@ -1,4 +1,4 @@
-import type { Artist, Beat, SiteSettings, Track } from "@/types";
+import type { Artist, Beat, Post, SiteSettings, Track } from "@/types";
 
 export const siteSettings: SiteSettings = {
   title: "HamloProd",
@@ -230,5 +230,25 @@ export const mockArtists: Artist[] = [
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
     createdAt: "2026-04-03T10:00:00.000Z",
+  },
+];
+
+export const mockPosts: Post[] = [
+  {
+    id: "post-001",
+    title: "Drum Generator VST3 — первый анонс",
+    slug: "drum-generator-vst3-first-look",
+    excerpt: "Новый VST3-сектор открыт. Здесь будут новости, обновления, демо и документация по инструменту.",
+    content:
+      "Мы открываем отдельную витрину для Drum Generator VST3.\n\nТеперь новости и материалы по инструменту можно публиковать прямо из админки, без ручного редактирования страниц.\n\nПиши посты на русском — английская версия для EN-режима будет формироваться автоматически.",
+    category: "news",
+    section: "vst",
+    coverPalette: "from-amber-900 via-stone-900 to-black",
+    ctaLabel: "Скоро демо",
+    ctaUrl: null,
+    published: true,
+    featured: true,
+    createdAt: "2026-04-20T10:00:00.000Z",
+    updatedAt: "2026-04-20T10:00:00.000Z",
   },
 ];
