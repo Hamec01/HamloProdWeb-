@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PostRichContent } from "@/components/posts/post-rich-content";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { localizePosts } from "@/lib/localize-content";
 import { normalizeLocale, sectorLabels } from "@/lib/market";
@@ -57,10 +58,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
                 {post.title}
               </h2>
               <p className="mt-4 max-w-4xl text-base leading-7 text-[var(--color-paper-200)]">{post.excerpt}</p>
-              <div className="mt-5 space-y-4 text-sm leading-7 text-[var(--color-paper-200)]">
-                {post.content.split(/\n\n+/).map((paragraph, index) => (
-                  <p key={`${post.id}-${index}`}>{paragraph}</p>
-                ))}
+              <div className="mt-5">
+                <PostRichContent content={post.content} />
               </div>
               {post.ctaLabel ? (
                 <div className="mt-6">

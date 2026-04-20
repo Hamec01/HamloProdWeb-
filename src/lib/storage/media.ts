@@ -2,6 +2,7 @@ export const MEDIA_IMAGES_BUCKET = "media-images";
 export const BEAT_PREVIEWS_BUCKET = "beat-previews";
 export const BEAT_DOWNLOADS_BUCKET = "beat-downloads";
 export const TRACK_DOWNLOADS_BUCKET = "track-downloads";
+export const POST_FILES_BUCKET = "post-files";
 export const CONTRACTS_PDF_BUCKET = "contracts-pdf";
 
 function sanitizeFileNameSegment(segment: string) {

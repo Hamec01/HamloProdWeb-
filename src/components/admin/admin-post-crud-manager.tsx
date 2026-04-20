@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
+import { PostRichContent } from "@/components/posts/post-rich-content";
 import { Button } from "@/components/ui/button";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { MEDIA_IMAGES_BUCKET, POST_FILES_BUCKET, buildStoragePath } from "@/lib/storage/media";
 import { postFormSchema, type PostFormValues } from "@/lib/validations/post";
 import type { Post } from "@/types";
 
@@ -25,18 +28,79 @@ const defaultValues: PostFormValues = {
 
 export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; hasSupabase: boolean }) {
   const router = useRouter();
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [liveContent, setLiveContent] = useState(defaultValues.content);
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<PostFormValues>({
     resolver: zodResolver(postFormSchema),
     defaultValues,
   });
+
+  const contentField = register("content");
+
+  const insertAtCursor = (snippet: string) => {
+    const current = getValues("content") ?? "";
+    const textarea = contentRef.current;
+    const start = textarea?.selectionStart ?? current.length;
+    const end = textarea?.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}${snippet}${current.slice(end)}`;
+
+    setValue("content", next, { shouldDirty: true, shouldValidate: true });
+    setLiveContent(next);
+
+    requestAnimationFrame(() => {
+      textarea?.focus();
+      const cursor = start + snippet.length;
+      textarea?.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const uploadInlineAsset = async (file: File, kind: "image" | "file") => {
+    if (!hasSupabase) {
+      setStatusMessage("Сначала нужно подключить Supabase env.");
+      return;
+    }
+
+    const slug = getValues("slug") || getValues("title") || "post";
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const bucket = kind === "image" ? MEDIA_IMAGES_BUCKET : POST_FILES_BUCKET;
+      const path = buildStoragePath(slug, kind === "image" ? "post-image" : "post-file", file.name);
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        upsert: true,
+        contentType: file.type || undefined,
+      });
+
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+
+      if (kind === "image") {
+        const caption = window.prompt("Подпись для картинки", file.name.replace(/\.[^.]+$/, "")) || file.name;
+        insertAtCursor(`\n![${caption}](${data.publicUrl})\n`);
+        setStatusMessage("Картинка загружена и вставлена в текст.");
+        return;
+      }
+
+      const label = window.prompt("Название ссылки для скачивания", file.name) || file.name;
+      insertAtCursor(`\n[file:${label}](${data.publicUrl})\n`);
+      setStatusMessage("Файл загружен и добавлен как ссылка для скачивания.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
+    }
+  };
 
   const rows = useMemo(
     () =>
@@ -55,6 +119,7 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
               setValue("slug", post.slug);
               setValue("excerpt", post.excerpt);
               setValue("content", post.content);
+              setLiveContent(post.content);
               setValue("category", post.category);
               setValue("section", post.section);
               setValue("coverPalette", post.coverPalette);
@@ -112,6 +177,9 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-paper-200)]">
               Здесь можно создавать новости, анонсы, статьи и посты для VST. Пиши на русском — английская версия на публичной странице будет переводиться автоматически.
             </p>
+            <p className="mt-2 max-w-3xl text-xs leading-6 text-[var(--color-paper-400)]">
+              Поддерживаются заголовки, списки, цитаты, ссылки, картинки внутри текста и кнопки скачивания файлов.
+            </p>
           </div>
           {!hasSupabase ? (
             <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--color-paper-200)]">
@@ -135,6 +203,7 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
               onClick={() => {
                 setEditingId(null);
                 reset(defaultValues);
+                setLiveContent(defaultValues.content);
                 setStatusMessage(null);
               }}
             >
@@ -171,6 +240,7 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
             setStatusMessage(editingId ? "Пост обновлён." : "Пост создан.");
             setEditingId(null);
             reset(defaultValues);
+            setLiveContent(defaultValues.content);
             router.refresh();
           })}
         >
@@ -210,11 +280,86 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
             {errors.excerpt ? <span className="text-xs text-[var(--color-alert)]">{errors.excerpt.message}</span> : null}
           </label>
 
-          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
-            <span>Content</span>
-            <textarea {...register("content")} rows={10} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
-            {errors.content ? <span className="text-xs text-[var(--color-alert)]">{errors.content.message}</span> : null}
-          </label>
+          <div className="space-y-3 md:col-span-2">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="ghost" onClick={() => insertAtCursor("\n## Заголовок\n")}>H2</Button>
+              <Button type="button" variant="ghost" onClick={() => insertAtCursor("\n### Подзаголовок\n")}>H3</Button>
+              <Button type="button" variant="ghost" onClick={() => insertAtCursor("\n> Цитата\n")}>Quote</Button>
+              <Button type="button" variant="ghost" onClick={() => insertAtCursor("\n- Пункт 1\n- Пункт 2\n")}>List</Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  const label = window.prompt("Текст ссылки", "Открыть сайт");
+                  const url = window.prompt("URL", "https://");
+                  if (label && url) {
+                    insertAtCursor(`[${label}](${url})`);
+                  }
+                }}
+              >
+                Link
+              </Button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+                <span>Добавить картинку в текст</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void uploadInlineAsset(file, "image");
+                    }
+                    event.currentTarget.value = "";
+                  }}
+                  className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+                />
+              </label>
+
+              <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+                <span>Добавить файл на скачивание</span>
+                <input
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void uploadInlineAsset(file, "file");
+                    }
+                    event.currentTarget.value = "";
+                  }}
+                  className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
+                />
+              </label>
+            </div>
+
+            <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+              <span>Content</span>
+              <textarea
+                {...contentField}
+                onChange={(event) => {
+                  contentField.onChange(event);
+                  setLiveContent(event.target.value);
+                }}
+                ref={(element) => {
+                  contentField.ref(element);
+                  contentRef.current = element;
+                }}
+                rows={14}
+                className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 font-mono text-sm"
+              />
+              <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+                Используй панель выше или вставляй шаблоны вручную: ![Подпись](url) для картинки и [file:Название](url) для файла.
+              </span>
+              {errors.content ? <span className="text-xs text-[var(--color-alert)]">{errors.content.message}</span> : null}
+            </label>
+
+            <div className="rounded-2xl border border-[var(--color-line)] bg-[rgba(255,255,255,0.02)] p-4">
+              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-[var(--color-paper-400)]">Live Preview</p>
+              <PostRichContent content={liveContent || ""} />
+            </div>
+          </div>
 
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>CTA label</span>
