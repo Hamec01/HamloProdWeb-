@@ -79,6 +79,56 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const t = dictionary[locale];
 
   useEffect(() => {
+    if (!currentTrack || currentTrack.kind !== "track" || currentTrack.previewUrl || !queue.length) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const hydrateTrackQueue = async () => {
+      setIsResolvingQueue(true);
+
+      try {
+        const resolvedQueue = await Promise.all(
+          queue.map(async (track) => {
+            if (track.kind !== "track" || track.previewUrl) {
+              return track;
+            }
+
+            const previewUrl = await fetchTrackStreamUrl(track.id);
+            return {
+              ...track,
+              previewUrl,
+            };
+          }),
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        const resolvedCurrentTrack = resolvedQueue.find((track) => track.id === currentTrack.id) ?? null;
+        if (!resolvedCurrentTrack?.previewUrl) {
+          syncPlayback(false);
+          return;
+        }
+
+        usePlayerStore.getState().play(resolvedCurrentTrack, resolvedQueue);
+      } finally {
+        if (!cancelled) {
+          setIsResolvingQueue(false);
+        }
+      }
+    };
+
+    void hydrateTrackQueue();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTrack, queue, syncPlayback]);
+
+  useEffect(() => {
     if (pathSection === "ham") {
       if (currentTrack && currentTrack.kind !== "track") {
         reset();
@@ -224,28 +274,8 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
       return;
     }
 
-    setIsResolvingQueue(true);
-    try {
-      const resolvedQueue = await Promise.all(
-        queue.map(async (track) => {
-          const previewUrl = track.previewUrl || (track.kind === "track" ? await fetchTrackStreamUrl(track.id) : track.previewUrl);
-          return {
-            ...track,
-            previewUrl,
-          };
-        }),
-      );
-
-      const playableTracks = resolvedQueue.filter((track) => Boolean(track.previewUrl));
-      if (!playableTracks.length) {
-        return;
-      }
-
-      setShuffle(true);
-      playRandom(playableTracks);
-    } finally {
-      setIsResolvingQueue(false);
-    }
+    setShuffle(true);
+    playRandom(queue);
   };
 
   if (pathSection !== "beats" && pathSection !== "ham") {
@@ -253,11 +283,11 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] px-2 pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur sm:px-0">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
-      <div className="mx-auto grid max-w-7xl gap-3 px-3 py-3 sm:px-4 md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4">
-        <div className="min-w-0">
+      <div className="mx-auto grid max-w-7xl gap-4 rounded-t-2xl border-x border-[var(--color-line)] bg-[rgba(12,11,9,0.98)] px-4 py-4 shadow-[0_-16px_40px_rgba(0,0,0,0.35)] md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4 md:rounded-none md:border-x-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none">
+        <div className="min-w-0 space-y-1">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
           {currentTrack ? (
             currentTrack.kind === "track" ? (
@@ -286,7 +316,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           </p>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 md:space-y-2">
           <input
             type="range"
             min={0}
@@ -304,7 +334,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-start gap-2 md:justify-self-end">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 md:flex md:flex-wrap md:justify-self-end">
           {/* Shuffle */}
           <button
             type="button"
@@ -312,13 +342,14 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             disabled={queue.length <= 1}
             aria-label="Shuffle"
             title={shuffle ? "Перемешать: вкл" : "Перемешать: выкл"}
-            className={`flex h-9 w-9 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-11 w-full items-center justify-center border transition-colors md:h-9 md:w-9 disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             <Shuffle size={12} />
           </button>
 
-          <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
+          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
           <Button
+            className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4"
             variant={currentTrack ? "primary" : "ghost"}
             icon={isResolvingQueue ? <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
             onClick={handlePrimaryAction}
@@ -326,10 +357,10 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           >
             {isResolvingQueue ? "..." : isPlaying ? t.pause : t.play}
           </Button>
-          <Button variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
+          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
             {t.stop}
           </Button>
-          <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
+          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
 
           {/* Repeat */}
           <button
@@ -337,7 +368,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             onClick={cycleRepeat}
             aria-label={`Повтор: ${repeatMode}`}
             title={repeatMode === "none" ? "Повтор: выкл" : repeatMode === "all" ? "Повтор: все" : "Повтор: один трек"}
-            className={`flex h-9 w-9 items-center justify-center border transition-colors ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-11 w-full items-center justify-center border transition-colors md:h-9 md:w-9 ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             {repeatMode === "one" ? <Repeat1 size={12} /> : <Repeat size={12} />}
           </button>
