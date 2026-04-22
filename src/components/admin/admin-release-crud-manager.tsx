@@ -35,12 +35,30 @@ const defaultValues: ReleaseFormValues = {
   tracks: [{ title: "", slug: "", trackNumber: 1, mp3FilePath: null }],
 };
 
+const CYRILLIC: Record<string, string> = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+  к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+  х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+};
+
+function transliterate(text: string): string {
+  return text.split("").map((c) => CYRILLIC[c.toLowerCase()] ?? c).join("");
+}
+
 function slugify(text: string) {
-  return text
+  return transliterate(text)
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function nameFromFile(filename: string): string {
+  return filename
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function AdminReleaseCrudManager({
@@ -56,6 +74,7 @@ export function AdminReleaseCrudManager({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [trackMp3s, setTrackMp3s] = useState<(File | null)[]>([null]);
   const coverFileRef = useRef<HTMLInputElement>(null);
+  const bulkMp3Ref = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -124,6 +143,55 @@ export function AdminReleaseCrudManager({
       return next;
     });
   }, []);
+
+  // When a single track MP3 is chosen → auto-fill title + slug if empty
+  const handleTrackMp3FileChange = useCallback(
+    (index: number, file: File | null) => {
+      setTrackMp3(index, file);
+      if (file) {
+        const currentTitle = (document.querySelector(`input[name="tracks.${index}.title"]`) as HTMLInputElement | null)?.value ?? "";
+        if (!currentTitle) {
+          const name = nameFromFile(file.name);
+          setValue(`tracks.${index}.title`, name);
+          setValue(`tracks.${index}.slug`, slugify(name));
+        }
+      }
+    },
+    [setTrackMp3, setValue],
+  );
+
+  // Bulk MP3 upload → create a track row for each file
+  const handleBulkMp3 = useCallback(
+    (files: FileList) => {
+      const fileArray = Array.from(files);
+      // Check if first slot is the untouched default empty track
+      const firstTitle = (document.querySelector(`input[name="tracks.0.title"]`) as HTMLInputElement | null)?.value ?? "";
+      const isOnlyDefaultEmpty = fields.length === 1 && !firstTitle && !trackMp3s[0];
+
+      if (isOnlyDefaultEmpty) {
+        const [first, ...rest] = fileArray;
+        const firstName = nameFromFile(first.name);
+        setValue("tracks.0.title", firstName);
+        setValue("tracks.0.slug", slugify(firstName));
+        setValue("tracks.0.trackNumber", 1);
+        const newMp3s: (File | null)[] = [first];
+        rest.forEach((file, i) => {
+          const name = nameFromFile(file.name);
+          append({ title: name, slug: slugify(name), trackNumber: i + 2, mp3FilePath: null });
+          newMp3s.push(file);
+        });
+        setTrackMp3s(newMp3s);
+      } else {
+        const startNum = fields.length + 1;
+        fileArray.forEach((file, i) => {
+          const name = nameFromFile(file.name);
+          append({ title: name, slug: slugify(name), trackNumber: startNum + i, mp3FilePath: null });
+        });
+        setTrackMp3s((prev) => [...prev, ...fileArray]);
+      }
+    },
+    [fields.length, trackMp3s, setValue, append],
+  );
 
   const onSubmit = async (data: ReleaseFormValues) => {
     if (!hasSupabase) {
@@ -520,7 +588,7 @@ export function AdminReleaseCrudManager({
                             type="file"
                             accept="audio/mpeg,audio/mp3"
                             className="hidden"
-                            onChange={(e) => setTrackMp3(index, e.target.files?.[0] ?? null)}
+                            onChange={(e) => handleTrackMp3FileChange(index, e.target.files?.[0] ?? null)}
                           />
                         </label>
                         {trackMp3s[index] ? (
@@ -536,9 +604,25 @@ export function AdminReleaseCrudManager({
                 </div>
               ))}
             </div>
-            <Button type="button" variant="ghost" onClick={addTrack}>
-              + Добавить трек
-            </Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="ghost" onClick={addTrack}>
+                + Добавить трек
+              </Button>
+              <label className="cursor-pointer border border-[var(--color-line)] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[var(--color-paper-200)] hover:bg-[rgba(255,255,255,0.04)]">
+                + Загрузить несколько треков
+                <input
+                  ref={bulkMp3Ref}
+                  type="file"
+                  accept="audio/mpeg,audio/mp3"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.length) handleBulkMp3(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
           </div>
 
           {/* Submit */}
