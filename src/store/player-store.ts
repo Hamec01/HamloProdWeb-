@@ -20,11 +20,15 @@ export type PlayerTrack = {
 
 export type PlayerQueueItem = PlayerTrack;
 
+export type RepeatMode = "none" | "one" | "all";
+
 type PlayerStore = {
   queue: PlayerQueueItem[];
   currentIndex: number;
   currentTrack: PlayerTrack | null;
   isPlaying: boolean;
+  repeatMode: RepeatMode;
+  shuffle: boolean;
   setQueue: (queue: PlayerQueueItem[], startIndex?: number) => void;
   play: (track: PlayerTrack, queue?: PlayerQueueItem[]) => void;
   pause: () => void;
@@ -33,6 +37,8 @@ type PlayerStore = {
   playRandom: (queue?: PlayerQueueItem[]) => void;
   togglePlayback: () => void;
   syncPlayback: (isPlaying: boolean) => void;
+  cycleRepeat: () => void;
+  toggleShuffle: () => void;
   next: () => void;
   previous: () => void;
 };
@@ -52,6 +58,8 @@ export const usePlayerStore = create<PlayerStore>()(
       currentIndex: 0,
       currentTrack: null,
       isPlaying: false,
+      repeatMode: "none",
+      shuffle: false,
       setQueue: (queue, startIndex = 0) =>
         set(() => {
           const nextIndexValue = Math.max(0, Math.min(startIndex, Math.max(queue.length - 1, 0)));
@@ -103,18 +111,37 @@ export const usePlayerStore = create<PlayerStore>()(
           return { isPlaying: !state.isPlaying };
         }),
       syncPlayback: (isPlaying) => set({ isPlaying }),
+      cycleRepeat: () =>
+        set((state) => {
+          const next: RepeatMode = state.repeatMode === "none" ? "all" : state.repeatMode === "all" ? "one" : "none";
+          return { repeatMode: next };
+        }),
+      toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
       next: () => {
-        const { queue, currentIndex } = get();
-        if (!queue.length) {
+        const { queue, currentIndex, repeatMode, shuffle } = get();
+        if (!queue.length) return;
+
+        if (repeatMode === "one") {
+          // Sticky player handles audio replay in handleEnded; just ensure isPlaying stays true
+          set({ isPlaying: true });
           return;
         }
 
-        const nextQueueIndex = nextIndex(queue.length, currentIndex);
-        set({
-          currentIndex: nextQueueIndex,
-          currentTrack: queue[nextQueueIndex] ?? null,
-          isPlaying: true,
-        });
+        if (shuffle) {
+          let randomIdx = Math.floor(Math.random() * queue.length);
+          if (queue.length > 1 && randomIdx === currentIndex) randomIdx = (randomIdx + 1) % queue.length;
+          set({ currentIndex: randomIdx, currentTrack: queue[randomIdx] ?? null, isPlaying: true });
+          return;
+        }
+
+        const isLast = currentIndex >= queue.length - 1;
+        if (repeatMode === "none" && isLast) {
+          set({ isPlaying: false });
+          return;
+        }
+
+        const nextIdx = nextIndex(queue.length, currentIndex);
+        set({ currentIndex: nextIdx, currentTrack: queue[nextIdx] ?? null, isPlaying: true });
       },
       previous: () => {
         const { queue, currentIndex } = get();
@@ -136,6 +163,9 @@ export const usePlayerStore = create<PlayerStore>()(
         queue: state.queue,
         currentIndex: state.currentIndex,
         currentTrack: state.currentTrack,
+        repeatMode: state.repeatMode,
+        shuffle: state.shuffle,
+        // isPlaying is intentionally NOT persisted — no auto-start on page load
       }),
     },
   ),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, SkipBack, SkipForward, Square } from "lucide-react";
+import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
@@ -28,6 +28,11 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const stop = usePlayerStore((state) => state.stop);
   const togglePlayback = usePlayerStore((state) => state.togglePlayback);
   const syncPlayback = usePlayerStore((state) => state.syncPlayback);
+  const repeatMode = usePlayerStore((state) => state.repeatMode);
+  const shuffle = usePlayerStore((state) => state.shuffle);
+  const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
+  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const playRandom = usePlayerStore((state) => state.playRandom);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
@@ -62,7 +67,15 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
       tagAudio.currentTime = 0;
       void tagAudio.play().catch(() => {});
     };
-    const handleEnded = () => next();
+    const handleEnded = () => {
+      const { repeatMode: mode } = usePlayerStore.getState();
+      if (mode === "one") {
+        audio.currentTime = 0;
+        void audio.play().catch(() => {});
+      } else {
+        next();
+      }
+    };
     const handlePause = () => syncPlayback(false);
     const handlePlay = () => syncPlayback(true);
     const handleLoadedMetadata = () => setDuration(audio.duration || 0);
@@ -183,6 +196,18 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
         </div>
 
         <div className="flex items-center gap-2 justify-self-end">
+          {/* Shuffle */}
+          <button
+            type="button"
+            onClick={() => { toggleShuffle(); if (!shuffle && queue.length > 1) playRandom(); }}
+            disabled={queue.length <= 1}
+            aria-label="Shuffle"
+            title={shuffle ? "Перемешать: вкл" : "Перемешать: выкл"}
+            className={`flex h-8 w-8 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+          >
+            <Shuffle size={12} />
+          </button>
+
           <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
           <Button
             variant={currentTrack ? "primary" : "ghost"}
@@ -196,6 +221,17 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             {t.stop}
           </Button>
           <Button variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
+
+          {/* Repeat */}
+          <button
+            type="button"
+            onClick={cycleRepeat}
+            aria-label={`Повтор: ${repeatMode}`}
+            title={repeatMode === "none" ? "Повтор: выкл" : repeatMode === "all" ? "Повтор: все" : "Повтор: один трек"}
+            className={`flex h-8 w-8 items-center justify-center border transition-colors ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+          >
+            {repeatMode === "one" ? <Repeat1 size={12} /> : <Repeat size={12} />}
+          </button>
         </div>
       </div>
     </div>
