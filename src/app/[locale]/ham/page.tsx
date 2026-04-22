@@ -7,6 +7,22 @@ import { normalizeLocale, sectorLabels } from "@/lib/market";
 import { getReleases, getSingleTracks } from "@/services/content";
 import type { PlayerTrack } from "@/store/player-store";
 
+function toHamQueueTrack(track: {
+  id: string;
+  title: string;
+  slug: string;
+  artistName: string;
+}): PlayerTrack {
+  return {
+    id: track.id,
+    title: track.title,
+    slug: track.slug,
+    previewUrl: "",
+    kind: "track",
+    artistName: track.artistName,
+  };
+}
+
 export default async function SectorHamPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
@@ -25,36 +41,27 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
   const hasLatest = latest.length > 0;
   const hasSingles = singles.length > 0;
   const hasReleases = releases.length > 0;
-  const hamQueue: PlayerTrack[] = Array.from(
-    new Map(
-      [
-        ...singles.map((track) => [
-          track.id,
-          {
-            id: track.id,
-            title: track.title,
-            slug: track.slug,
-            previewUrl: "",
-            kind: "track" as const,
-            artistName: track.artistName,
-          },
-        ]),
-        ...releases.flatMap((release) =>
-          release.tracks.map((track) => [
-            track.id,
-            {
-              id: track.id,
-              title: track.title,
-              slug: track.slug,
-              previewUrl: "",
-              kind: "track" as const,
-              artistName: release.artistName,
-            },
-          ]),
-        ),
-      ],
-    ).values(),
-  );
+  const hamQueueMap = new Map<string, PlayerTrack>();
+
+  for (const track of singles) {
+    hamQueueMap.set(track.id, toHamQueueTrack(track));
+  }
+
+  for (const release of releases) {
+    for (const track of release.tracks) {
+      hamQueueMap.set(
+        track.id,
+        toHamQueueTrack({
+          id: track.id,
+          title: track.title,
+          slug: track.slug,
+          artistName: release.artistName,
+        }),
+      );
+    }
+  }
+
+  const hamQueue = Array.from(hamQueueMap.values());
 
   return (
     <section className="space-y-16">

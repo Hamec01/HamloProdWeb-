@@ -233,6 +233,16 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
       return;
     }
 
+    if (!currentTrack.previewUrl) {
+      audio.pause();
+      lastTagSlotRef.current = 0;
+      requestAnimationFrame(() => {
+        setCurrentTime(0);
+        setDuration(0);
+      });
+      return;
+    }
+
     if (audio.src !== currentTrack.previewUrl) {
       audio.src = currentTrack.previewUrl;
       audio.load();
