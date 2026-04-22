@@ -70,7 +70,7 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
           <p className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-400)]">
             {locale === "ru" ? "Альбомы / EP / Mixtape" : "Albums / EP / Mixtape"}
           </p>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {releases.map((release) => (
               <ReleaseCard
                 key={release.id}
