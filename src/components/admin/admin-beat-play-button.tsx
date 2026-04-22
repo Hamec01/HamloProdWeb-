@@ -2,12 +2,20 @@
 
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/store/player-store";
+import type { PlayerTrack } from "@/store/player-store";
 import type { Beat } from "@/types";
+
+function toPlayerBeat(beat: Beat): PlayerTrack {
+  return {
+    ...beat,
+    kind: "beat",
+  };
+}
 
 export function AdminBeatPlayButton({ beat }: { beat: Beat }) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const play = usePlayerStore((state) => state.play);
+  const playBeat = usePlayerStore((state) => state.playBeat);
   const pause = usePlayerStore((state) => state.pause);
 
   const isCurrentBeat = currentTrack?.id === beat.id;
@@ -22,7 +30,8 @@ export function AdminBeatPlayButton({ beat }: { beat: Beat }) {
           return;
         }
 
-        play(beat, [beat]);
+        const playerBeat = toPlayerBeat(beat);
+        playBeat(playerBeat, [playerBeat]);
       }}
     >
       {label}

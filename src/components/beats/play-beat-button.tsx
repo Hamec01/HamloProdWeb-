@@ -4,12 +4,20 @@ import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
+import type { PlayerTrack } from "@/store/player-store";
 import type { Beat } from "@/types";
+
+function toPlayerBeat(beat: Beat): PlayerTrack {
+  return {
+    ...beat,
+    kind: "beat",
+  };
+}
 
 export function PlayBeatButton({ beat, queue, locale }: { beat: Beat; queue: Beat[]; locale: Locale }) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const play = usePlayerStore((state) => state.play);
+  const playBeat = usePlayerStore((state) => state.playBeat);
   const pause = usePlayerStore((state) => state.pause);
   const t = dictionary[locale];
   const isCurrentBeat = currentTrack?.id === beat.id;
@@ -25,7 +33,8 @@ export function PlayBeatButton({ beat, queue, locale }: { beat: Beat; queue: Bea
           return;
         }
 
-        play(beat, queue);
+        const queueItems = queue.map(toPlayerBeat);
+        playBeat(toPlayerBeat(beat), queueItems);
       }}
     >
       {isCurrentBeatPlaying ? t.pause : t.play}

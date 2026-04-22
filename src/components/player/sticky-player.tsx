@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,41 @@ function formatSeconds(seconds: number) {
   return `${minutes}:${remainder}`;
 }
 
+type PathSection = "landing" | "beats" | "ham" | "vst" | "other";
+
+function resolvePathSection(pathname: string): PathSection {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (!segments.length) {
+    return "landing";
+  }
+
+  const first = segments[0] ?? "";
+  const hasLocalePrefix = first === "ru" || first === "en";
+  const section = hasLocalePrefix ? segments[1] : first;
+
+  if (!section) {
+    return "landing";
+  }
+
+  if (section === "beats") {
+    return "beats";
+  }
+
+  if (section === "ham" || section === "tracks") {
+    return "ham";
+  }
+
+  if (section === "vst") {
+    return "vst";
+  }
+
+  return "other";
+}
+
 export function StickyPlayer({ locale }: { locale: Locale }) {
+  const pathname = usePathname();
+  const pathSection = resolvePathSection(pathname);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tagAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTagSlotRef = useRef(0);
@@ -33,11 +68,44 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const playRandom = usePlayerStore((state) => state.playRandom);
+  const reset = usePlayerStore((state) => state.reset);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
   const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
   const t = dictionary[locale];
+
+  useEffect(() => {
+    if (pathSection === "ham") {
+      if (currentTrack && currentTrack.kind !== "track") {
+        reset();
+        return;
+      }
+
+      if (queue.some((item) => item.kind !== "track")) {
+        reset();
+      }
+
+      return;
+    }
+
+    if (pathSection === "beats") {
+      if (currentTrack?.kind === "track") {
+        reset();
+        return;
+      }
+
+      if (queue.some((item) => item.kind === "track")) {
+        reset();
+      }
+
+      return;
+    }
+
+    if ((pathSection === "vst" || pathSection === "other" || pathSection === "landing") && (currentTrack || queue.length > 0)) {
+      reset();
+    }
+  }, [pathSection, currentTrack, queue, reset]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -143,28 +211,32 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
     setCurrentTime(clamped);
   };
 
+  if (pathSection !== "beats" && pathSection !== "ham") {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] backdrop-blur">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-3 sm:grid-cols-[1.4fr_2fr_auto] sm:items-center">
+      <div className="mx-auto grid max-w-7xl gap-3 px-3 py-3 sm:px-4 md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
           {currentTrack ? (
             currentTrack.kind === "track" ? (
-              <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
+              <p className="truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-2xl">
                 {currentTrack.title}
               </p>
             ) : (
               <Link
                 href={`/beats/${currentTrack.slug}`}
-                className="block truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)]"
+                className="block truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)] sm:text-2xl"
               >
                 {currentTrack.title}
               </Link>
             )
           ) : (
-            <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
+            <p className="truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-2xl">
               {t.playerReady}
             </p>
           )}
@@ -195,7 +267,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 justify-self-end">
+        <div className="flex flex-wrap items-center justify-start gap-2 md:justify-self-end">
           {/* Shuffle */}
           <button
             type="button"
@@ -203,7 +275,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             disabled={queue.length <= 1}
             aria-label="Shuffle"
             title={shuffle ? "Перемешать: вкл" : "Перемешать: выкл"}
-            className={`flex h-8 w-8 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-9 w-9 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             <Shuffle size={12} />
           </button>
@@ -228,7 +300,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             onClick={cycleRepeat}
             aria-label={`Повтор: ${repeatMode}`}
             title={repeatMode === "none" ? "Повтор: выкл" : repeatMode === "all" ? "Повтор: все" : "Повтор: один трек"}
-            className={`flex h-8 w-8 items-center justify-center border transition-colors ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-9 w-9 items-center justify-center border transition-colors ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             {repeatMode === "one" ? <Repeat1 size={12} /> : <Repeat size={12} />}
           </button>
