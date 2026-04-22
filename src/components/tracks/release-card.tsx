@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { X, Download } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
 import { PlayTrackButton, type TrackQueueItem } from "@/components/tracks/play-track-button";
@@ -25,6 +26,8 @@ export function ReleaseCard({
   locale: Locale;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const router = useRouter();
   const t = dictionary[locale];
   const typeLabel = releaseTypeLabels[release.releaseType][locale];
 
@@ -36,7 +39,35 @@ export function ReleaseCard({
     hasMp3: Boolean(tr.mp3FilePath),
   }));
 
+  const availableTracks = release.tracks.filter((tr) => Boolean(tr.mp3FilePath));
   const firstTrack = release.tracks[0];
+
+  const handleDownloadAll = async () => {
+    if (!isAuthenticated) {
+      router.push(`/auth?next=/`);
+      return;
+    }
+    if (availableTracks.length === 0) return;
+    setIsDownloadingAll(true);
+    try {
+      for (const track of availableTracks) {
+        const res = await fetch(`/api/tracks/${track.id}/download`, { method: "POST" });
+        const payload = (await res.json().catch(() => null)) as { url?: string } | null;
+        if (!payload?.url) continue;
+        // Trigger browser download
+        const a = document.createElement("a");
+        a.href = payload.url;
+        a.download = `${track.title}.mp3`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Small delay to avoid browser blocking multiple simultaneous downloads
+        await new Promise((r) => setTimeout(r, 800));
+      }
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -82,10 +113,27 @@ export function ReleaseCard({
           <p className="text-xs text-[var(--color-paper-300)]">{release.artistName}</p>
         </div>
 
-        {/* Play button — stopPropagation so click doesn't open modal */}
+        {/* Action buttons — stopPropagation so click doesn't open modal */}
         {firstTrack && (
-          <div className="px-4 pb-4" onClick={(e) => e.stopPropagation()}>
-            <PlayTrackButton trackId={firstTrack.id} trackQueue={queue} locale={locale} />
+          <div className="px-4 pb-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1">
+              <PlayTrackButton trackId={firstTrack.id} trackQueue={queue} locale={locale} />
+            </div>
+            {availableTracks.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDownloadAll}
+                disabled={isDownloadingAll}
+                title={locale === "ru" ? "Скачать всё" : "Download all"}
+                className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--color-line)] text-[var(--color-paper-200)] transition-colors hover:border-amber-500 hover:text-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isDownloadingAll ? (
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" />
+                ) : (
+                  <Download size={14} />
+                )}
+              </button>
+            )}
           </div>
         )}
       </article>
