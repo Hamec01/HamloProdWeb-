@@ -3,7 +3,8 @@ import Link from "next/link";
 const adminNavigation = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/beats", label: "Beats CRUD" },
-  { href: "/admin/tracks", label: "Tracks CRUD" },
+  { href: "/admin/tracks", label: "Tracks (синглы)" },
+  { href: "/admin/releases", label: "Releases (альбомы)" },
   { href: "/admin/artists", label: "Artists CRUD" },
   { href: "/admin/posts", label: "Posts / News" },
 ];

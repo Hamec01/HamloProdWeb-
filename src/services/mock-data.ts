@@ -1,4 +1,4 @@
-import type { Artist, Beat, Post, SiteSettings, Track } from "@/types";
+import type { Artist, Beat, Post, Release, SiteSettings, Track } from "@/types";
 
 export const siteSettings: SiteSettings = {
   title: "HamloProd",
@@ -163,6 +163,8 @@ export const mockTracks: Track[] = [
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
     releaseDate: "2025-11-14",
+    releaseId: null,
+    trackNumber: null,
     createdAt: "2026-04-01T10:00:00.000Z",
   },
   {
@@ -178,6 +180,8 @@ export const mockTracks: Track[] = [
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
     releaseDate: "2025-09-02",
+    releaseId: "release-001",
+    trackNumber: 1,
     createdAt: "2026-04-02T10:00:00.000Z",
   },
   {
@@ -193,7 +197,35 @@ export const mockTracks: Track[] = [
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
     releaseDate: "2024-12-20",
+    releaseId: "release-001",
+    trackNumber: 2,
     createdAt: "2026-04-03T10:00:00.000Z",
+  },
+];
+
+export const mockReleases: Release[] = [
+  {
+    id: "release-001",
+    title: "Grey Season EP",
+    slug: "grey-season-ep",
+    artistName: "HaM",
+    releaseType: "ep",
+    coverPalette: "from-stone-700 via-zinc-900 to-black",
+    coverImageUrl: null,
+    coverImagePath: null,
+    description: "Дебютный EP HaM Hamilio — атмосферный проект о смене сезонов.",
+    spotifyUrl: "https://open.spotify.com/",
+    appleMusicUrl: "https://music.apple.com/",
+    youtubeUrl: "https://youtube.com/",
+    releaseDate: "2025-09-02",
+    published: true,
+    featured: false,
+    createdAt: "2026-04-02T10:00:00.000Z",
+    updatedAt: "2026-04-02T10:00:00.000Z",
+    tracks: [
+      { id: "track-002", title: "Grey Season", slug: "grey-season", trackNumber: 1, mp3FilePath: null, createdAt: "2026-04-02T10:00:00.000Z" },
+      { id: "track-003", title: "Last Hallway", slug: "last-hallway", trackNumber: 2, mp3FilePath: null, createdAt: "2026-04-03T10:00:00.000Z" },
+    ],
   },
 ];
 

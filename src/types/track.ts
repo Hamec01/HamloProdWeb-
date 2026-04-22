@@ -11,6 +11,8 @@ export type Track = {
   appleMusicUrl: string;
   youtubeUrl: string;
   releaseDate: string;
+  releaseId: string | null;
+  trackNumber: number | null;
   createdAt: string;
 };
 

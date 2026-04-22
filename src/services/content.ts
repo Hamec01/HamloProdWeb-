@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { mockArtists, mockBeats, mockPosts, mockTracks, siteSettings } from "@/services/mock-data";
-import type { Artist, Beat, Post, SiteSettings, Track, TrackDownloadLog } from "@/types";
+import { mockArtists, mockBeats, mockPosts, mockReleases, mockTracks, siteSettings } from "@/services/mock-data";
+import type { Artist, Beat, Post, Release, ReleaseTrack, SiteSettings, Track, TrackDownloadLog } from "@/types";
 
 type BeatRow = {
   id: string;
@@ -57,7 +57,39 @@ type TrackRow = {
   apple_music_url: string;
   youtube_url: string;
   release_date: string;
+  release_id: string | null;
+  track_number: number | null;
   created_at: string;
+};
+
+type ReleaseTrackRow = {
+  id: string;
+  title: string;
+  slug: string;
+  track_number: number | null;
+  mp3_file_path: string | null;
+  created_at: string;
+};
+
+type ReleaseRow = {
+  id: string;
+  title: string;
+  slug: string;
+  artist_name: string;
+  release_type: Release["releaseType"];
+  cover_palette: string;
+  cover_image_url: string | null;
+  cover_image_path: string | null;
+  description: string;
+  spotify_url: string;
+  apple_music_url: string;
+  youtube_url: string;
+  release_date: string;
+  published: boolean;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
+  tracks: ReleaseTrackRow[];
 };
 
 type TrackDownloadRow = {
@@ -171,7 +203,43 @@ function mapTrack(row: TrackRow): Track {
     appleMusicUrl: row.apple_music_url,
     youtubeUrl: row.youtube_url,
     releaseDate: row.release_date,
+    releaseId: row.release_id,
+    trackNumber: row.track_number,
     createdAt: row.created_at,
+  };
+}
+
+function mapReleaseTrack(row: ReleaseTrackRow): ReleaseTrack {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    trackNumber: row.track_number ?? 0,
+    mp3FilePath: row.mp3_file_path,
+    createdAt: row.created_at,
+  };
+}
+
+function mapRelease(row: ReleaseRow): Release {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    artistName: row.artist_name,
+    releaseType: row.release_type,
+    coverPalette: row.cover_palette,
+    coverImageUrl: row.cover_image_url,
+    coverImagePath: row.cover_image_path,
+    description: row.description,
+    spotifyUrl: row.spotify_url,
+    appleMusicUrl: row.apple_music_url,
+    youtubeUrl: row.youtube_url,
+    releaseDate: row.release_date,
+    published: row.published,
+    featured: row.featured,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    tracks: (row.tracks ?? []).map(mapReleaseTrack).sort((a, b) => a.trackNumber - b.trackNumber),
   };
 }
 
@@ -354,7 +422,7 @@ export async function getTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, created_at",
       )
       .order("release_date", { ascending: false })
       .returns<TrackRow[]>();
@@ -365,6 +433,52 @@ export async function getTracks() {
 
     return data.map(mapTrack);
   }, mockTracks);
+}
+
+export async function getSingleTracks() {
+  const tracks = await getTracks();
+  return tracks.filter((t) => !t.releaseId);
+}
+
+export async function getReleases() {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("releases")
+      .select(
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+      )
+      .eq("published", true)
+      .order("featured", { ascending: false })
+      .order("created_at", { ascending: false })
+      .returns<ReleaseRow[]>();
+
+    if (error || !data) {
+      return mockReleases;
+    }
+
+    return data.map(mapRelease);
+  }, mockReleases);
+}
+
+export async function getAdminReleases() {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("releases")
+      .select(
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+      )
+      .order("featured", { ascending: false })
+      .order("created_at", { ascending: false })
+      .returns<ReleaseRow[]>();
+
+    if (error || !data) {
+      return mockReleases;
+    }
+
+    return data.map(mapRelease);
+  }, mockReleases);
 }
 
 export async function getArtists() {
@@ -446,7 +560,7 @@ export async function getAdminTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, created_at",
       )
       .order("release_date", { ascending: false })
       .returns<TrackRow[]>();
