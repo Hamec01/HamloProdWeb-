@@ -138,19 +138,29 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
           {currentTrack ? (
-            <Link
-              href={`/beats/${currentTrack.slug}`}
-              className="block truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)]"
-            >
-              {currentTrack.title}
-            </Link>
+            currentTrack.kind === "track" ? (
+              <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
+                {currentTrack.title}
+              </p>
+            ) : (
+              <Link
+                href={`/beats/${currentTrack.slug}`}
+                className="block truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)]"
+              >
+                {currentTrack.title}
+              </Link>
+            )
           ) : (
             <p className="truncate font-sans text-2xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
               {t.playerReady}
             </p>
           )}
           <p className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            {currentTrack ? `${currentTrack.mood} / ${currentTrack.bpm} BPM / ${currentTrack.caseNumber}` : "Open Archive and press Play"}
+            {currentTrack
+              ? currentTrack.kind === "track"
+                ? currentTrack.artistName ?? "HaM"
+                : `${currentTrack.mood} / ${currentTrack.bpm} BPM / ${currentTrack.caseNumber}`
+              : "Open Archive and press Play"}
           </p>
         </div>
 

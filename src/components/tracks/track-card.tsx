@@ -1,11 +1,29 @@
 import Link from "next/link";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
+import { PlayTrackButton, type TrackQueueItem } from "@/components/tracks/play-track-button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import type { Track } from "@/types";
 
-export function TrackCard({ track, isAuthenticated, locale }: { track: Track; isAuthenticated: boolean; locale: Locale }) {
+export function TrackCard({
+  track,
+  trackQueue,
+  isAuthenticated,
+  locale,
+}: {
+  track: Track;
+  trackQueue?: Track[];
+  isAuthenticated: boolean;
+  locale: Locale;
+}) {
   const t = dictionary[locale];
+  const queue: TrackQueueItem[] = (trackQueue ?? [track]).map((tr) => ({
+    id: tr.id,
+    title: tr.title,
+    slug: tr.slug,
+    artistName: tr.artistName,
+    hasMp3: Boolean(tr.mp3FilePath),
+  }));
 
   return (
     <article className="case-panel overflow-hidden p-4">
@@ -22,7 +40,11 @@ export function TrackCard({ track, isAuthenticated, locale }: { track: Track; is
         <h3 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{track.title}</h3>
         <p className="text-sm text-[var(--color-paper-200)]">{track.artistName}</p>
       </div>
-      <div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-paper-200)]">
+      <div className="mt-4 flex gap-2">
+        <PlayTrackButton trackId={track.id} trackQueue={queue} locale={locale} />
+        <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} locale={locale} />
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-paper-200)]">
         {track.spotifyUrl ? (
           <Link href={track.spotifyUrl} target="_blank" className="border border-[var(--color-line)] px-3 py-2 hover:bg-[rgba(255,255,255,0.04)]">
             Spotify
@@ -38,7 +60,6 @@ export function TrackCard({ track, isAuthenticated, locale }: { track: Track; is
             YouTube
           </Link>
         ) : null}
-        <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} locale={locale} />
       </div>
 
       <ContentFeedbackCard entity="tracks" contentId={track.id} isAuthenticated={isAuthenticated} locale={locale} />

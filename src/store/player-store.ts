@@ -2,12 +2,21 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Beat } from "@/types";
 
-export type PlayerTrack = Pick<
-  Beat,
-  "id" | "title" | "slug" | "previewUrl" | "bpm" | "mood" | "duration" | "caseNumber" | "status"
->;
+export type PlayerTrack = {
+  id: string;
+  title: string;
+  slug: string;
+  previewUrl: string;
+  kind?: "beat" | "track";
+  artistName?: string;
+  // Beat-specific (optional for track items)
+  bpm?: number;
+  mood?: string;
+  duration?: string;
+  caseNumber?: string;
+  status?: "available" | "reserved" | "sold" | "private";
+};
 
 export type PlayerQueueItem = PlayerTrack;
 

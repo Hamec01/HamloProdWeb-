@@ -44,7 +44,7 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
           </p>
           <div className="grid gap-6 lg:grid-cols-4">
             {latest.map((track) => (
-              <TrackCard key={track.id} track={track} isAuthenticated={session.isAuthenticated} locale={locale} />
+              <TrackCard key={track.id} track={track} trackQueue={singles} isAuthenticated={session.isAuthenticated} locale={locale} />
             ))}
           </div>
         </div>
@@ -58,7 +58,7 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
           </p>
           <div className="grid gap-6 lg:grid-cols-3">
             {singles.map((track) => (
-              <TrackCard key={track.id} track={track} isAuthenticated={session.isAuthenticated} locale={locale} />
+              <TrackCard key={track.id} track={track} trackQueue={singles} isAuthenticated={session.isAuthenticated} locale={locale} />
             ))}
           </div>
         </div>
