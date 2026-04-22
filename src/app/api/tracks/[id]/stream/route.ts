@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { TRACK_DOWNLOADS_BUCKET } from "@/lib/storage/media";
 
@@ -15,7 +15,17 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   }
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
+  let supabase;
+
+  try {
+    supabase = createSupabaseAdminClient();
+  } catch (error) {
+    if (error instanceof Error && error.message === "SUPABASE_ADMIN_NOT_CONFIGURED") {
+      return errorResponse("Supabase admin env is not configured.", 503);
+    }
+
+    throw error;
+  }
 
   const { data: track, error: trackError } = await supabase
     .from("tracks")
