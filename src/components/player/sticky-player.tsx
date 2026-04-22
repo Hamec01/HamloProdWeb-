@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fetchTrackStreamUrl } from "@/lib/audio/fetch-track-stream-url";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
 
@@ -67,10 +68,12 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const shuffle = usePlayerStore((state) => state.shuffle);
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const setShuffle = usePlayerStore((state) => state.setShuffle);
   const playRandom = usePlayerStore((state) => state.playRandom);
   const reset = usePlayerStore((state) => state.reset);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isResolvingQueue, setIsResolvingQueue] = useState(false);
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
   const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
   const t = dictionary[locale];
@@ -211,6 +214,40 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
     setCurrentTime(clamped);
   };
 
+  const handlePrimaryAction = async () => {
+    if (currentTrack) {
+      togglePlayback();
+      return;
+    }
+
+    if (pathSection !== "ham" || queue.length === 0) {
+      return;
+    }
+
+    setIsResolvingQueue(true);
+    try {
+      const resolvedQueue = await Promise.all(
+        queue.map(async (track) => {
+          const previewUrl = track.previewUrl || (track.kind === "track" ? await fetchTrackStreamUrl(track.id) : track.previewUrl);
+          return {
+            ...track,
+            previewUrl,
+          };
+        }),
+      );
+
+      const playableTracks = resolvedQueue.filter((track) => Boolean(track.previewUrl));
+      if (!playableTracks.length) {
+        return;
+      }
+
+      setShuffle(true);
+      playRandom(playableTracks);
+    } finally {
+      setIsResolvingQueue(false);
+    }
+  };
+
   if (pathSection !== "beats" && pathSection !== "ham") {
     return null;
   }
@@ -283,11 +320,11 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           <Button variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
           <Button
             variant={currentTrack ? "primary" : "ghost"}
-            icon={isPlaying ? <Pause size={14} /> : <Play size={14} />}
-            onClick={togglePlayback}
-            disabled={!currentTrack}
+            icon={isResolvingQueue ? <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
+            onClick={handlePrimaryAction}
+            disabled={isResolvingQueue || (!currentTrack && !(pathSection === "ham" && queue.length > 0))}
           >
-            {isPlaying ? t.pause : t.play}
+            {isResolvingQueue ? "..." : isPlaying ? t.pause : t.play}
           </Button>
           <Button variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
             {t.stop}

@@ -1,9 +1,11 @@
+import { HamPlayerQueueSync } from "@/components/tracks/ham-player-queue-sync";
 import { TrackCard } from "@/components/tracks/track-card";
 import { ReleaseCard } from "@/components/tracks/release-card";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { normalizeLocale, sectorLabels } from "@/lib/market";
 import { getReleases, getSingleTracks } from "@/services/content";
+import type { PlayerTrack } from "@/store/player-store";
 
 export default async function SectorHamPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -23,9 +25,40 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
   const hasLatest = latest.length > 0;
   const hasSingles = singles.length > 0;
   const hasReleases = releases.length > 0;
+  const hamQueue: PlayerTrack[] = Array.from(
+    new Map(
+      [
+        ...singles.map((track) => [
+          track.id,
+          {
+            id: track.id,
+            title: track.title,
+            slug: track.slug,
+            previewUrl: "",
+            kind: "track" as const,
+            artistName: track.artistName,
+          },
+        ]),
+        ...releases.flatMap((release) =>
+          release.tracks.map((track) => [
+            track.id,
+            {
+              id: track.id,
+              title: track.title,
+              slug: track.slug,
+              previewUrl: "",
+              kind: "track" as const,
+              artistName: release.artistName,
+            },
+          ]),
+        ),
+      ],
+    ).values(),
+  );
 
   return (
     <section className="space-y-16">
+      <HamPlayerQueueSync queue={hamQueue} />
       <SectionHeading
         eyebrow={sectorLabels[locale].ham}
         title={locale === "ru" ? "Релизы HaM Hamilio" : "HaM Hamilio Releases"}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Pause, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fetchTrackStreamUrl } from "@/lib/audio/fetch-track-stream-url";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
 import type { PlayerTrack } from "@/store/player-store";
@@ -14,13 +15,6 @@ export type TrackQueueItem = {
   artistName?: string;
   hasMp3: boolean;
 };
-
-async function fetchStreamUrl(trackId: string): Promise<string> {
-  const res = await fetch(`/api/tracks/${trackId}/stream`);
-  if (!res.ok) return "";
-  const data = (await res.json()) as { url?: string };
-  return data.url ?? "";
-}
 
 export function PlayTrackButton({
   trackId,
@@ -65,7 +59,7 @@ export function PlayTrackButton({
       // Fetch stream URLs for all tracks in the queue that have an mp3
       const playerItems = await Promise.all(
         trackQueue.map(async (t): Promise<PlayerTrack> => {
-          const url = t.hasMp3 ? await fetchStreamUrl(t.id) : "";
+          const url = t.hasMp3 ? await fetchTrackStreamUrl(t.id) : "";
           return {
             id: t.id,
             title: t.title,

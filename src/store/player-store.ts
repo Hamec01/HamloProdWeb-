@@ -32,6 +32,7 @@ type PlayerStore = {
   section: PlayerSection | null;
   repeatMode: RepeatMode;
   shuffle: boolean;
+  primeQueue: (queue: PlayerQueueItem[], section: PlayerSection) => void;
   setQueue: (queue: PlayerQueueItem[], startIndex?: number) => void;
   play: (track: PlayerTrack, queue?: PlayerQueueItem[]) => void;
   pause: () => void;
@@ -42,6 +43,7 @@ type PlayerStore = {
   syncPlayback: (isPlaying: boolean) => void;
   cycleRepeat: () => void;
   toggleShuffle: () => void;
+  setShuffle: (value: boolean) => void;
   next: () => void;
   previous: () => void;
   reset: () => void;
@@ -86,6 +88,29 @@ export const usePlayerStore = create<PlayerStore>()(
       section: null,
       repeatMode: "none",
       shuffle: false,
+      primeQueue: (queue, section) =>
+        set((state) => {
+          const activeSection = inferSection(state.currentTrack);
+          const activeTrackIndex = state.currentTrack ? queue.findIndex((item) => item.id === state.currentTrack?.id) : -1;
+
+          if (activeSection === section && activeTrackIndex >= 0 && state.currentTrack) {
+            return {
+              queue,
+              currentIndex: activeTrackIndex,
+              currentTrack: state.currentTrack,
+              isPlaying: state.isPlaying,
+              section,
+            };
+          }
+
+          return {
+            queue,
+            currentIndex: 0,
+            currentTrack: null,
+            isPlaying: false,
+            section,
+          };
+        }),
       setQueue: (queue, startIndex = 0) =>
         set(() => {
           const nextIndexValue = Math.max(0, Math.min(startIndex, Math.max(queue.length - 1, 0)));
@@ -148,6 +173,7 @@ export const usePlayerStore = create<PlayerStore>()(
           return { repeatMode: next };
         }),
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
+      setShuffle: (value) => set({ shuffle: value }),
       next: () => {
         const { queue, currentIndex, repeatMode, shuffle } = get();
         if (!queue.length) return;
