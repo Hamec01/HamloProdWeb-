@@ -30,6 +30,7 @@ export const releaseFormSchema = z.object({
   title: z.string().min(2, "Минимум 2 символа"),
   slug: z.string().min(2, "Минимум 2 символа"),
   artistName: z.string().min(1, "Обязательное поле"),
+  featArtistNames: z.string(),
   releaseType: z.enum(["album", "ep", "mixtape"]),
   coverPalette: z.string().min(2),
   coverImageUrl: nullableUrl,

@@ -110,7 +110,10 @@ export function ReleaseCard({
           <h3 className="font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] truncate">
             {release.title}
           </h3>
-          <p className="text-xs text-[var(--color-paper-300)]">{release.artistName}</p>
+          <p className="text-xs text-[var(--color-paper-300)]">
+            {release.artistName}
+            {release.featArtistNames ? <span className="text-[var(--color-paper-400)]"> feat. {release.featArtistNames}</span> : null}
+          </p>
         </div>
 
         {/* Action buttons — stopPropagation so click doesn't open modal */}
@@ -158,11 +161,13 @@ export function ReleaseCard({
               <X size={14} />
             </button>
 
-            {/* Cover */}
+            {/* Cover — full image, no crop */}
             {release.coverImageUrl ? (
-              <div
-                className="h-72 w-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${release.coverImageUrl})` }}
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={release.coverImageUrl}
+                alt={release.title}
+                className="block w-full"
               />
             ) : (
               <div className={`h-72 w-full bg-gradient-to-br ${release.coverPalette}`} />
@@ -182,7 +187,10 @@ export function ReleaseCard({
                 <h3 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
                   {release.title}
                 </h3>
-                <p className="text-sm text-[var(--color-paper-200)]">{release.artistName}</p>
+                <p className="text-sm text-[var(--color-paper-200)]">
+                  {release.artistName}
+                  {release.featArtistNames ? <span className="text-[var(--color-paper-400)]"> feat. {release.featArtistNames}</span> : null}
+                </p>
                 {release.description ? (
                   <p className="pt-1 text-sm leading-6 text-[var(--color-paper-400)]">{release.description}</p>
                 ) : null}

@@ -23,6 +23,7 @@ export type Release = {
   appleMusicUrl: string;
   youtubeUrl: string;
   releaseDate: string;
+  featArtistNames: string;
   published: boolean;
   featured: boolean;
   createdAt: string;

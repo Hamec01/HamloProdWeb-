@@ -21,6 +21,7 @@ const defaultValues: ReleaseFormValues = {
   title: "",
   slug: "",
   artistName: "HaM",
+  featArtistNames: "",
   releaseType: "ep",
   coverPalette: "from-zinc-900 via-stone-900 to-black",
   coverImageUrl: null,
@@ -272,6 +273,7 @@ export function AdminReleaseCrudManager({
     setValue("title", release.title);
     setValue("slug", release.slug);
     setValue("artistName", release.artistName);
+    setValue("featArtistNames", release.featArtistNames ?? "");
     setValue("releaseType", release.releaseType);
     setValue("coverPalette", release.coverPalette);
     setValue("coverImageUrl", release.coverImageUrl);
@@ -423,6 +425,15 @@ export function AdminReleaseCrudManager({
                 placeholder="HaM"
                 className="w-full border border-[var(--color-line)] bg-transparent px-3 py-2 text-sm focus:outline-none"
               />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs uppercase tracking-[0.18em] text-[var(--color-paper-400)]">Фит. артисты</label>
+              <input
+                {...register("featArtistNames")}
+                placeholder="ТриатлON, DJ Name"
+                className="w-full border border-[var(--color-line)] bg-transparent px-3 py-2 text-sm focus:outline-none"
+              />
+              <p className="text-[10px] text-[var(--color-paper-500)]">Через запятую. Страницы этих артистов автоматически подхватят релиз.</p>
             </div>
             <div className="space-y-1">
               <label className="text-xs uppercase tracking-[0.18em] text-[var(--color-paper-400)]">Тип *</label>

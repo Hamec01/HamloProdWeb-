@@ -217,6 +217,7 @@ export const mockReleases: Release[] = [
     spotifyUrl: "https://open.spotify.com/",
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
+    featArtistNames: "",
     releaseDate: "2025-09-02",
     published: true,
     featured: false,

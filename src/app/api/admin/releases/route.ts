@@ -37,6 +37,7 @@ export async function POST(request: Request) {
       title: releaseData.title,
       slug: releaseData.slug,
       artist_name: releaseData.artistName,
+      feat_artist_names: releaseData.featArtistNames ?? "",
       release_type: releaseData.releaseType,
       cover_palette: releaseData.coverPalette,
       cover_image_url: releaseData.coverImageUrl,
