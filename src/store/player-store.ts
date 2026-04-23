@@ -25,6 +25,7 @@ export type RepeatMode = "none" | "one" | "all";
 export type PlayerSection = "beats" | "ham" | "artist";
 
 type PlayerStore = {
+  sectionQueue: PlayerQueueItem[];
   queue: PlayerQueueItem[];
   currentIndex: number;
   currentTrack: PlayerTrack | null;
@@ -83,6 +84,7 @@ export const usePlayerStore = create<PlayerStore>()(
   persist(
     (set, get) => ({
       queue: [],
+      sectionQueue: [],
       currentIndex: 0,
       currentTrack: null,
       isPlaying: false,
@@ -96,6 +98,7 @@ export const usePlayerStore = create<PlayerStore>()(
 
           if (activeSection === section && activeTrackIndex >= 0 && state.currentTrack) {
             return {
+              sectionQueue: queue,
               queue,
               currentIndex: activeTrackIndex,
               currentTrack: state.currentTrack,
@@ -105,6 +108,7 @@ export const usePlayerStore = create<PlayerStore>()(
           }
 
           return {
+            sectionQueue: queue,
             queue,
             currentIndex: 0,
             currentTrack: null,
@@ -177,6 +181,7 @@ export const usePlayerStore = create<PlayerStore>()(
       setShuffle: (value) => set({ shuffle: value }),
       loadQueue: (queue, section) =>
         set((state) => ({
+          sectionQueue: queue,
           queue,
           section,
           currentIndex: 0,
@@ -226,6 +231,7 @@ export const usePlayerStore = create<PlayerStore>()(
       },
       reset: () =>
         set({
+          sectionQueue: [],
           queue: [],
           currentIndex: 0,
           currentTrack: null,
@@ -236,6 +242,7 @@ export const usePlayerStore = create<PlayerStore>()(
     {
       name: "hamloprod-player",
       partialize: (state) => ({
+        sectionQueue: state.sectionQueue,
         queue: state.queue,
         currentIndex: state.currentIndex,
         currentTrack: state.currentTrack,

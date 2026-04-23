@@ -15,6 +15,8 @@ type Dictionary = {
   footerRight: string;
   listen: string;
   playRandom: string;
+  playRandomTracks: string;
+  randomAllFromSection: string;
   archiveEyebrow: string;
   beatsTitle: string;
   beatsDesc: string;
@@ -93,6 +95,8 @@ export const dictionary: Record<Locale, Dictionary> = {
     footerRight: "Публичный контент только для просмотра. Управление записями в админке.",
     listen: "Слушать",
     playRandom: "Случайный бит",
+    playRandomTracks: "Случайный трек",
+    randomAllFromSection: "Все треки раздела",
     archiveEyebrow: "Архив",
     beatsTitle: "Кейсы битов",
     beatsDesc: "Материалы из архива. Основной контент загружается из Supabase.",
@@ -169,6 +173,8 @@ export const dictionary: Record<Locale, Dictionary> = {
     footerRight: "Public content is read-only. Content management lives in admin.",
     listen: "Listen",
     playRandom: "Play Random Beat",
+    playRandomTracks: "Play Random Track",
+    randomAllFromSection: "All Section Tracks",
     archiveEyebrow: "Archive",
     beatsTitle: "Beat Files",
     beatsDesc: "Archive records. Main content is loaded from Supabase.",

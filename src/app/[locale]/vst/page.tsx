@@ -1,14 +1,20 @@
+import { AdminPostCrudManager } from "@/components/admin/admin-post-crud-manager";
 import Link from "next/link";
 import { PostRichContent } from "@/components/posts/post-rich-content";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { getAdminSessionState } from "@/lib/auth/session";
 import { localizePosts } from "@/lib/localize-content";
 import { normalizeLocale, sectorLabels } from "@/lib/market";
-import { getPosts } from "@/services/content";
+import { getAdminPosts, getPosts } from "@/services/content";
 
 export default async function SectorVstPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
-  const posts = await localizePosts(await getPosts("vst"), locale);
+  const [vstPosts, adminSession] = await Promise.all([getPosts("vst"), getAdminSessionState()]);
+  const posts = await localizePosts(vstPosts, locale);
+  const adminPosts = adminSession.isAuthenticated
+    ? (await getAdminPosts()).filter((post) => post.section === "vst")
+    : [];
 
   return (
     <section className="space-y-8">
@@ -87,6 +93,15 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           </article>
         )}
       </div>
+
+      {adminSession.isAuthenticated ? (
+        <section className="space-y-4">
+          <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">
+            {locale === "ru" ? "Управление VST-постами (admin)" : "VST Post Management (admin)"}
+          </p>
+          <AdminPostCrudManager posts={adminPosts} hasSupabase={adminSession.hasSupabase} />
+        </section>
+      ) : null}
     </section>
   );
 }

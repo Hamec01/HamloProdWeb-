@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
+import { Dice5, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchTrackStreamUrl } from "@/lib/audio/fetch-track-stream-url";
 import { dictionary, type Locale } from "@/lib/i18n";
@@ -57,6 +57,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const tagAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTagSlotRef = useRef(0);
   const queue = usePlayerStore((state) => state.queue);
+  const sectionQueue = usePlayerStore((state) => state.sectionQueue);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const next = usePlayerStore((state) => state.next);
@@ -285,7 +286,17 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
     }
 
     setShuffle(true);
-    playRandom(queue);
+    playRandom(sectionQueue.length ? sectionQueue : queue);
+  };
+
+  const handleRandomAll = () => {
+    const randomQueue = sectionQueue.length ? sectionQueue : queue;
+    if (!randomQueue.length) {
+      return;
+    }
+
+    setShuffle(true);
+    playRandom(randomQueue);
   };
 
   if (pathSection !== "beats" && pathSection !== "ham") {
@@ -344,7 +355,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 md:flex md:flex-wrap md:justify-self-end">
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2 md:flex md:flex-wrap md:justify-self-end">
           {/* Shuffle */}
           <button
             type="button"
@@ -371,6 +382,17 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             {t.stop}
           </Button>
           <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
+
+          <Button
+            className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4"
+            variant="ghost"
+            icon={<Dice5 size={14} />}
+            onClick={handleRandomAll}
+            disabled={(sectionQueue.length ? sectionQueue.length : queue.length) === 0}
+            title={t.randomAllFromSection}
+          >
+            {pathSection === "ham" ? t.playRandomTracks : t.playRandom}
+          </Button>
 
           {/* Repeat */}
           <button

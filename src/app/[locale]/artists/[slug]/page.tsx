@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { getArtistBySlug, getArtistReleases } from "@/services/content";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getAdminSessionState } from "@/lib/auth/session";
 import { normalizeLocale } from "@/lib/market";
 import { ArtistPageHeader } from "@/components/artists/artist-page-header";
 import { ArtistReleasesCarousel } from "@/components/artists/artist-releases-carousel";
 import { ArtistSocialLinks } from "@/components/artists/artist-social-links";
 import { ArtistPlayerLoader } from "@/components/artists/artist-player-loader";
+import { ArtistInlineAdminPanel } from "@/components/artists/artist-inline-admin-panel";
 import type { PlayerQueueItem } from "@/store/player-store";
 
 export default async function ArtistPage({
@@ -16,9 +17,9 @@ export default async function ArtistPage({
   const { locale: rawLocale, slug } = await params;
   const locale = normalizeLocale(rawLocale);
 
-  const [artist, session] = await Promise.all([
+  const [artist, adminSession] = await Promise.all([
     getArtistBySlug(slug),
-    getPublicSessionState(),
+    getAdminSessionState(),
   ]);
 
   if (!artist) notFound();
@@ -43,6 +44,10 @@ export default async function ArtistPage({
 
       <div className="space-y-12">
         <ArtistPageHeader artist={artist} locale={locale} />
+
+        {adminSession.isAuthenticated ? (
+          <ArtistInlineAdminPanel artist={artist} locale={locale} hasSupabase={adminSession.hasSupabase} />
+        ) : null}
 
         {releases.length > 0 && (
           <section className="space-y-4">
