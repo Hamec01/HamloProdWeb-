@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
 import { PlayTrackButton, type TrackQueueItem } from "@/components/tracks/play-track-button";
+import { TrackFavoriteButton } from "@/components/tracks/track-favorite-button";
+import { TrackShareButton } from "@/components/tracks/track-share-button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import type { Release } from "@/types";
 
@@ -206,6 +208,8 @@ export function ReleaseCard({
                       </span>
                       <span className="flex-1 truncate text-sm text-[var(--color-paper-200)]">{track.title}</span>
                       <PlayTrackButton trackId={track.id} trackQueue={queue} locale={locale} size="small" />
+                      <TrackShareButton trackSlug={track.slug} releaseSlug={release.slug} locale={locale} size="small" />
+                      <TrackFavoriteButton trackId={track.id} isAuthenticated={isAuthenticated} locale={locale} size="small" />
                       <TrackDownloadButton
                         trackId={track.id}
                         isAuthenticated={isAuthenticated}

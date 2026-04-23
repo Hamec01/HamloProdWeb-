@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Dice5, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
+import { Dice5, Heart, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fetchTrackStreamUrl } from "@/lib/audio/fetch-track-stream-url";
 import { dictionary, type Locale } from "@/lib/i18n";
@@ -71,6 +71,8 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const setShuffle = usePlayerStore((state) => state.setShuffle);
   const playRandom = usePlayerStore((state) => state.playRandom);
+  const playFavorites = usePlayerStore((state) => state.playFavorites);
+  const favoritesQueue = usePlayerStore((state) => state.favoritesQueue);
   const reset = usePlayerStore((state) => state.reset);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -78,6 +80,24 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
   const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
   const t = dictionary[locale];
+
+  // Load favorites on mount
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const res = await fetch("/api/favorites");
+        if (res.ok) {
+          await res.json() as { favorites?: string[] };
+          // Store favorite track IDs in state (just IDs for now)
+          // We'll load full track data when needed
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+
+    void loadFavorites();
+  }, []);
 
   useEffect(() => {
     if (!currentTrack || currentTrack.kind !== "track" || currentTrack.previewUrl || !queue.length) {
@@ -392,6 +412,18 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             title={t.randomAllFromSection}
           >
             {pathSection === "ham" ? t.playRandomTracks : t.playRandom}
+          </Button>
+
+          {/* Play Favorites */}
+          <Button
+            className={`h-11 w-full px-0 md:h-auto md:w-auto md:px-4`}
+            variant={favoritesQueue.length > 0 ? "ghost" : "ghost"}
+            icon={<Heart size={14} />}
+            onClick={() => playFavorites(favoritesQueue)}
+            disabled={favoritesQueue.length === 0}
+            title={locale === "ru" ? "Воспроизвести понравившееся" : "Play Favorites"}
+          >
+            {locale === "ru" ? "Понравившееся" : "Favorites"}
           </Button>
 
           {/* Repeat */}

@@ -33,6 +33,7 @@ type PlayerStore = {
   section: PlayerSection | null;
   repeatMode: RepeatMode;
   shuffle: boolean;
+  favoritesQueue: PlayerQueueItem[];
   primeQueue: (queue: PlayerQueueItem[], section: PlayerSection) => void;
   setQueue: (queue: PlayerQueueItem[], startIndex?: number) => void;
   play: (track: PlayerTrack, queue?: PlayerQueueItem[]) => void;
@@ -40,11 +41,13 @@ type PlayerStore = {
   stop: () => void;
   playBeat: (beat: PlayerQueueItem, queue?: PlayerQueueItem[]) => void;
   playRandom: (queue?: PlayerQueueItem[]) => void;
+  playFavorites: (tracks?: PlayerQueueItem[]) => void;
   togglePlayback: () => void;
   syncPlayback: (isPlaying: boolean) => void;
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setShuffle: (value: boolean) => void;
+  setFavoritesQueue: (queue: PlayerQueueItem[]) => void;
   loadQueue: (queue: PlayerQueueItem[], section: PlayerSection) => void;
   next: () => void;
   previous: () => void;
@@ -85,6 +88,7 @@ export const usePlayerStore = create<PlayerStore>()(
     (set, get) => ({
       queue: [],
       sectionQueue: [],
+      favoritesQueue: [],
       currentIndex: 0,
       currentTrack: null,
       isPlaying: false,
@@ -163,6 +167,21 @@ export const usePlayerStore = create<PlayerStore>()(
           section: inferSectionFromQueue(currentQueue),
         });
       },
+      playFavorites: (tracks) => {
+        const favQueue = tracks ?? get().favoritesQueue;
+        if (!favQueue.length) {
+          return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * favQueue.length);
+        set({
+          queue: favQueue,
+          currentIndex: randomIndex,
+          currentTrack: favQueue[randomIndex] ?? null,
+          isPlaying: true,
+          section: null,
+        });
+      },
       togglePlayback: () =>
         set((state) => {
           if (!state.currentTrack) {
@@ -179,6 +198,7 @@ export const usePlayerStore = create<PlayerStore>()(
         }),
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
       setShuffle: (value) => set({ shuffle: value }),
+      setFavoritesQueue: (queue) => set({ favoritesQueue: queue }),
       loadQueue: (queue, section) =>
         set((state) => ({
           sectionQueue: queue,
@@ -233,6 +253,7 @@ export const usePlayerStore = create<PlayerStore>()(
         set({
           sectionQueue: [],
           queue: [],
+          favoritesQueue: [],
           currentIndex: 0,
           currentTrack: null,
           isPlaying: false,
@@ -244,6 +265,7 @@ export const usePlayerStore = create<PlayerStore>()(
       partialize: (state) => ({
         sectionQueue: state.sectionQueue,
         queue: state.queue,
+        favoritesQueue: state.favoritesQueue,
         currentIndex: state.currentIndex,
         currentTrack: state.currentTrack,
         section: state.section,
