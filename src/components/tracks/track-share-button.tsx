@@ -32,13 +32,11 @@ export function TrackShareButton({
     }
     const shareUrl = url.toString();
 
+    // Open track page immediately while click gesture is active.
+    window.open(shareUrl, "_blank", "noopener,noreferrer");
+
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: locale === "ru" ? "Ссылка на трек" : "Track link",
-          url: shareUrl,
-        });
-      } else if (navigator.clipboard?.writeText) {
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareUrl);
       } else {
         const input = document.createElement("input");
@@ -62,7 +60,7 @@ export function TrackShareButton({
     <button
       type="button"
       onClick={handleShare}
-      title={locale === "ru" ? "Копировать ссылку на трек" : "Copy track link"}
+      title={locale === "ru" ? "Открыть трек и скопировать ссылку" : "Open track and copy link"}
       className={`flex ${sizeClass} items-center justify-center border transition-colors ${
         copied
           ? "border-amber-500 text-amber-500 bg-[rgba(217,119,6,0.1)]"
