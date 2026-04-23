@@ -16,6 +16,7 @@ export type PublicSessionState = {
   isAuthenticated: boolean;
   userId: string | null;
   email: string | null;
+  artistId: string | null;
 };
 
 export async function getAdminSessionState(): Promise<AdminSessionState> {
@@ -79,6 +80,7 @@ export async function getPublicSessionState(): Promise<PublicSessionState> {
       isAuthenticated: false,
       userId: null,
       email: null,
+      artistId: null,
     };
   }
 
@@ -87,10 +89,27 @@ export async function getPublicSessionState(): Promise<PublicSessionState> {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    return {
+      hasSupabase: true,
+      isAuthenticated: false,
+      userId: null,
+      email: null,
+      artistId: null,
+    };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("artist_id")
+    .eq("id", user.id)
+    .maybeSingle<{ artist_id: string | null }>();
+
   return {
     hasSupabase: true,
-    isAuthenticated: Boolean(user),
-    userId: user?.id ?? null,
-    email: user?.email ?? null,
+    isAuthenticated: true,
+    userId: user.id,
+    email: user.email ?? null,
+    artistId: profile?.artist_id ?? null,
   };
 }

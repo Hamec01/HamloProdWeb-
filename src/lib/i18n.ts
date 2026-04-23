@@ -63,6 +63,20 @@ type Dictionary = {
   profilePurchasedAt: string;
   profileRatedAt: string;
   profileOpenBeat: string;
+  artistAbout: string;
+  artistMusic: string;
+  artistNews: string;
+  artistAddPost: string;
+  artistAllReleases: string;
+  commentsTitle: string;
+  leaveComment: string;
+  yourName: string;
+  commentPlaceholder: string;
+  submitComment: string;
+  deletePost: string;
+  deleteComment: string;
+  noComments: string;
+  starsLabel: string;
 };
 
 export const dictionary: Record<Locale, Dictionary> = {
@@ -127,6 +141,20 @@ export const dictionary: Record<Locale, Dictionary> = {
     profilePurchasedAt: "Куплено",
     profileRatedAt: "Оценено",
     profileOpenBeat: "Открыть кейс",
+    artistAbout: "О себе",
+    artistMusic: "Вся музыка",
+    artistNews: "Новости",
+    artistAddPost: "Добавить новость",
+    artistAllReleases: "Все релизы",
+    commentsTitle: "Комментарии",
+    leaveComment: "Оставить комментарий",
+    yourName: "Ваше имя",
+    commentPlaceholder: "Ваш комментарий...",
+    submitComment: "Отправить",
+    deletePost: "Удалить",
+    deleteComment: "Удалить",
+    noComments: "Комментариев пока нет.",
+    starsLabel: "Оценка",
   },
   en: {
     navHome: "Home",
@@ -189,5 +217,19 @@ export const dictionary: Record<Locale, Dictionary> = {
     profilePurchasedAt: "Purchased",
     profileRatedAt: "Rated",
     profileOpenBeat: "Open Case",
+    artistAbout: "About",
+    artistMusic: "All Music",
+    artistNews: "News",
+    artistAddPost: "Add Post",
+    artistAllReleases: "All Releases",
+    commentsTitle: "Comments",
+    leaveComment: "Leave a Comment",
+    yourName: "Your name",
+    commentPlaceholder: "Your comment...",
+    submitComment: "Submit",
+    deletePost: "Delete",
+    deleteComment: "Delete",
+    noComments: "No comments yet.",
+    starsLabel: "Rating",
   },
 };

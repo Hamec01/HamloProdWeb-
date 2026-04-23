@@ -22,7 +22,7 @@ export type PlayerQueueItem = PlayerTrack;
 
 export type RepeatMode = "none" | "one" | "all";
 
-export type PlayerSection = "beats" | "ham";
+export type PlayerSection = "beats" | "ham" | "artist";
 
 type PlayerStore = {
   queue: PlayerQueueItem[];
@@ -44,6 +44,7 @@ type PlayerStore = {
   cycleRepeat: () => void;
   toggleShuffle: () => void;
   setShuffle: (value: boolean) => void;
+  loadQueue: (queue: PlayerQueueItem[], section: PlayerSection) => void;
   next: () => void;
   previous: () => void;
   reset: () => void;
@@ -174,6 +175,16 @@ export const usePlayerStore = create<PlayerStore>()(
         }),
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
       setShuffle: (value) => set({ shuffle: value }),
+      loadQueue: (queue, section) =>
+        set((state) => ({
+          queue,
+          section,
+          currentIndex: 0,
+          currentTrack: state.currentTrack && queue.some((q) => q.id === state.currentTrack?.id)
+            ? state.currentTrack
+            : queue[0] ?? null,
+          // isPlaying NOT changed — no auto-start
+        })),
       next: () => {
         const { queue, currentIndex, repeatMode, shuffle } = get();
         if (!queue.length) return;

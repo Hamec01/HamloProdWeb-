@@ -1,4 +1,4 @@
-import type { Artist, Beat, Post, Release, SiteSettings, Track } from "@/types";
+import type { Artist, ArtistPost, Beat, Comment, Post, Release, SiteSettings, Track } from "@/types";
 
 export const siteSettings: SiteSettings = {
   title: "HamloProd",
@@ -232,38 +232,68 @@ export const mockReleases: Release[] = [
 export const mockArtists: Artist[] = [
   {
     id: "artist-001",
+    slug: "mira-vale",
     artistName: "Mira Vale",
     trackTitle: "Downstairs Smoke",
     beatTitle: "Lost City Lights",
+    bio: "Независимый исполнитель из Москвы. Смешивает атмосферный хип-хоп с современными электронными текстурами.",
+    photoUrl: null,
+    photoPath: null,
     coverPalette: "from-slate-700 via-zinc-900 to-black",
     spotifyUrl: "https://open.spotify.com/",
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
+    vkUrl: "",
+    telegramUrl: "",
+    yandexMusicUrl: "",
+    tidalUrl: "",
+    soundcloudUrl: "",
     createdAt: "2026-04-01T10:00:00.000Z",
   },
   {
     id: "artist-002",
+    slug: "kane-mercer",
     artistName: "Kane Mercer",
     trackTitle: "Floodlights",
     beatTitle: "Ruthless Night",
+    bio: "Продюсер и лирик. Тёмный саунд, острые тексты.",
+    photoUrl: null,
+    photoPath: null,
     coverPalette: "from-red-950 via-zinc-900 to-black",
     spotifyUrl: "https://open.spotify.com/",
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
+    vkUrl: "",
+    telegramUrl: "",
+    yandexMusicUrl: "",
+    tidalUrl: "",
+    soundcloudUrl: "",
     createdAt: "2026-04-02T10:00:00.000Z",
   },
   {
     id: "artist-003",
+    slug: "nina-grey",
     artistName: "Nina Grey",
     trackTitle: "Snow Under Neon",
     beatTitle: "Cold Memories",
+    bio: "Меланхоличный R&B и атмосферный поп на стыке жанров.",
+    photoUrl: null,
+    photoPath: null,
     coverPalette: "from-stone-500 via-zinc-800 to-black",
     spotifyUrl: "https://open.spotify.com/",
     appleMusicUrl: "https://music.apple.com/",
     youtubeUrl: "https://youtube.com/",
+    vkUrl: "",
+    telegramUrl: "",
+    yandexMusicUrl: "",
+    tidalUrl: "",
+    soundcloudUrl: "",
     createdAt: "2026-04-03T10:00:00.000Z",
   },
 ];
+
+export const mockArtistPosts: ArtistPost[] = [];
+export const mockComments: Comment[] = [];
 
 export const mockPosts: Post[] = [
   {

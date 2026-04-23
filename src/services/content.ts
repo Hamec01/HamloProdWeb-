@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { mockArtists, mockBeats, mockPosts, mockReleases, mockTracks, siteSettings } from "@/services/mock-data";
-import type { Artist, Beat, Post, Release, ReleaseTrack, SiteSettings, Track, TrackDownloadLog } from "@/types";
+import { mockArtistPosts, mockArtists, mockBeats, mockComments, mockPosts, mockReleases, mockTracks, siteSettings } from "@/services/mock-data";
+import type { Artist, ArtistPost, Beat, Comment, Post, Release, ReleaseTrack, SiteSettings, Track, TrackDownloadLog } from "@/types";
 
 type BeatRow = {
   id: string;
@@ -103,13 +103,48 @@ type TrackDownloadRow = {
 
 type ArtistRow = {
   id: string;
+  slug: string;
   artist_name: string;
   track_title: string;
   beat_title: string;
+  bio: string;
+  photo_url: string | null;
+  photo_path: string | null;
   cover_palette: string;
   spotify_url: string;
   apple_music_url: string;
   youtube_url: string;
+  vk_url: string;
+  telegram_url: string;
+  yandex_music_url: string;
+  tidal_url: string;
+  soundcloud_url: string;
+  created_at: string;
+};
+
+type ArtistPostRow = {
+  id: string;
+  artist_id: string;
+  author_id: string | null;
+  title: string;
+  body: string;
+  image_url: string | null;
+  image_path: string | null;
+  audio_url: string | null;
+  audio_path: string | null;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type CommentRow = {
+  id: string;
+  entity: Comment["entity"];
+  content_id: string;
+  author_id: string;
+  display_name: string;
+  body: string;
+  stars: number | null;
   created_at: string;
 };
 
@@ -257,13 +292,52 @@ function mapTrackDownload(row: TrackDownloadRow): TrackDownloadLog {
 function mapArtist(row: ArtistRow): Artist {
   return {
     id: row.id,
+    slug: row.slug,
     artistName: row.artist_name,
     trackTitle: row.track_title,
     beatTitle: row.beat_title,
+    bio: row.bio,
+    photoUrl: row.photo_url,
+    photoPath: row.photo_path,
     coverPalette: row.cover_palette,
     spotifyUrl: row.spotify_url,
     appleMusicUrl: row.apple_music_url,
     youtubeUrl: row.youtube_url,
+    vkUrl: row.vk_url,
+    telegramUrl: row.telegram_url,
+    yandexMusicUrl: row.yandex_music_url,
+    tidalUrl: row.tidal_url,
+    soundcloudUrl: row.soundcloud_url,
+    createdAt: row.created_at,
+  };
+}
+
+function mapArtistPost(row: ArtistPostRow): ArtistPost {
+  return {
+    id: row.id,
+    artistId: row.artist_id,
+    authorId: row.author_id,
+    title: row.title,
+    body: row.body,
+    imageUrl: row.image_url,
+    imagePath: row.image_path,
+    audioUrl: row.audio_url,
+    audioPath: row.audio_path,
+    published: row.published,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapComment(row: CommentRow): Comment {
+  return {
+    id: row.id,
+    entity: row.entity,
+    contentId: row.content_id,
+    authorId: row.author_id,
+    displayName: row.display_name,
+    body: row.body,
+    stars: row.stars,
     createdAt: row.created_at,
   };
 }
@@ -481,14 +555,14 @@ export async function getAdminReleases() {
   }, mockReleases);
 }
 
+const ARTIST_SELECT = "id, slug, artist_name, track_title, beat_title, bio, photo_url, photo_path, cover_palette, spotify_url, apple_music_url, youtube_url, vk_url, telegram_url, yandex_music_url, tidal_url, soundcloud_url, created_at";
+
 export async function getArtists() {
   return withSupabaseFallback(async () => {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("artists")
-      .select(
-        "id, artist_name, track_title, beat_title, cover_palette, spotify_url, apple_music_url, youtube_url, created_at",
-      )
+      .select(ARTIST_SELECT)
       .order("created_at", { ascending: false })
       .returns<ArtistRow[]>();
 
@@ -498,6 +572,70 @@ export async function getArtists() {
 
     return data.map(mapArtist);
   }, mockArtists);
+}
+
+export async function getArtistBySlug(slug: string): Promise<Artist | null> {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("artists")
+      .select(ARTIST_SELECT)
+      .eq("slug", slug)
+      .maybeSingle<ArtistRow>();
+
+    if (error || !data) return null;
+    return mapArtist(data);
+  }, mockArtists.find((a) => a.slug === slug) ?? null);
+}
+
+export async function getArtistReleases(artistId: string, artistName: string): Promise<Release[]> {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("releases")
+      .select(
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+      )
+      .or(`artist_id.eq.${artistId},artist_name.eq.${artistName}`)
+      .eq("published", true)
+      .order("release_date", { ascending: false })
+      .returns<ReleaseRow[]>();
+
+    if (error || !data) return [];
+    return data.map(mapRelease);
+  }, mockReleases.filter((r) => r.artistName === artistName));
+}
+
+export async function getArtistPosts(artistId: string): Promise<ArtistPost[]> {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("artist_posts")
+      .select("id, artist_id, author_id, title, body, image_url, image_path, audio_url, audio_path, published, created_at, updated_at")
+      .eq("artist_id", artistId)
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .returns<ArtistPostRow[]>();
+
+    if (error || !data) return [];
+    return data.map(mapArtistPost);
+  }, mockArtistPosts.filter((p) => p.artistId === artistId));
+}
+
+export async function getComments(entity: Comment["entity"], contentId: string): Promise<Comment[]> {
+  return withSupabaseFallback(async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("comments")
+      .select("id, entity, content_id, author_id, display_name, body, stars, created_at")
+      .eq("entity", entity)
+      .eq("content_id", contentId)
+      .order("created_at", { ascending: false })
+      .returns<CommentRow[]>();
+
+    if (error || !data) return [];
+    return data.map(mapComment);
+  }, mockComments.filter((c) => c.entity === entity && c.contentId === contentId));
 }
 
 export async function getPosts(section?: Post["section"]) {
@@ -578,9 +716,7 @@ export async function getAdminArtists() {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("artists")
-      .select(
-        "id, artist_name, track_title, beat_title, cover_palette, spotify_url, apple_music_url, youtube_url, created_at",
-      )
+      .select(ARTIST_SELECT)
       .order("created_at", { ascending: false })
       .returns<ArtistRow[]>();
 
