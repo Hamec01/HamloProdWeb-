@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dice5, Heart, Pause, Play, Repeat, Repeat1, Shuffle, SkipBack, SkipForward, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TrackFavoriteButton } from "@/components/tracks/track-favorite-button";
 import { fetchTrackStreamUrl } from "@/lib/audio/fetch-track-stream-url";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { usePlayerStore } from "@/store/player-store";
@@ -72,32 +73,62 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const setShuffle = usePlayerStore((state) => state.setShuffle);
   const playRandom = usePlayerStore((state) => state.playRandom);
   const playFavorites = usePlayerStore((state) => state.playFavorites);
+  const setFavoritesQueue = usePlayerStore((state) => state.setFavoritesQueue);
   const favoritesQueue = usePlayerStore((state) => state.favoritesQueue);
   const reset = usePlayerStore((state) => state.reset);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isResolvingQueue, setIsResolvingQueue] = useState(false);
+  const [favoriteTrackIds, setFavoriteTrackIds] = useState<string[]>([]);
+  const [isFavoritesAuthenticated, setIsFavoritesAuthenticated] = useState(false);
   const tagAudioUrl = process.env.NEXT_PUBLIC_BEAT_TAG_URL ?? "";
   const tagIntervalSeconds = Number(process.env.NEXT_PUBLIC_BEAT_TAG_INTERVAL_SECONDS ?? "60") || 60;
   const t = dictionary[locale];
 
-  // Load favorites on mount
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const res = await fetch("/api/favorites");
-        if (res.ok) {
-          await res.json() as { favorites?: string[] };
-          // Store favorite track IDs in state (just IDs for now)
-          // We'll load full track data when needed
-        }
-      } catch {
-        // Ignore errors
+  const refreshFavorites = useCallback(async () => {
+    try {
+      const res = await fetch("/api/favorites", { cache: "no-store" });
+      if (!res.ok) {
+        setFavoriteTrackIds([]);
+        setIsFavoritesAuthenticated(false);
+        return;
       }
+
+      const data = (await res.json()) as { favorites?: string[]; isAuthenticated?: boolean };
+      setFavoriteTrackIds(Array.isArray(data.favorites) ? data.favorites : []);
+      setIsFavoritesAuthenticated(Boolean(data.isAuthenticated));
+    } catch {
+      setFavoriteTrackIds([]);
+      setIsFavoritesAuthenticated(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFavoritesChanged = () => {
+      void refreshFavorites();
     };
 
-    void loadFavorites();
-  }, []);
+    void refreshFavorites();
+    window.addEventListener("favorites:changed", handleFavoritesChanged);
+
+    return () => {
+      window.removeEventListener("favorites:changed", handleFavoritesChanged);
+    };
+  }, [refreshFavorites]);
+
+  useEffect(() => {
+    const sourceQueue = sectionQueue.length ? sectionQueue : queue;
+    if (!sourceQueue.length || !favoriteTrackIds.length) {
+      setFavoritesQueue([]);
+      return;
+    }
+
+    const trackFavorites = sourceQueue.filter(
+      (item) => item.kind === "track" && favoriteTrackIds.includes(item.id),
+    );
+    const uniqueById = Array.from(new Map(trackFavorites.map((item) => [item.id, item])).values());
+    setFavoritesQueue(uniqueById);
+  }, [favoriteTrackIds, queue, sectionQueue, setFavoritesQueue]);
 
   useEffect(() => {
     if (!currentTrack || currentTrack.kind !== "track" || currentTrack.previewUrl || !queue.length) {
@@ -324,31 +355,39 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] px-2 pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur sm:px-0">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] px-1 pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur sm:px-0">
       <audio ref={audioRef} preload="none" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
-      <div className="mx-auto grid max-w-7xl gap-4 rounded-t-2xl border-x border-[var(--color-line)] bg-[rgba(12,11,9,0.98)] px-4 py-4 shadow-[0_-16px_40px_rgba(0,0,0,0.35)] md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4 md:rounded-none md:border-x-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none">
+      <div className="mx-auto grid max-w-7xl gap-3 rounded-t-xl border-x border-[var(--color-line)] bg-[rgba(12,11,9,0.98)] px-3 py-2 shadow-[0_-16px_40px_rgba(0,0,0,0.35)] md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4 md:rounded-none md:border-x-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none">
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-paper-400)]">{t.stickyPlayer}</p>
           {currentTrack ? (
             currentTrack.kind === "track" ? (
-              <p className="truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-2xl">
-                {currentTrack.title}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="min-w-0 flex-1 truncate font-sans text-lg uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-xl">
+                  {currentTrack.title}
+                </p>
+                <TrackFavoriteButton
+                  trackId={currentTrack.id}
+                  isAuthenticated={isFavoritesAuthenticated}
+                  locale={locale}
+                  size="small"
+                />
+              </div>
             ) : (
               <Link
                 href={`/beats/${currentTrack.slug}`}
-                className="block truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)] sm:text-2xl"
+                className="block truncate font-sans text-lg uppercase tracking-[0.05em] text-[var(--color-paper-100)] transition-colors hover:text-[var(--color-gold)] sm:text-xl"
               >
                 {currentTrack.title}
               </Link>
             )
           ) : (
-            <p className="truncate font-sans text-xl uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-2xl">
+            <p className="truncate font-sans text-lg uppercase tracking-[0.05em] text-[var(--color-paper-100)] sm:text-xl">
               {t.playerReady}
             </p>
           )}
-          <p className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+          <p className="truncate text-[10px] uppercase tracking-[0.15em] text-[var(--color-paper-200)]">
             {currentTrack
               ? currentTrack.kind === "track"
                 ? currentTrack.artistName ?? "HaM"
@@ -375,7 +414,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] items-center gap-2 md:flex md:flex-wrap md:justify-self-end">
+        <div className="flex flex-wrap items-center gap-2 md:justify-self-end">
           {/* Shuffle */}
           <button
             type="button"
@@ -383,47 +422,47 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             disabled={queue.length <= 1}
             aria-label="Shuffle"
             title={shuffle ? "Перемешать: вкл" : "Перемешать: выкл"}
-            className={`flex h-11 w-full items-center justify-center border transition-colors md:h-9 md:w-9 disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-9 w-9 items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${shuffle ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             <Shuffle size={12} />
           </button>
 
-          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
+          <Button className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipBack size={14} />} onClick={previous} aria-label="Previous beat" disabled={!canMoveQueue} />
           <Button
-            className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4"
+            className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4"
             variant={currentTrack ? "primary" : "ghost"}
             icon={isResolvingQueue ? <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
             onClick={handlePrimaryAction}
             disabled={isResolvingQueue || (!currentTrack && !(pathSection === "ham" && queue.length > 0))}
           >
-            {isResolvingQueue ? "..." : isPlaying ? t.pause : t.play}
+            <span className="hidden md:inline">{isResolvingQueue ? "..." : isPlaying ? t.pause : t.play}</span>
           </Button>
-          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
-            {t.stop}
+          <Button className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<Square size={14} />} onClick={stop} aria-label="Stop beat" disabled={!currentTrack}>
+            <span className="hidden md:inline">{t.stop}</span>
           </Button>
-          <Button className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
+          <Button className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4" variant="ghost" icon={<SkipForward size={14} />} onClick={next} aria-label="Next beat" disabled={!canMoveQueue} />
 
           <Button
-            className="h-11 w-full px-0 md:h-auto md:w-auto md:px-4"
+            className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4"
             variant="ghost"
             icon={<Dice5 size={14} />}
             onClick={handleRandomAll}
             disabled={(sectionQueue.length ? sectionQueue.length : queue.length) === 0}
             title={t.randomAllFromSection}
           >
-            {pathSection === "ham" ? t.playRandomTracks : t.playRandom}
+            <span className="hidden md:inline">{pathSection === "ham" ? t.playRandomTracks : t.playRandom}</span>
           </Button>
 
           {/* Play Favorites */}
           <Button
-            className={`h-11 w-full px-0 md:h-auto md:w-auto md:px-4`}
-            variant={favoritesQueue.length > 0 ? "ghost" : "ghost"}
+            className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4"
+            variant="ghost"
             icon={<Heart size={14} />}
             onClick={() => playFavorites(favoritesQueue)}
             disabled={favoritesQueue.length === 0}
             title={locale === "ru" ? "Воспроизвести понравившееся" : "Play Favorites"}
           >
-            {locale === "ru" ? "Понравившееся" : "Favorites"}
+            <span className="hidden md:inline">{locale === "ru" ? "Понравившееся" : "Favorites"}</span>
           </Button>
 
           {/* Repeat */}
@@ -432,7 +471,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
             onClick={cycleRepeat}
             aria-label={`Повтор: ${repeatMode}`}
             title={repeatMode === "none" ? "Повтор: выкл" : repeatMode === "all" ? "Повтор: все" : "Повтор: один трек"}
-            className={`flex h-11 w-full items-center justify-center border transition-colors md:h-9 md:w-9 ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
+            className={`flex h-9 w-9 items-center justify-center border transition-colors ${repeatMode !== "none" ? "border-amber-500 text-amber-500" : "border-[var(--color-line)] text-[var(--color-paper-400)] hover:border-[var(--color-paper-200)] hover:text-[var(--color-paper-100)]"}`}
           >
             {repeatMode === "one" ? <Repeat1 size={12} /> : <Repeat size={12} />}
           </button>

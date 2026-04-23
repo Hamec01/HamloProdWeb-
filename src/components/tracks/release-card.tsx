@@ -206,9 +206,15 @@ export function ReleaseCard({
                       <span className="shrink-0 w-5 text-right text-xs text-[var(--color-paper-400)]">
                         {track.trackNumber}.
                       </span>
-                      <span className="flex-1 truncate text-sm text-[var(--color-paper-200)]">{track.title}</span>
+                      <Link
+                        href={`/${locale}/tracks/${release.slug}?track=${encodeURIComponent(track.slug)}&trackId=${track.id}`}
+                        className="flex-1 truncate text-sm text-[var(--color-paper-200)] transition-colors hover:text-amber-300"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {track.title}
+                      </Link>
                       <PlayTrackButton trackId={track.id} trackQueue={queue} locale={locale} size="small" />
-                      <TrackShareButton trackSlug={track.slug} releaseSlug={release.slug} locale={locale} size="small" />
+                      <TrackShareButton trackSlug={track.slug} trackId={track.id} releaseSlug={release.slug} locale={locale} size="small" />
                       <TrackFavoriteButton trackId={track.id} isAuthenticated={isAuthenticated} locale={locale} size="small" />
                       <TrackDownloadButton
                         trackId={track.id}

@@ -46,7 +46,13 @@ export function TrackFavoriteButton({
       });
 
       if (res.ok) {
-        setIsFavorite(!isFavorite);
+        const nextIsFavorite = !isFavorite;
+        setIsFavorite(nextIsFavorite);
+        window.dispatchEvent(
+          new CustomEvent("favorites:changed", {
+            detail: { trackId, isFavorite: nextIsFavorite },
+          }),
+        );
       }
     } finally {
       setIsLoading(false);

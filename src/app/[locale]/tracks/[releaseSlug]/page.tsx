@@ -10,17 +10,14 @@ import { PlayTrackButton } from "@/components/tracks/play-track-button";
 
 type ReleaseTrackPageParams = {
   params: Promise<{ locale: string; releaseSlug: string }>;
-  searchParams: Promise<{ track?: string }>;
+  searchParams: Promise<{ track?: string; trackId?: string }>;
 };
 
 export default async function ReleaseTrackPage({ params, searchParams }: ReleaseTrackPageParams) {
   const { locale: rawLocale, releaseSlug } = await params;
-  const { track: trackSlug } = await searchParams;
+  const { track: trackSlug, trackId } = await searchParams;
 
   const locale = normalizeLocale(rawLocale);
-  if (!trackSlug) {
-    notFound();
-  }
 
   const releases = await getReleases();
   const release = releases.find((r) => r.slug === releaseSlug) as Release | undefined;
@@ -29,7 +26,10 @@ export default async function ReleaseTrackPage({ params, searchParams }: Release
     notFound();
   }
 
-  const track = release.tracks.find((t) => t.slug === trackSlug);
+  const normalizedTrackSlug = trackSlug ? decodeURIComponent(trackSlug) : null;
+  const track = release.tracks.find((t) => t.id === trackId)
+    ?? release.tracks.find((t) => t.slug === normalizedTrackSlug)
+    ?? release.tracks[0];
 
   if (!track) {
     notFound();
@@ -136,7 +136,7 @@ export default async function ReleaseTrackPage({ params, searchParams }: Release
                   {tr.trackNumber}.
                 </span>
                 <Link
-                  href={`/${locale}/tracks/${release.slug}?track=${tr.slug}`}
+                  href={`/${locale}/tracks/${release.slug}?track=${encodeURIComponent(tr.slug)}&trackId=${tr.id}`}
                   className={`flex-1 truncate text-sm transition-colors ${
                     tr.id === track.id
                       ? "font-semibold text-amber-400"

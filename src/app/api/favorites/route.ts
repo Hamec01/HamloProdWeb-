@@ -5,12 +5,12 @@ import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 export async function GET() {
   if (!hasSupabaseEnv()) {
-    return NextResponse.json({ favorites: [] });
+    return NextResponse.json({ favorites: [], isAuthenticated: false });
   }
 
   const session = await getPublicSessionState();
   if (!session.isAuthenticated || !session.userId) {
-    return NextResponse.json({ favorites: [] });
+    return NextResponse.json({ favorites: [], isAuthenticated: false });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -20,10 +20,10 @@ export async function GET() {
     .eq("user_id", session.userId);
 
   if (error || !data) {
-    return NextResponse.json({ favorites: [] });
+    return NextResponse.json({ favorites: [], isAuthenticated: true });
   }
 
-  return NextResponse.json({ favorites: data.map((f: { track_id: string }) => f.track_id) });
+  return NextResponse.json({ favorites: data.map((f: { track_id: string }) => f.track_id), isAuthenticated: true });
 }
 
 export async function POST(request: Request) {

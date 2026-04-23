@@ -6,11 +6,13 @@ import type { Locale } from "@/lib/i18n";
 
 export function TrackShareButton({
   trackSlug,
+  trackId,
   releaseSlug,
   locale,
   size = "default",
 }: {
   trackSlug: string;
+  trackId?: string;
   releaseSlug: string;
   locale: Locale;
   size?: "default" | "small";
@@ -18,16 +20,39 @@ export function TrackShareButton({
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-    const shareUrl = `${baseUrl}/${locale}/tracks/${releaseSlug}?track=${trackSlug}`;
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const sharePath = `/${locale}/tracks/${releaseSlug}`;
+    const url = new URL(sharePath, window.location.origin);
+    url.searchParams.set("track", trackSlug || "");
+    if (trackId) {
+      url.searchParams.set("trackId", trackId);
+    }
+    const shareUrl = url.toString();
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      if (navigator.share) {
+        await navigator.share({
+          title: locale === "ru" ? "Ссылка на трек" : "Track link",
+          url: shareUrl,
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const input = document.createElement("input");
+        input.value = shareUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+      }
+
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback: show alert
-      alert(shareUrl);
+      window.prompt(locale === "ru" ? "Скопируй ссылку:" : "Copy link:", shareUrl);
     }
   };
 
