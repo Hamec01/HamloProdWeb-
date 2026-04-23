@@ -522,7 +522,7 @@ export async function getReleases() {
     const { data, error } = await supabase
       .from("releases")
       .select(
-        "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
       )
       .eq("published", true)
       .order("featured", { ascending: false })
@@ -543,7 +543,7 @@ export async function getAdminReleases() {
     const { data, error } = await supabase
       .from("releases")
       .select(
-        "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
       )
       .order("featured", { ascending: false })
       .order("created_at", { ascending: false })
@@ -596,9 +596,9 @@ export async function getArtistReleases(artistId: string, artistName: string): P
     const { data, error } = await supabase
       .from("releases")
       .select(
-        "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
+        "id, title, slug, artist_name, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
       )
-      .or(`artist_id.eq.${artistId},artist_name.ilike.%${artistName}%,feat_artist_names.ilike.%${artistName}%`)
+      .or(`artist_id.eq.${artistId},artist_name.ilike.%${artistName}%`)
       .eq("published", true)
       .order("release_date", { ascending: false })
       .returns<ReleaseRow[]>();
