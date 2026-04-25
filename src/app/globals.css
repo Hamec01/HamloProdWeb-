@@ -72,9 +72,9 @@ body {
   color: var(--foreground);
   font-family: var(--font-mono), monospace;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(145, 135, 120, 0.07), transparent 56%),
-    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(55, 50, 43, 0.1), transparent 58%),
-    linear-gradient(180deg, #12110f 0%, #080807 44%, #050505 100%);
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(25, 24, 22, 0.05), transparent 56%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, rgba(12, 11, 10, 0.06), transparent 58%),
+    linear-gradient(180deg, #050505 0%, #020202 44%, #010101 100%);
 }
 
 /* coarse film grain */
@@ -102,7 +102,7 @@ body::after {
   height: 110%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='grain2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.90' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain2)'/%3E%3C/svg%3E");
   background-size: 256px 256px;
-  opacity: 0.12;
+  opacity: 0.05;
   mix-blend-mode: screen;
   animation: grain-shift 0.35s steps(1) infinite;
 }
