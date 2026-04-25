@@ -39,6 +39,7 @@ export const trackFormSchema = z.object({
   appleMusicUrl: optionalUrl,
   youtubeUrl: optionalUrl,
   releaseDate: z.string().min(4),
+  isDemo: z.boolean(),
 });
 
 export type TrackFormValues = z.infer<typeof trackFormSchema>;

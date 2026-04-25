@@ -43,6 +43,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       apple_music_url: values.appleMusicUrl,
       youtube_url: values.youtubeUrl,
       release_date: values.releaseDate,
+      is_demo: values.isDemo,
     })
     .eq("id", id);
 

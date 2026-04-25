@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { PublicHeader } from "@/components/layout/public-header";
+import { AdminQuickPanelServer } from "@/components/layout/admin-quick-panel-server";
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PublicFooter />
+      <AdminQuickPanelServer />
     </div>
   );
 }

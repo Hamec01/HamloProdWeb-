@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { SectorHeader } from "@/components/layout/sector-header";
 import { LocaleRouteSync } from "@/components/layout/locale-route-sync";
+import { AdminQuickPanelServer } from "@/components/layout/admin-quick-panel-server";
 import { normalizeLocale } from "@/lib/market";
 
 export default async function LocaleLayout({
@@ -27,6 +28,7 @@ export default async function LocaleLayout({
         {children}
       </main>
       <PublicFooter />
+      <AdminQuickPanelServer />
     </div>
   );
 }

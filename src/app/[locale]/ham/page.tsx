@@ -4,7 +4,7 @@ import { ReleaseCard } from "@/components/tracks/release-card";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
 import { normalizeLocale, sectorLabels } from "@/lib/market";
-import { getReleases, getSingleTracks } from "@/services/content";
+import { getDemoTracks, getReleases, getSingleTracks } from "@/services/content";
 import type { Release, Track } from "@/types";
 import type { PlayerTrack } from "@/store/player-store";
 
@@ -33,11 +33,6 @@ function toTimestamp(value: string | null | undefined) {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
-function isDemoSingle(track: Track) {
-  const source = `${track.title} ${track.slug}`.toLowerCase();
-  return source.includes("demo");
-}
-
 function sortSinglesNewest(a: Track, b: Track) {
   const releaseDiff = toTimestamp(b.releaseDate) - toTimestamp(a.releaseDate);
   if (releaseDiff !== 0) {
@@ -60,15 +55,16 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
 
-  const [singles, releases, session] = await Promise.all([
+  const [singles, releases, demoTracks, session] = await Promise.all([
     getSingleTracks(),
     getReleases(),
+    getDemoTracks(),
     getPublicSessionState(),
   ]);
 
   const sortedSingles = [...singles].sort(sortSinglesNewest);
-  const demoSingles = sortedSingles.filter(isDemoSingle);
-  const singlesOnly = sortedSingles.filter((track) => !isDemoSingle(track));
+  const singlesOnly = sortedSingles;
+  const demoSingles = [...demoTracks].sort(sortSinglesNewest);
   const sortedReleases = [...releases].sort(sortReleasesNewest);
 
   const latestShowcase = [
@@ -98,7 +94,7 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
   const hasReleases = sortedReleases.length > 0;
   const hamQueueMap = new Map<string, PlayerTrack>();
 
-  for (const track of singles) {
+  for (const track of singlesOnly) {
     hamQueueMap.set(track.id, toHamQueueTrack(track));
   }
 

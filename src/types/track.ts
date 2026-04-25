@@ -13,6 +13,7 @@ export type Track = {
   releaseDate: string;
   releaseId: string | null;
   trackNumber: number | null;
+  isDemo: boolean;
   createdAt: string;
 };
 

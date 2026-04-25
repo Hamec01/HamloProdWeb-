@@ -59,6 +59,7 @@ type TrackRow = {
   release_date: string;
   release_id: string | null;
   track_number: number | null;
+  is_demo: boolean;
   created_at: string;
 };
 
@@ -241,6 +242,7 @@ function mapTrack(row: TrackRow): Track {
     releaseDate: row.release_date,
     releaseId: row.release_id,
     trackNumber: row.track_number,
+    isDemo: row.is_demo ?? false,
     createdAt: row.created_at,
   };
 }
@@ -498,9 +500,10 @@ export async function getTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, is_demo, created_at",
       )
-      .order("release_date", { ascending: false })
+      .order("release_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
       .returns<TrackRow[]>();
 
     if (error || !data) {
@@ -513,7 +516,12 @@ export async function getTracks() {
 
 export async function getSingleTracks() {
   const tracks = await getTracks();
-  return tracks.filter((t) => !t.releaseId);
+  return tracks.filter((t) => !t.releaseId && !t.isDemo);
+}
+
+export async function getDemoTracks() {
+  const tracks = await getTracks();
+  return tracks.filter((t) => t.isDemo);
 }
 
 export async function getReleases() {
@@ -525,7 +533,7 @@ export async function getReleases() {
         "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
       )
       .eq("published", true)
-      .order("featured", { ascending: false })
+      .order("release_date", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .returns<ReleaseRow[]>();
 
@@ -700,8 +708,9 @@ export async function getAdminTracks() {
     const { data, error } = await supabase
       .from("tracks")
       .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, created_at",
+        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, is_demo, created_at",
       )
+      .order("is_demo", { ascending: true })
       .order("release_date", { ascending: false })
       .returns<TrackRow[]>();
 

@@ -23,6 +23,7 @@ const defaultValues: TrackFormValues = {
   appleMusicUrl: "",
   youtubeUrl: "",
   releaseDate: "2026-01-01",
+  isDemo: false,
 };
 
 export function AdminTrackCrudManager({
@@ -55,6 +56,7 @@ export function AdminTrackCrudManager({
       tracks.map((track) => [
         track.title,
         track.artistName,
+        track.isDemo ? "DEMO" : "sgl",
         track.coverImagePath ? "ready" : "palette",
         track.mp3FilePath ? "ready" : "missing",
         track.releaseDate,
@@ -74,6 +76,7 @@ export function AdminTrackCrudManager({
               setValue("appleMusicUrl", track.appleMusicUrl);
               setValue("youtubeUrl", track.youtubeUrl);
               setValue("releaseDate", track.releaseDate);
+              setValue("isDemo", track.isDemo);
               setCoverImageFile(null);
               setMp3File(null);
               setStatusMessage(null);
@@ -321,6 +324,10 @@ export function AdminTrackCrudManager({
             <input {...register("youtubeUrl")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.youtubeUrl ? <span className="text-xs text-[var(--color-alert)]">{errors.youtubeUrl.message}</span> : null}
           </label>
+          <label className="flex cursor-pointer items-center gap-3 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)] md:col-span-2">
+            <input type="checkbox" {...register("isDemo")} className="h-4 w-4 accent-amber-500" />
+            <span>Demo трек (не попадает в основную очередь HaM)</span>
+          </label>
           <div className="md:col-span-2 flex items-center gap-3">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving" : editingTrackId ? "Save Changes" : "Create Track"}
@@ -333,7 +340,7 @@ export function AdminTrackCrudManager({
       <AdminCollectionTable
         title="Existing Tracks"
         description="Релизы подгружаются из Supabase с fallback на mock data, если env ещё не настроены."
-        columns={["Title", "Artist", "Cover", "MP3", "Release Date", "Actions"]}
+        columns={["Title", "Artist", "Type", "Cover", "MP3", "Release Date", "Actions"]}
         rows={rows}
       />
 

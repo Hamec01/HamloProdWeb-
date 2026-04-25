@@ -40,6 +40,7 @@ export async function POST(request: Request) {
     apple_music_url: values.appleMusicUrl,
     youtube_url: values.youtubeUrl,
     release_date: values.releaseDate,
+    is_demo: values.isDemo,
   });
 
   if (error) {
