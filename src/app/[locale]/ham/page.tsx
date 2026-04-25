@@ -89,7 +89,7 @@ export default async function SectorHamPage({ params }: { params: Promise<{ loca
   const hamQueue = Array.from(hamQueueMap.values());
 
   return (
-    <section className="space-y-16">
+    <section className="ham-dark-surface space-y-16 rounded-2xl p-4 md:p-6">
       <HamPlayerQueueSync queue={hamQueue} />
       <SectionHeading
         eyebrow={sectorLabels[locale].ham}

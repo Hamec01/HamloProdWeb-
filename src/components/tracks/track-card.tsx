@@ -34,11 +34,11 @@ export function TrackCard({
       />
       {track.coverImageUrl ? (
         <div
-          className="case-artwork h-44"
+          className="h-56 w-full bg-cover bg-center"
           style={{ backgroundImage: `url(${track.coverImageUrl})` }}
         />
       ) : (
-        <div className={`h-44 border border-[var(--color-line)] bg-gradient-to-br ${track.coverPalette}`} />
+        <div className={`h-56 w-full bg-gradient-to-br ${track.coverPalette}`} />
       )}
       <div className="mt-4 space-y-2">
         <p className="text-xs uppercase tracking-[0.22em] text-[var(--color-paper-400)]">{t.release} / {track.releaseDate}</p>
