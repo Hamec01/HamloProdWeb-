@@ -15,7 +15,7 @@ export async function PublicHeader() {
   ];
 
   return (
-    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(12,11,9,0.92)] backdrop-blur">
+    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(0,0,0,0.985)] backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
         <Link href={`/${locale}`} className="flex items-center">
           <Image
