@@ -30,6 +30,11 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes ham-showcase-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 @keyframes grain-shift {
   0%   { background-position: 0 0; }
   20%  { background-position: 37px -53px; }
