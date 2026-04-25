@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
 import { PlayTrackButton, type TrackQueueItem } from "@/components/tracks/play-track-button";
+import { TrackCardInlineEditor } from "@/components/tracks/track-card-inline-editor";
 import { dictionary, type Locale } from "@/lib/i18n";
 import type { Track } from "@/types";
 
@@ -26,7 +27,11 @@ export function TrackCard({
   }));
 
   return (
-    <article className="case-panel overflow-hidden p-4">
+    <article className="case-panel relative overflow-hidden p-4">
+      <TrackCardInlineEditor
+        track={track}
+        isAuthenticated={isAuthenticated}
+      />
       {track.coverImageUrl ? (
         <div
           className="case-artwork h-44"
