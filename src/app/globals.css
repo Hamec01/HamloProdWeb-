@@ -223,7 +223,7 @@ button {
 
 .ham-dark-surface {
   position: relative;
-  background: #040404;
+  background: #010101;
   box-shadow: inset 0 0 0 1px rgba(235, 225, 210, 0.05);
 }
 
@@ -232,10 +232,7 @@ button {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.03), transparent 24%),
-    radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.025), transparent 28%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.42));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.58));
 }
 
 .ham-dark-surface > * {
