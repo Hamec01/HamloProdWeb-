@@ -165,6 +165,7 @@ export const mockTracks: Track[] = [
     releaseDate: "2025-11-14",
     releaseId: null,
     trackNumber: null,
+    isDemo: false,
     createdAt: "2026-04-01T10:00:00.000Z",
   },
   {
@@ -182,6 +183,7 @@ export const mockTracks: Track[] = [
     releaseDate: "2025-09-02",
     releaseId: "release-001",
     trackNumber: 1,
+    isDemo: false,
     createdAt: "2026-04-02T10:00:00.000Z",
   },
   {
@@ -199,6 +201,7 @@ export const mockTracks: Track[] = [
     releaseDate: "2024-12-20",
     releaseId: "release-001",
     trackNumber: 2,
+    isDemo: false,
     createdAt: "2026-04-03T10:00:00.000Z",
   },
 ];
