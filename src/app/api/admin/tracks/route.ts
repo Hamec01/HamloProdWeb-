@@ -9,6 +9,14 @@ function unauthorizedResponse(message: string, status = 401) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function revalidateTrackPages() {
+  revalidatePath("/tracks");
+  revalidatePath("/ru/tracks");
+  revalidatePath("/en/tracks");
+  revalidatePath("/ru/ham");
+  revalidatePath("/en/ham");
+}
+
 export async function POST(request: Request) {
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);
@@ -47,7 +55,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  revalidatePath("/tracks");
+  revalidateTrackPages();
   revalidatePath("/admin/tracks");
 
   return NextResponse.json({ ok: true });
