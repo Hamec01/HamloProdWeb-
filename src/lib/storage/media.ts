@@ -9,6 +9,17 @@ function sanitizeFileNameSegment(segment: string) {
   return segment.toLowerCase().replace(/[^a-z0-9.-]+/g, "-");
 }
 
+export function buildBeatPreviewStoragePath(recordKey: string, fileName: string) {
+  const safeRecordKey = sanitizeFileNameSegment(recordKey);
+  const lastDotIndex = fileName.lastIndexOf(".");
+  const hasExtension = lastDotIndex > -1;
+  const extension = hasExtension ? fileName.slice(lastDotIndex).toLowerCase() : "";
+  const baseName = hasExtension ? fileName.slice(0, lastDotIndex) : fileName;
+  const safeBaseName = sanitizeFileNameSegment(baseName);
+
+  return `beats/${safeRecordKey}/${Date.now()}-${safeBaseName}${extension}`;
+}
+
 export function buildStoragePath(recordSlug: string, kind: string, fileName: string) {
   const lastDotIndex = fileName.lastIndexOf(".");
   const hasExtension = lastDotIndex > -1;

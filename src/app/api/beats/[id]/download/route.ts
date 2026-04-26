@@ -29,7 +29,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     .maybeSingle<{
       id: string;
       title: string;
-      preview_url: string;
+      preview_url: string | null;
       preview_storage_path: string | null;
       available_for_download: boolean;
     }>();
@@ -57,6 +57,10 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   }
 
   if (!beat.preview_storage_path) {
+    if (!beat.preview_url) {
+      return errorResponse("Preview file is missing.", 404);
+    }
+
     return NextResponse.json({ url: beat.preview_url, format: "mp3" });
   }
 

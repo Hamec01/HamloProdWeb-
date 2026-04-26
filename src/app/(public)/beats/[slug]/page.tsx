@@ -70,6 +70,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
+  const buyLicenseHref = locale === "ru" ? "https://t.me/Andrei91S" : `/checkout/${beat.slug}`;
 
   return (
     <section className="space-y-8">
@@ -129,7 +130,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href={`/checkout/${beat.slug}`}
+                href={buyLicenseHref}
                 className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
               >
                 {t.buyLicense}

@@ -10,6 +10,7 @@ import type { Beat } from "@/types";
 function toPlayerBeat(beat: Beat): PlayerTrack {
   return {
     ...beat,
+    previewUrl: beat.previewUrl ?? "",
     kind: "beat",
   };
 }

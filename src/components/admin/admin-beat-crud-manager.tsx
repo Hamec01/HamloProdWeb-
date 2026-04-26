@@ -13,11 +13,18 @@ import {
   BEAT_DOWNLOADS_BUCKET,
   BEAT_PREVIEWS_BUCKET,
   MEDIA_IMAGES_BUCKET,
+  buildBeatPreviewStoragePath,
   buildStoragePath,
-  getPendingUploadUrl,
 } from "@/lib/storage/media";
 import { BEAT_GENRES, BEAT_MOODS, BEAT_SUBSTYLES, getGenreLabel } from "@/lib/beats-taxonomy";
-import { beatFormSchema, type BeatFormValues } from "@/lib/validations/beat";
+import {
+  beatFormSchema,
+  PREVIEW_ALLOWED_EXTENSIONS,
+  PREVIEW_ALLOWED_MIME_TYPES,
+  PREVIEW_MAX_SIZE_BYTES,
+  type BeatFormValues,
+} from "@/lib/validations/beat";
+import { hasAllowedPreviewExtension } from "@/lib/validations/preview-audio";
 import type { Beat } from "@/types";
 
 const defaultValues: BeatFormValues = {
@@ -27,8 +34,11 @@ const defaultValues: BeatFormValues = {
   coverPalette: "from-stone-700 via-stone-900 to-zinc-950",
   coverImageUrl: null,
   coverImagePath: null,
-  previewUrl: "",
+  previewUrl: null,
   previewStoragePath: null,
+  previewFileName: null,
+  previewMimeType: null,
+  previewSizeBytes: null,
   wavFilePath: null,
   zipFilePath: null,
   genre: "boombap",
@@ -75,6 +85,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
   }, [selectedGenre, setValue, substyleOptions, watch]);
 
   const modeLabel = editingBeatId ? "Edit Beat" : "Create Beat";
+  const activeBeat = editingBeatId ? beats.find((beat) => beat.id === editingBeatId) ?? null : null;
 
   const rows = useMemo(
     () =>
@@ -102,6 +113,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("coverImagePath", beat.coverImagePath);
               setValue("previewUrl", beat.previewUrl);
               setValue("previewStoragePath", beat.previewStoragePath);
+              setValue("previewFileName", beat.previewFileName ?? null);
+              setValue("previewMimeType", beat.previewMimeType ?? null);
+              setValue("previewSizeBytes", beat.previewSizeBytes ?? null);
               setValue("wavFilePath", beat.wavFilePath);
               setValue("zipFilePath", beat.zipFilePath);
               setValue("genre", beat.genre);
@@ -244,7 +258,20 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               }
 
               if (previewFile) {
-                const previewPath = buildStoragePath(values.slug, "preview", previewFile.name);
+                const hasAllowedMimeType = PREVIEW_ALLOWED_MIME_TYPES.includes(previewFile.type as (typeof PREVIEW_ALLOWED_MIME_TYPES)[number]);
+                const hasAllowedExtension = hasAllowedPreviewExtension(previewFile.name);
+
+                if (!hasAllowedMimeType || !hasAllowedExtension) {
+                  setStatusMessage("Preview file must be MP3, WAV, or M4A.");
+                  return;
+                }
+
+                if (previewFile.size > PREVIEW_MAX_SIZE_BYTES) {
+                  setStatusMessage("Preview file is too large. Max size is 20 MB.");
+                  return;
+                }
+
+                const previewPath = buildBeatPreviewStoragePath(editingBeatId ?? values.slug, previewFile.name);
                 const { error: previewUploadError } = await supabase.storage.from(BEAT_PREVIEWS_BUCKET).upload(previewPath, previewFile, {
                   upsert: true,
                   contentType: previewFile.type || undefined,
@@ -258,6 +285,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
                 const { data: publicPreview } = supabase.storage.from(BEAT_PREVIEWS_BUCKET).getPublicUrl(previewPath);
                 nextValues.previewUrl = publicPreview.publicUrl;
                 nextValues.previewStoragePath = previewPath;
+                nextValues.previewFileName = previewFile.name;
+                nextValues.previewMimeType = previewFile.type || "audio/mpeg";
+                nextValues.previewSizeBytes = previewFile.size;
               }
 
               if (wavFile) {
@@ -325,6 +355,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
           <input type="hidden" {...register("coverImageUrl")} />
           <input type="hidden" {...register("coverImagePath")} />
           <input type="hidden" {...register("previewStoragePath")} />
+          <input type="hidden" {...register("previewFileName")} />
+          <input type="hidden" {...register("previewMimeType")} />
+          <input type="hidden" {...register("previewSizeBytes")} />
           <input type="hidden" {...register("wavFilePath")} />
           <input type="hidden" {...register("zipFilePath")} />
 
@@ -347,6 +380,9 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <span>Preview URL</span>
             <input {...register("previewUrl")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.previewUrl ? <span className="text-xs text-[var(--color-alert)]">{errors.previewUrl.message}</span> : null}
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              Optional public HTTPS URL. If you upload a preview file below, this field is filled automatically.
+            </span>
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Cover Image</span>
@@ -356,9 +392,6 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
                 setCoverImageFile(file);
-                if (file) {
-                  setValue("coverImageUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
-                }
               }}
               className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
             />
@@ -374,12 +407,29 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <span>Preview File</span>
             <input
               type="file"
-              accept="audio/*"
+              accept=".mp3,audio/mpeg,audio/mp3,.wav,audio/wav,.m4a,audio/mp4,audio/x-m4a"
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
                 setPreviewFile(file);
                 if (file) {
-                  setValue("previewUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
+                  const hasAllowedMimeType = PREVIEW_ALLOWED_MIME_TYPES.includes(file.type as (typeof PREVIEW_ALLOWED_MIME_TYPES)[number]);
+                  const hasAllowedExtension = hasAllowedPreviewExtension(file.name);
+
+                  if (!hasAllowedMimeType || !hasAllowedExtension) {
+                    setStatusMessage("Поддерживаются MP3/WAV/M4A. Предпочтительно MP3.");
+                    setPreviewFile(null);
+                    return;
+                  }
+
+                  if (file.size > PREVIEW_MAX_SIZE_BYTES) {
+                    setStatusMessage("Файл превью слишком большой. Лимит 20 MB.");
+                    setPreviewFile(null);
+                    return;
+                  }
+
+                  setValue("previewFileName", file.name, { shouldValidate: true, shouldDirty: true });
+                  setValue("previewMimeType", file.type || "audio/mpeg", { shouldValidate: true, shouldDirty: true });
+                  setValue("previewSizeBytes", file.size, { shouldValidate: true, shouldDirty: true });
                   setStatusMessage("Анализирую аудио...");
                   void analyzeAudioFile(file)
                     .then((analysis) => {
@@ -403,10 +453,23 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
               {previewFile
                 ? `Selected: ${previewFile.name}`
-                : editingBeatId && beats.find((beat) => beat.id === editingBeatId)?.previewStoragePath
+                : activeBeat?.previewStoragePath
                   ? "Stored in Supabase previews bucket."
-                  : "Upload the audio file that the public player should stream."}
+                  : "Upload optional preview audio for player and Telegram."}
             </span>
+            <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">
+              Supported: {PREVIEW_ALLOWED_EXTENSIONS.join(", ")} (max {Math.floor(PREVIEW_MAX_SIZE_BYTES / (1024 * 1024))} MB).
+            </span>
+            {errors.previewMimeType ? <span className="text-xs text-[var(--color-alert)]">{errors.previewMimeType.message}</span> : null}
+            {errors.previewSizeBytes ? <span className="text-xs text-[var(--color-alert)]">{errors.previewSizeBytes.message}</span> : null}
+            {activeBeat?.previewUrl ? (
+              <div className="space-y-2 pt-2">
+                <audio controls preload="none" src={activeBeat.previewUrl} className="w-full" />
+                <a href={activeBeat.previewUrl} target="_blank" rel="noreferrer" className="text-xs normal-case tracking-normal text-[var(--color-paper-400)] underline underline-offset-4">
+                  Open current preview URL
+                </a>
+              </div>
+            ) : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Cover Palette</span>

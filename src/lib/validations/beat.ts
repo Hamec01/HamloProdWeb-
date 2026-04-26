@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const PREVIEW_MAX_SIZE_BYTES = 20 * 1024 * 1024;
+export const PREVIEW_ALLOWED_MIME_TYPES = ["audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav", "audio/mp4", "audio/x-m4a"] as const;
+export const PREVIEW_ALLOWED_EXTENSIONS = [".mp3", ".wav", ".m4a"] as const;
+
 const nullableText = z.string().trim().nullable().transform((value) => {
   if (!value) {
     return null;
@@ -30,8 +34,22 @@ export const beatFormSchema = z.object({
   coverPalette: z.string().min(2),
   coverImageUrl: nullableUrl,
   coverImagePath: nullableText,
-  previewUrl: z.url(),
+  previewUrl: nullableUrl,
   previewStoragePath: nullableText,
+  previewFileName: nullableText,
+  previewMimeType: nullableText.refine((value) => value === null || PREVIEW_ALLOWED_MIME_TYPES.includes(value as (typeof PREVIEW_ALLOWED_MIME_TYPES)[number]), {
+    message: "Unsupported preview mime type",
+  }),
+  previewSizeBytes: z
+    .union([z.number(), z.string(), z.null()])
+    .refine((value) => {
+      if (value === null || value === "") {
+        return true;
+      }
+
+      const numericValue = typeof value === "number" ? value : Number(value);
+      return Number.isInteger(numericValue) && numericValue >= 0 && numericValue <= PREVIEW_MAX_SIZE_BYTES;
+    }, { message: "Preview size exceeds limit" }),
   wavFilePath: nullableText,
   zipFilePath: nullableText,
   genre: z.enum(["boombap", "rap", "trap", "drill", "another"]),

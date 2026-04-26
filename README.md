@@ -29,6 +29,41 @@ npm run dev
 
 Local app runs at http://localhost:3000.
 
+## Telegram Auto Publish (optional)
+
+When an admin creates a new beat, the API can auto-post it to Telegram (cover + preview audio).
+
+Set these environment variables:
+
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=@your_channel_or_chat_id
+```
+
+Notes:
+
+- Bot must be added to your channel and have permission to post.
+- `previewUrl` must be publicly reachable, otherwise Telegram audio delivery can fail.
+- Beat creation stays successful even if Telegram posting fails.
+
+## Beat Preview Upload (optional)
+
+Admin beat create/edit supports optional preview audio upload.
+
+- Bucket: `beat-previews` (public)
+- Recommended format: MP3 (`audio/mpeg`)
+- Also accepted: WAV and M4A
+- Max preview size: 20 MB
+- Stored value in beat record: public HTTPS `previewUrl`
+
+Notes:
+
+- Preview upload is optional. Beat create/update works without preview audio.
+- `previewUrl` used for Telegram audio must be a public HTTPS URL.
+- Server-only Telegram env vars remain required only for Telegram publishing:
+	- `TELEGRAM_BOT_TOKEN`
+	- `TELEGRAM_CHAT_ID`
+
 ## Structure
 
 ```text

@@ -9,8 +9,11 @@ export type Beat = {
   coverPalette: string;
   coverImageUrl: string | null;
   coverImagePath: string | null;
-  previewUrl: string;
+  previewUrl: string | null;
   previewStoragePath: string | null;
+  previewFileName?: string | null;
+  previewMimeType?: string | null;
+  previewSizeBytes?: number | null;
   wavFilePath: string | null;
   zipFilePath: string | null;
   genre: BeatGenre;

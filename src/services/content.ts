@@ -12,8 +12,11 @@ type BeatRow = {
   cover_palette: string;
   cover_image_url: string | null;
   cover_image_path: string | null;
-  preview_url: string;
+  preview_url: string | null;
   preview_storage_path: string | null;
+  preview_file_name: string | null;
+  preview_mime_type: string | null;
+  preview_size_bytes: number | null;
   wav_file_path: string | null;
   zip_file_path: string | null;
   genre: Beat["genre"] | null;
@@ -36,7 +39,7 @@ type LegacyBeatRow = {
   slug: string;
   case_number: string;
   cover_palette: string;
-  preview_url: string;
+  preview_url: string | null;
   bpm: number;
   mood: string;
   description: string;
@@ -190,6 +193,9 @@ function mapBeat(row: BeatRow): Beat {
     coverImagePath: row.cover_image_path,
     previewUrl: row.preview_url,
     previewStoragePath: row.preview_storage_path,
+    previewFileName: row.preview_file_name,
+    previewMimeType: row.preview_mime_type,
+    previewSizeBytes: row.preview_size_bytes,
     wavFilePath: row.wav_file_path,
     zipFilePath: row.zip_file_path,
     genre,
@@ -220,6 +226,9 @@ function mapLegacyBeat(row: LegacyBeatRow): Beat {
     coverImagePath: null,
     previewUrl: row.preview_url,
     previewStoragePath: null,
+    previewFileName: null,
+    previewMimeType: null,
+    previewSizeBytes: null,
     wavFilePath: null,
     zipFilePath: null,
     genre,
@@ -460,7 +469,7 @@ export async function getBeats() {
     const richQuery = supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, genre, substyle, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, preview_file_name, preview_mime_type, preview_size_bytes, wav_file_path, zip_file_path, genre, substyle, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
       )
       .in("status", ["available", "reserved"])
       .order("created_at", { ascending: false });
@@ -686,7 +695,7 @@ export async function getAdminBeats() {
     const richQuery = supabase
       .from("beats")
       .select(
-        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, wav_file_path, zip_file_path, genre, substyle, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
+        "id, title, slug, case_number, cover_palette, cover_image_url, cover_image_path, preview_url, preview_storage_path, preview_file_name, preview_mime_type, preview_size_bytes, wav_file_path, zip_file_path, genre, substyle, bpm, mood, description, price_usd, price_rub, status, featured, created_at, duration, available_for_download",
       )
       .order("created_at", { ascending: false });
 
