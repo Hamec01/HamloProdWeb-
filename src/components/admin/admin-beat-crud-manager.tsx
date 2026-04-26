@@ -58,6 +58,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
   const router = useRouter();
   const [editingBeatId, setEditingBeatId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isPostingTelegram, setIsPostingTelegram] = useState(false);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<File | null>(null);
@@ -206,20 +207,60 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             <h2 className="mt-2 font-sans text-4xl uppercase tracking-[0.05em]">Beat Record</h2>
           </div>
           {editingBeatId ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setEditingBeatId(null);
-                reset(defaultValues);
-                setCoverImageFile(null);
-                setPreviewFile(null);
-                setWavFile(null);
-                setZipFile(null);
-                setStatusMessage(null);
-              }}
-            >
-              Cancel Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                disabled={isPostingTelegram}
+                onClick={async () => {
+                  if (!editingBeatId) {
+                    return;
+                  }
+
+                  if (!hasSupabase) {
+                    setStatusMessage("Telegram post requires Supabase env configuration.");
+                    return;
+                  }
+
+                  setIsPostingTelegram(true);
+                  setStatusMessage("Posting to Telegram...");
+
+                  try {
+                    const response = await fetch(`/api/admin/beats/${editingBeatId}/telegram`, {
+                      method: "POST",
+                    });
+
+                    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+
+                    if (!response.ok) {
+                      setStatusMessage(payload?.error ?? "Failed to publish beat to Telegram.");
+                      return;
+                    }
+
+                    setStatusMessage("Beat posted to Telegram.");
+                  } catch (error) {
+                    setStatusMessage(error instanceof Error ? error.message : "Failed to publish beat to Telegram.");
+                  } finally {
+                    setIsPostingTelegram(false);
+                  }
+                }}
+              >
+                {isPostingTelegram ? "Posting..." : "Post to Telegram"}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditingBeatId(null);
+                  reset(defaultValues);
+                  setCoverImageFile(null);
+                  setPreviewFile(null);
+                  setWavFile(null);
+                  setZipFile(null);
+                  setStatusMessage(null);
+                }}
+              >
+                Cancel Edit
+              </Button>
+            </div>
           ) : null}
         </div>
 
