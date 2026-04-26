@@ -128,6 +128,36 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       continue;
     }
 
+    const existingBySlug = await supabase
+      .from("tracks")
+      .select("id, release_id")
+      .eq("slug", track.slug)
+      .maybeSingle<{ id: string; release_id: string | null }>();
+
+    if (existingBySlug.error) {
+      return NextResponse.json({ error: existingBySlug.error.message }, { status: 500 });
+    }
+
+    if (existingBySlug.data) {
+      if (existingBySlug.data.release_id && existingBySlug.data.release_id !== id) {
+        return NextResponse.json(
+          { error: `Track slug \"${track.slug}\" уже используется в другом релизе.` },
+          { status: 400 },
+        );
+      }
+
+      const { error: attachTrackError } = await supabase
+        .from("tracks")
+        .update(trackPayload)
+        .eq("id", existingBySlug.data.id);
+
+      if (attachTrackError) {
+        return NextResponse.json({ error: attachTrackError.message }, { status: 500 });
+      }
+
+      continue;
+    }
+
     const { error: insertTrackError } = await supabase.from("tracks").insert(trackPayload);
     if (insertTrackError) {
       return NextResponse.json({ error: insertTrackError.message }, { status: 500 });
