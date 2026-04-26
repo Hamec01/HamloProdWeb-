@@ -20,7 +20,7 @@ const nullableUrl = z
   });
 
 export const releaseTrackItemSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.union([z.string().uuid(), z.literal(""), z.null()]).optional(),
   title: z.string().min(1, "Обязательное поле"),
   slug: z.string().min(1, "Обязательное поле"),
   trackNumber: z.number().int().min(1),
