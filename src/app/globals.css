@@ -239,7 +239,7 @@ button {
   background-color: rgba(10, 9, 8, 0.6);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain;
+  background-size: cover;
   box-shadow: inset 0 0 0 1px rgba(230, 220, 200, 0.04);
 }
 
