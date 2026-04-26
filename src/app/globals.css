@@ -8,9 +8,9 @@
   --color-ash-800: #0d0d0d;
   --color-ash-700: #161616;
   --color-paper-100: #ece8de;
-  --color-paper-200: #cbc5b8;
+  --color-paper-200: #d7d1c6;
   --color-paper-400: #8d877c;
-  --color-line: rgba(236, 232, 222, 0.1);
+  --color-line: rgba(236, 232, 222, 0.14);
   --color-alert: #c9533e;
   --color-gold: #d0b98e;
 }
@@ -159,6 +159,17 @@ a {
 
 button {
   cursor: pointer;
+}
+
+:where(a, button)[class*="border-[var(--color-line)]"] {
+  background-color: rgba(255, 255, 255, 0.015);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+:where(a, button)[class*="border-[var(--color-line)]"]:hover {
+  border-color: rgba(236, 232, 222, 0.24) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: var(--color-paper-100);
 }
 
 ::selection {
