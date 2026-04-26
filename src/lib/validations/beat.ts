@@ -34,6 +34,8 @@ export const beatFormSchema = z.object({
   previewStoragePath: nullableText,
   wavFilePath: nullableText,
   zipFilePath: nullableText,
+  genre: z.enum(["boombap", "rap", "trap", "drill", "another"]),
+  substyle: z.string().min(2),
   bpm: z.number().min(40).max(240),
   mood: z.string().min(2),
   description: z.string().min(10),

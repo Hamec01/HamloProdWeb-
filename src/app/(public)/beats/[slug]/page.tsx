@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
@@ -10,6 +11,52 @@ import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import { getBeatBySlug, getBeats } from "@/services/content";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hamloprod.com";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const beat = await getBeatBySlug(slug);
+
+  if (!beat) {
+    return {
+      title: "Beat not found | HamloProd",
+      description: "Beat page",
+    };
+  }
+
+  const pageUrl = `${siteUrl}/beats/${beat.slug}`;
+  const imageUrl = beat.coverImageUrl ?? undefined;
+  const title = `${beat.title} | HamloProd`;
+  const description = `${beat.genre.toUpperCase()} / ${beat.substyle} / ${beat.mood} / ${beat.bpm} BPM`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: pageUrl },
+    openGraph: {
+      type: "website",
+      url: pageUrl,
+      title,
+      description,
+      siteName: "HamloProd",
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              alt: beat.title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title,
+      description,
+      images: imageUrl ? [imageUrl] : undefined,
+    },
+  };
+}
 
 export default async function BeatCasePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

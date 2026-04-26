@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
+import { BeatLikeButton } from "@/components/beats/beat-like-button";
+import { BeatShareButton } from "@/components/beats/beat-share-button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { getGenreLabel } from "@/lib/beats-taxonomy";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
@@ -11,11 +14,13 @@ export function BeatCard({
   queue,
   locale,
   hrefBase = "/beats",
+  isAuthenticated,
 }: {
   beat: Beat;
   queue: Beat[];
   locale: Locale;
   hrefBase?: string;
+  isAuthenticated: boolean;
 }) {
   const t = dictionary[locale];
   const market = getMarketContext(locale);
@@ -35,8 +40,10 @@ export function BeatCard({
       </div>
 
       <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-        {beat.mood} / {beat.bpm} BPM
+        {getGenreLabel(beat.genre, locale)} / {beat.substyle} / {beat.bpm} BPM
       </p>
+
+      <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-paper-400)]">{beat.mood}</p>
 
       {beat.coverImageUrl ? (
         <div
@@ -58,6 +65,8 @@ export function BeatCard({
           {t.openCase}
           <ArrowRight size={14} />
         </Link>
+        <BeatShareButton beatSlug={beat.slug} beatTitle={beat.title} locale={locale} />
+        <BeatLikeButton beatId={beat.id} locale={locale} isAuthenticated={isAuthenticated} />
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">

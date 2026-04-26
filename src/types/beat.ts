@@ -1,4 +1,5 @@
 export type BeatStatus = "available" | "reserved" | "sold" | "private";
+export type BeatGenre = "boombap" | "rap" | "trap" | "drill" | "another";
 
 export type Beat = {
   id: string;
@@ -12,6 +13,8 @@ export type Beat = {
   previewStoragePath: string | null;
   wavFilePath: string | null;
   zipFilePath: string | null;
+  genre: BeatGenre;
+  substyle: string;
   bpm: number;
   mood: string;
   description: string;

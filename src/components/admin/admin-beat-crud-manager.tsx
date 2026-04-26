@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,7 @@ import {
   buildStoragePath,
   getPendingUploadUrl,
 } from "@/lib/storage/media";
+import { BEAT_GENRES, BEAT_MOODS, BEAT_SUBSTYLES, getGenreLabel } from "@/lib/beats-taxonomy";
 import { beatFormSchema, type BeatFormValues } from "@/lib/validations/beat";
 import type { Beat } from "@/types";
 
@@ -30,8 +31,10 @@ const defaultValues: BeatFormValues = {
   previewStoragePath: null,
   wavFilePath: null,
   zipFilePath: null,
+  genre: "boombap",
+  substyle: "Classic",
   bpm: 90,
-  mood: "Dark / Atmospheric",
+  mood: "Melancholic",
   description: "Beat description goes here.",
   duration: "02:30",
   status: "available",
@@ -53,12 +56,23 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
     register,
     handleSubmit,
     reset,
+    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<BeatFormValues>({
     resolver: zodResolver(beatFormSchema),
     defaultValues,
   });
+
+  const selectedGenre = watch("genre");
+  const substyleOptions = BEAT_SUBSTYLES[selectedGenre] ?? BEAT_SUBSTYLES.boombap;
+
+  useEffect(() => {
+    const currentSubstyle = watch("substyle");
+    if (!substyleOptions.includes(currentSubstyle)) {
+      setValue("substyle", substyleOptions[0], { shouldValidate: true, shouldDirty: true });
+    }
+  }, [selectedGenre, setValue, substyleOptions, watch]);
 
   const modeLabel = editingBeatId ? "Edit Beat" : "Create Beat";
 
@@ -72,7 +86,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
         beat.wavFilePath ? "ready" : "missing",
         beat.zipFilePath ? "ready" : "missing",
         String(beat.bpm),
-        beat.mood,
+        `${getGenreLabel(beat.genre, "en")} / ${beat.substyle} / ${beat.mood}`,
         `$${beat.priceUsd} / ₽${beat.priceRub}`,
         beat.status,
         <div key={`actions-${beat.id}`} className="flex gap-2">
@@ -90,6 +104,8 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setValue("previewStoragePath", beat.previewStoragePath);
               setValue("wavFilePath", beat.wavFilePath);
               setValue("zipFilePath", beat.zipFilePath);
+              setValue("genre", beat.genre);
+              setValue("substyle", beat.substyle);
               setValue("bpm", beat.bpm);
               setValue("mood", beat.mood);
               setValue("description", beat.description);
@@ -398,8 +414,36 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             {errors.coverPalette ? <span className="text-xs text-[var(--color-alert)]">{errors.coverPalette.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            <span>Genre / Mood</span>
-            <input {...register("mood")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
+            <span>Genre</span>
+            <select {...register("genre")} className="w-full border border-[var(--color-line)] bg-[rgba(20,17,15,0.95)] px-4 py-3">
+              {BEAT_GENRES.map((genre) => (
+                <option key={genre} value={genre}>
+                  {getGenreLabel(genre, "en")}
+                </option>
+              ))}
+            </select>
+            {errors.genre ? <span className="text-xs text-[var(--color-alert)]">{errors.genre.message}</span> : null}
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>Substyle</span>
+            <select {...register("substyle")} className="w-full border border-[var(--color-line)] bg-[rgba(20,17,15,0.95)] px-4 py-3">
+              {substyleOptions.map((substyle) => (
+                <option key={substyle} value={substyle}>
+                  {substyle}
+                </option>
+              ))}
+            </select>
+            {errors.substyle ? <span className="text-xs text-[var(--color-alert)]">{errors.substyle.message}</span> : null}
+          </label>
+          <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
+            <span>Mood</span>
+            <select {...register("mood")} className="w-full border border-[var(--color-line)] bg-[rgba(20,17,15,0.95)] px-4 py-3">
+              {BEAT_MOODS.map((mood) => (
+                <option key={mood} value={mood}>
+                  {mood}
+                </option>
+              ))}
+            </select>
             {errors.mood ? <span className="text-xs text-[var(--color-alert)]">{errors.mood.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
@@ -505,7 +549,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
       <AdminCollectionTable
         title="Existing Beats"
         description="Preview streams publicly; WAV and ZIP stay private in storage for the purchase flow."
-        columns={["Playback", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Genre", "Price", "Status", "Actions"]}
+        columns={["Playback", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Style / Mood", "Price", "Status", "Actions"]}
         rows={rows}
       />
     </div>

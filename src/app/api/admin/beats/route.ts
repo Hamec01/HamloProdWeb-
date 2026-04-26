@@ -57,6 +57,8 @@ export async function POST(request: Request) {
     preview_storage_path: values.previewStoragePath,
     wav_file_path: values.wavFilePath,
     zip_file_path: values.zipFilePath,
+    genre: values.genre,
+    substyle: values.substyle,
     bpm: values.bpm,
     mood: values.mood,
     description: values.description,
