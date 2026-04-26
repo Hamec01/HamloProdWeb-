@@ -115,7 +115,7 @@ export function AdminReleaseCrudManager({
   );
 
   const addTrack = useCallback(() => {
-    append({ title: "", slug: "", trackNumber: fields.length + 1, mp3FilePath: null });
+    append({ id: undefined, title: "", slug: "", trackNumber: fields.length + 1, mp3FilePath: null });
     setTrackMp3s((prev) => [...prev, null]);
   }, [append, fields.length]);
 
@@ -178,7 +178,7 @@ export function AdminReleaseCrudManager({
         const newMp3s: (File | null)[] = [first];
         rest.forEach((file, i) => {
           const name = nameFromFile(file.name);
-          append({ title: name, slug: slugify(name), trackNumber: i + 2, mp3FilePath: null });
+          append({ id: undefined, title: name, slug: slugify(name), trackNumber: i + 2, mp3FilePath: null });
           newMp3s.push(file);
         });
         setTrackMp3s(newMp3s);
@@ -186,7 +186,7 @@ export function AdminReleaseCrudManager({
         const startNum = fields.length + 1;
         fileArray.forEach((file, i) => {
           const name = nameFromFile(file.name);
-          append({ title: name, slug: slugify(name), trackNumber: startNum + i, mp3FilePath: null });
+          append({ id: undefined, title: name, slug: slugify(name), trackNumber: startNum + i, mp3FilePath: null });
         });
         setTrackMp3s((prev) => [...prev, ...fileArray]);
       }
@@ -287,12 +287,13 @@ export function AdminReleaseCrudManager({
     setValue("featured", release.featured);
     // Replace tracks with existing ones
     const existingTracks = release.tracks.map((t) => ({
+      id: t.id,
       title: t.title,
       slug: t.slug,
       trackNumber: t.trackNumber,
       mp3FilePath: t.mp3FilePath,
     }));
-    setValue("tracks", existingTracks.length > 0 ? existingTracks : [{ title: "", slug: "", trackNumber: 1, mp3FilePath: null }]);
+    setValue("tracks", existingTracks.length > 0 ? existingTracks : [{ id: undefined, title: "", slug: "", trackNumber: 1, mp3FilePath: null }]);
     setTrackMp3s(new Array(existingTracks.length || 1).fill(null));
     setCoverFile(null);
     setStatusMessage(null);
@@ -566,6 +567,7 @@ export function AdminReleaseCrudManager({
                     )}
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
+                    <input type="hidden" {...register(`tracks.${index}.id`)} />
                     <input type="hidden" {...register(`tracks.${index}.trackNumber`, { valueAsNumber: true })} />
                     <div className="space-y-1">
                       <label className="text-xs text-[var(--color-paper-400)]">Название *</label>
