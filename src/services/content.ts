@@ -394,6 +394,14 @@ function mapSiteSettings(row: SiteSettingsRow): SiteSettings {
   };
 }
 
+function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 async function withSupabaseFallback<T>(resolver: () => Promise<T>, fallback: T): Promise<T> {
   if (!hasSupabaseEnv()) {
     console.warn("[content] supabase env missing, using fallback data");
@@ -444,30 +452,25 @@ export async function getBeatBySlug(slug: string) {
   console.info("[content] getBeatBySlug", { slug });
   const beats = await getBeats();
   const normalizedSlug = slug.trim();
-  const decodedSlug = (() => {
-    try {
-      return decodeURIComponent(normalizedSlug);
-    } catch {
-      return normalizedSlug;
-    }
-  })();
+  const decodedSlug = safeDecodeURIComponent(normalizedSlug);
+  const decodedSlugDiffers = decodedSlug !== normalizedSlug;
   const beat =
     beats.find((entry) => {
-      const entrySlug = entry.slug.trim();
-      const entrySlugDecoded = (() => {
-        try {
-          return decodeURIComponent(entrySlug);
-        } catch {
-          return entrySlug;
-        }
-      })();
+      if (entry.id === normalizedSlug || (decodedSlugDiffers && entry.id === decodedSlug)) {
+        return true;
+      }
 
-      return (
-        entrySlug === normalizedSlug ||
-        entrySlugDecoded === decodedSlug ||
-        entry.id === normalizedSlug ||
-        entry.id === decodedSlug
-      );
+      const entrySlug = entry.slug.trim();
+      if (entrySlug === normalizedSlug || (decodedSlugDiffers && entrySlug === decodedSlug)) {
+        return true;
+      }
+
+      if (!entrySlug.includes("%")) {
+        return false;
+      }
+
+      const entrySlugDecoded = safeDecodeURIComponent(entrySlug);
+      return entrySlugDecoded === normalizedSlug || (decodedSlugDiffers && entrySlugDecoded === decodedSlug);
     }) ?? null;
 
   console.info("[content] getBeatBySlug result", {

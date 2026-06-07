@@ -7,6 +7,7 @@ import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/session";
+import { getBeatRouteSegment } from "@/lib/beats-routing";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
-  const beatRouteSegment = encodeURIComponent(beat.slug.trim() || beat.id);
+  const beatRouteSegment = getBeatRouteSegment(beat);
   const pageUrl = `${siteUrl}/beats/${beatRouteSegment}`;
   const imageUrl = beat.coverImageUrl ?? undefined;
   const title = `${beat.title} | HamloProd`;
@@ -68,7 +69,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
     notFound();
   }
 
-  const beatRouteSegment = encodeURIComponent(beat.slug.trim() || beat.id);
+  const beatRouteSegment = getBeatRouteSegment(beat);
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);

@@ -5,6 +5,7 @@ import { BeatLikeButton } from "@/components/beats/beat-like-button";
 import { BeatShareButton } from "@/components/beats/beat-share-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getGenreLabel } from "@/lib/beats-taxonomy";
+import { getBeatRouteSegment } from "@/lib/beats-routing";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
@@ -26,7 +27,7 @@ export function BeatCard({
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
-  const beatRouteSegment = encodeURIComponent(beat.slug.trim() || beat.id);
+  const beatRouteSegment = getBeatRouteSegment(beat);
 
   return (
     <article className="case-panel grain-border overflow-hidden p-4">
