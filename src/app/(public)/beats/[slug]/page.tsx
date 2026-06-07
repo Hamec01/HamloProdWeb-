@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
 
-  const pageUrl = `${siteUrl}/beats/${beat.slug}`;
+  const beatRouteSegment = encodeURIComponent(beat.slug.trim() || beat.id);
+  const pageUrl = `${siteUrl}/beats/${beatRouteSegment}`;
   const imageUrl = beat.coverImageUrl ?? undefined;
   const title = `${beat.title} | HamloProd`;
   const description = `${beat.genre.toUpperCase()} / ${beat.substyle} / ${beat.mood} / ${beat.bpm} BPM`;
@@ -67,10 +68,11 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
     notFound();
   }
 
+  const beatRouteSegment = encodeURIComponent(beat.slug.trim() || beat.id);
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
-  const buyLicenseHref = locale === "ru" ? "https://t.me/Andrei91S" : `/checkout/${beat.slug}`;
+  const buyLicenseHref = locale === "ru" ? "https://t.me/Andrei91S" : `/checkout/${beatRouteSegment}`;
 
   return (
     <section className="space-y-8">

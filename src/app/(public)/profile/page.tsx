@@ -239,6 +239,7 @@ export default async function ProfilePage() {
             }
 
             const stars = "★".repeat(row.rating) + "☆".repeat(5 - row.rating);
+            const beatRouteSegment = encodeURIComponent((beat.slug ?? "").trim() || beat.id);
 
             return (
               <div key={`${row.content_id}-${row.created_at}`} className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
@@ -253,7 +254,7 @@ export default async function ProfilePage() {
                 <div className="mt-2 flex items-center gap-3">
                   <span className="text-base tracking-widest text-amber-400">{stars}</span>
                   <Link
-                    href={`/beats/${beat.slug}`}
+                    href={`/beats/${beatRouteSegment}`}
                     className="text-xs uppercase tracking-[0.22em] text-[var(--color-paper-200)] transition-colors hover:text-[var(--color-paper-100)]"
                   >
                     {t.profileOpenBeat}

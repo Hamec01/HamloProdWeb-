@@ -443,7 +443,32 @@ export async function getFeaturedBeats() {
 export async function getBeatBySlug(slug: string) {
   console.info("[content] getBeatBySlug", { slug });
   const beats = await getBeats();
-  const beat = beats.find((entry) => entry.slug === slug) ?? null;
+  const normalizedSlug = slug.trim();
+  const decodedSlug = (() => {
+    try {
+      return decodeURIComponent(normalizedSlug);
+    } catch {
+      return normalizedSlug;
+    }
+  })();
+  const beat =
+    beats.find((entry) => {
+      const entrySlug = entry.slug.trim();
+      const entrySlugDecoded = (() => {
+        try {
+          return decodeURIComponent(entrySlug);
+        } catch {
+          return entrySlug;
+        }
+      })();
+
+      return (
+        entrySlug === normalizedSlug ||
+        entrySlugDecoded === decodedSlug ||
+        entry.id === normalizedSlug ||
+        entry.id === decodedSlug
+      );
+    }) ?? null;
 
   console.info("[content] getBeatBySlug result", {
     slug,
