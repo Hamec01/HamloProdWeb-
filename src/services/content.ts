@@ -410,6 +410,16 @@ async function withSupabaseFallback<T>(resolver: () => Promise<T>, fallback: T):
   }
 }
 
+function normalizeSlugCandidate(value: string): string {
+  const trimmed = value.trim();
+
+  try {
+    return decodeURIComponent(trimmed).toLowerCase();
+  } catch {
+    return trimmed.toLowerCase();
+  }
+}
+
 function filterPostsBySection(posts: Post[], section?: Post["section"]) {
   if (!section) {
     return posts.filter((post) => post.published);
@@ -443,7 +453,10 @@ export async function getFeaturedBeats() {
 export async function getBeatBySlug(slug: string) {
   console.info("[content] getBeatBySlug", { slug });
   const beats = await getBeats();
-  const beat = beats.find((entry) => entry.slug === slug) ?? null;
+  const directMatch = beats.find((entry) => entry.slug === slug) ?? null;
+  const normalizedSlug = normalizeSlugCandidate(slug);
+  const normalizedMatch = beats.find((entry) => normalizeSlugCandidate(entry.slug) === normalizedSlug) ?? null;
+  const beat = directMatch ?? normalizedMatch;
 
   console.info("[content] getBeatBySlug result", {
     slug,
