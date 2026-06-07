@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { TrackDownloadButton } from "@/components/tracks/track-download-button";
 import { PlayTrackButton, type TrackQueueItem } from "@/components/tracks/play-track-button";
 import { TrackCardInlineEditor } from "@/components/tracks/track-card-inline-editor";
+import { TrackShareButton } from "@/components/tracks/track-share-button";
 import { dictionary, type Locale } from "@/lib/i18n";
 import type { Track } from "@/types";
 
@@ -45,9 +47,22 @@ export function TrackCard({
         <h3 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{track.title}</h3>
         <p className="text-sm text-[var(--color-paper-200)]">{track.artistName}</p>
       </div>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <PlayTrackButton trackId={track.id} trackQueue={queue} locale={locale} />
         <TrackDownloadButton trackId={track.id} isAuthenticated={isAuthenticated} isAvailable={Boolean(track.mp3FilePath)} locale={locale} />
+        <Link
+          href={`/${locale}/tracks/${track.slug}?track=${encodeURIComponent(track.slug)}&trackId=${track.id}`}
+          className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+        >
+          {t.openCase}
+          <ArrowRight size={14} />
+        </Link>
+        <TrackShareButton
+          trackSlug={track.slug}
+          trackId={track.id}
+          trackPageSlug={track.slug}
+          locale={locale}
+        />
       </div>
       <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-paper-200)]">
         {track.spotifyUrl ? (

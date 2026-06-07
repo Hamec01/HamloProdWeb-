@@ -8,12 +8,14 @@ export function TrackShareButton({
   trackSlug,
   trackId,
   releaseSlug,
+  trackPageSlug,
   locale,
   size = "default",
 }: {
   trackSlug: string;
   trackId?: string;
-  releaseSlug: string;
+  releaseSlug?: string;
+  trackPageSlug?: string;
   locale: Locale;
   size?: "default" | "small";
 }) {
@@ -29,7 +31,8 @@ export function TrackShareButton({
       return;
     }
 
-    const sharePath = `/${locale}/tracks/${releaseSlug}`;
+    const slugForPath = trackPageSlug || releaseSlug || trackSlug;
+    const sharePath = `/${locale}/tracks/${slugForPath}`;
     const url = new URL(sharePath, window.location.origin);
     url.searchParams.set("track", trackSlug || "");
     if (trackId) {
