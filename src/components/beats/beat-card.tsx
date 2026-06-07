@@ -5,6 +5,7 @@ import { BeatLikeButton } from "@/components/beats/beat-like-button";
 import { BeatShareButton } from "@/components/beats/beat-share-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getGenreLabel } from "@/lib/beats-taxonomy";
+import { getBeatRouteSegment } from "@/lib/beats-routing";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
@@ -26,6 +27,7 @@ export function BeatCard({
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
+  const beatRouteSegment = getBeatRouteSegment(beat);
 
   return (
     <article className="case-panel grain-border overflow-hidden p-4">
@@ -59,7 +61,7 @@ export function BeatCard({
       <div className="mt-5 flex flex-wrap gap-3">
         <PlayBeatButton beat={beat} queue={queue} locale={locale} />
         <Link
-          href={`${hrefBase}/${beat.slug}`}
+          href={`${hrefBase}/${beatRouteSegment}`}
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
         >
           {t.openCase}

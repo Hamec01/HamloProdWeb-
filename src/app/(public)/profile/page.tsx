@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/session";
+import { getBeatRouteSegment } from "@/lib/beats-routing";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";
@@ -239,6 +240,7 @@ export default async function ProfilePage() {
             }
 
             const stars = "★".repeat(row.rating) + "☆".repeat(5 - row.rating);
+            const beatRouteSegment = getBeatRouteSegment(beat);
 
             return (
               <div key={`${row.content_id}-${row.created_at}`} className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
@@ -253,7 +255,7 @@ export default async function ProfilePage() {
                 <div className="mt-2 flex items-center gap-3">
                   <span className="text-base tracking-widest text-amber-400">{stars}</span>
                   <Link
-                    href={`/beats/${beat.slug}`}
+                    href={`/beats/${beatRouteSegment}`}
                     className="text-xs uppercase tracking-[0.22em] text-[var(--color-paper-200)] transition-colors hover:text-[var(--color-paper-100)]"
                   >
                     {t.profileOpenBeat}
