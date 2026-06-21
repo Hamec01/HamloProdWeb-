@@ -30,7 +30,7 @@ function getTelegramConfig(): TelegramConfig | null {
 }
 
 function normalizeSiteUrl() {
-  return (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://hamloprod.com").replace(/\/$/, "");
+  return (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://hamloprod.org").replace(/\/$/, "");
 }
 
 function buildBeatPublicUrl(slug: string) {
