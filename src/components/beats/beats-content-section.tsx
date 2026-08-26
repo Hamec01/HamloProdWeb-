@@ -21,7 +21,10 @@ export function BeatsContentSection({
   const [tab, setTab] = useState<GenreTab>("all");
 
   const sortedBeats = useMemo(
-    () => [...beats].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    () =>
+      [...beats]
+        .filter((beat) => beat.status !== "sold" && beat.status !== "private")
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [beats],
   );
 

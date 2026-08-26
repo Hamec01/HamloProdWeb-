@@ -119,6 +119,61 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ ok: true });
 }
 
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!hasSupabaseEnv()) {
+    return unauthorizedResponse("Supabase env is not configured.", 503);
+  }
+
+  const session = await getAdminSessionState();
+  if (!session.isAuthenticated) {
+    return unauthorizedResponse("Unauthorized");
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+  }
+
+  const { id } = await params;
+  const supabase = await createSupabaseServerClient();
+
+  const { data: existingBeat } = await supabase
+    .from("beats")
+    .select("slug")
+    .eq("id", id)
+    .maybeSingle<{ slug: string }>();
+
+  if (!existingBeat) {
+    return NextResponse.json({ error: "Beat not found." }, { status: 404 });
+  }
+
+  const updatePayload: Record<string, unknown> = {};
+
+  if (body.status && ["available", "reserved", "sold", "private"].includes(body.status)) {
+    updatePayload.status = body.status;
+  }
+  if (typeof body.featured === "boolean") {
+    updatePayload.featured = body.featured;
+  }
+  if (typeof body.availableForDownload === "boolean") {
+    updatePayload.available_for_download = body.availableForDownload;
+  }
+
+  if (Object.keys(updatePayload).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
+  }
+
+  const { error } = await supabase.from("beats").update(updatePayload).eq("id", id);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  revalidateBeatPaths(existingBeat.slug);
+
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);

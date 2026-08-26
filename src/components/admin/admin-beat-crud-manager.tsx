@@ -25,6 +25,7 @@ import {
   type BeatFormValues,
 } from "@/lib/validations/beat";
 import { hasAllowedPreviewExtension } from "@/lib/validations/preview-audio";
+import { generateSlug, getNextCaseNumber } from "@/lib/slug";
 import type { Beat } from "@/types";
 
 const defaultValues: BeatFormValues = {
@@ -59,6 +60,7 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
   const [editingBeatId, setEditingBeatId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPostingTelegram, setIsPostingTelegram] = useState(false);
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<File | null>(null);
@@ -72,11 +74,16 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
     formState: { errors, isSubmitting },
   } = useForm<BeatFormValues>({
     resolver: zodResolver(beatFormSchema),
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      caseNumber: getNextCaseNumber(beats),
+    },
   });
 
   const selectedGenre = watch("genre");
   const substyleOptions = BEAT_SUBSTYLES[selectedGenre] ?? BEAT_SUBSTYLES.boombap;
+  const watchedTitle = watch("title");
+  const watchedStatus = watch("status");
 
   useEffect(() => {
     const currentSubstyle = watch("substyle");
@@ -85,14 +92,99 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
     }
   }, [selectedGenre, setValue, substyleOptions, watch]);
 
+  // Auto-fill Case Number when in create mode
+  useEffect(() => {
+    if (!editingBeatId) {
+      const nextCase = getNextCaseNumber(beats);
+      setValue("caseNumber", nextCase, { shouldValidate: true });
+    }
+  }, [beats, editingBeatId, setValue]);
+
+  // Auto-generate Latin Slug from Title (with Cyrillic transliteration)
+  useEffect(() => {
+    if (!editingBeatId && !isSlugManuallyEdited && watchedTitle !== undefined) {
+      const autoSlug = generateSlug(watchedTitle);
+      setValue("slug", autoSlug, { shouldValidate: true });
+    }
+  }, [watchedTitle, editingBeatId, isSlugManuallyEdited, setValue]);
+
   const modeLabel = editingBeatId ? "Edit Beat" : "Create Beat";
   const activeBeat = editingBeatId ? beats.find((beat) => beat.id === editingBeatId) ?? null : null;
+
+  const handleQuickStatusChange = async (beatId: string, nextStatus: "available" | "sold" | "reserved" | "private") => {
+    if (!hasSupabase) {
+      setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
+      return;
+    }
+
+    const beat = beats.find((b) => b.id === beatId);
+    setStatusMessage(`Обновляю статус для "${beat?.title ?? "Beat"}"...`);
+
+    try {
+      const response = await fetch(`/api/admin/beats/${beatId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+
+      if (!response.ok) {
+        setStatusMessage(payload?.error ?? "Не удалось обновить статус.");
+        return;
+      }
+
+      setStatusMessage(
+        nextStatus === "sold"
+          ? `Бит "${beat?.title ?? "Beat"}" помечен как ПРОДАН и скрыт с витрины.`
+          : `Бит "${beat?.title ?? "Beat"}" возвращен в продажу.`,
+      );
+      router.refresh();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Ошибка обновления статуса.");
+    }
+  };
+
+  const renderStatusBadge = (status: Beat["status"]) => {
+    switch (status) {
+      case "sold":
+        return (
+          <span className="inline-block border border-red-700 bg-red-950/80 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-300">
+            🔴 Продан
+          </span>
+        );
+      case "reserved":
+        return (
+          <span className="inline-block border border-amber-700 bg-amber-950/60 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-amber-300">
+            Резерв
+          </span>
+        );
+      case "private":
+        return (
+          <span className="inline-block border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] uppercase tracking-wider text-zinc-400">
+            Приват
+          </span>
+        );
+      case "available":
+      default:
+        return (
+          <span className="inline-block border border-emerald-700 bg-emerald-950/50 px-2 py-0.5 text-[11px] uppercase tracking-wider text-emerald-300">
+            В продаже
+          </span>
+        );
+    }
+  };
 
   const rows = useMemo(
     () =>
       beats.map((beat) => [
         <AdminBeatPlayButton key={`play-${beat.id}`} beat={beat} />,
-        beat.title,
+        <div key={`title-${beat.id}`} className="space-y-0.5">
+          <div className="font-medium text-[var(--color-paper-100)]">{beat.title}</div>
+          <div className="text-[11px] text-[var(--color-paper-400)]">{beat.caseNumber} • {beat.slug}</div>
+        </div>,
         beat.coverImagePath ? "ready" : "palette",
         beat.previewStoragePath ? "ready" : beat.previewUrl ? "external" : "missing",
         beat.wavFilePath ? "ready" : "missing",
@@ -100,12 +192,32 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
         String(beat.bpm),
         `${getGenreLabel(beat.genre, "en")} / ${beat.substyle} / ${beat.mood}`,
         `$${beat.priceUsd} / ₽${beat.priceRub}`,
-        beat.status,
-        <div key={`actions-${beat.id}`} className="flex gap-2">
+        <div key={`status-${beat.id}`}>{renderStatusBadge(beat.status)}</div>,
+        <div key={`actions-${beat.id}`} className="flex items-center gap-2 whitespace-nowrap">
+          {beat.status === "sold" ? (
+            <Button
+              variant="primary"
+              onClick={() => handleQuickStatusChange(beat.id, "available")}
+              className="text-xs px-2.5 py-1 text-emerald-300 border-emerald-700/60 hover:bg-emerald-950/50"
+              title="Снять метку 'Продано' и вернуть бит на витрину"
+            >
+              В продажу
+            </Button>
+          ) : (
+            <Button
+              variant="alert"
+              onClick={() => handleQuickStatusChange(beat.id, "sold")}
+              className="text-xs px-2.5 py-1 text-red-300 border-red-700/60 hover:bg-red-950/50"
+              title="Пометить бит как 'Продано' и скрыть с витрины"
+            >
+              Продано
+            </Button>
+          )}
           <Button
             variant="ghost"
             onClick={() => {
               setEditingBeatId(beat.id);
+              setIsSlugManuallyEdited(true);
               setValue("title", beat.title);
               setValue("slug", beat.slug);
               setValue("caseNumber", beat.caseNumber);
@@ -165,7 +277,11 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
               setStatusMessage("Beat deleted.");
               if (editingBeatId === beat.id) {
                 setEditingBeatId(null);
-                reset(defaultValues);
+                setIsSlugManuallyEdited(false);
+                reset({
+                  ...defaultValues,
+                  caseNumber: getNextCaseNumber(beats),
+                });
                 setCoverImageFile(null);
                 setPreviewFile(null);
                 setWavFile(null);
@@ -250,7 +366,11 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
                 variant="ghost"
                 onClick={() => {
                   setEditingBeatId(null);
-                  reset(defaultValues);
+                  setIsSlugManuallyEdited(false);
+                  reset({
+                    ...defaultValues,
+                    caseNumber: getNextCaseNumber(beats),
+                  });
                   setCoverImageFile(null);
                   setPreviewFile(null);
                   setWavFile(null);
@@ -385,7 +505,11 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
 
             setStatusMessage(editingBeatId ? "Beat updated." : "Beat created.");
             setEditingBeatId(null);
-            reset(defaultValues);
+            setIsSlugManuallyEdited(false);
+            reset({
+              ...defaultValues,
+              caseNumber: getNextCaseNumber(beats),
+            });
             setCoverImageFile(null);
             setPreviewFile(null);
             setWavFile(null);
@@ -408,12 +532,45 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
             {errors.title ? <span className="text-xs text-[var(--color-alert)]">{errors.title.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            <span>Slug</span>
-            <input {...register("slug")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
+            <div className="flex items-center justify-between">
+              <span>Slug</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentTitle = watch("title");
+                  const autoSlug = generateSlug(currentTitle);
+                  setValue("slug", autoSlug, { shouldValidate: true, shouldDirty: true });
+                  setIsSlugManuallyEdited(false);
+                }}
+                className="text-xs normal-case tracking-normal text-amber-400 hover:underline"
+              >
+                ⚡ Авто из названия (латиница)
+              </button>
+            </div>
+            <input
+              {...register("slug")}
+              onChange={(e) => {
+                setIsSlugManuallyEdited(true);
+                register("slug").onChange(e);
+              }}
+              className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
+            />
             {errors.slug ? <span className="text-xs text-[var(--color-alert)]">{errors.slug.message}</span> : null}
           </label>
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-            <span>Case Number</span>
+            <div className="flex items-center justify-between">
+              <span>Case Number</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const nextCase = getNextCaseNumber(beats);
+                  setValue("caseNumber", nextCase, { shouldValidate: true, shouldDirty: true });
+                }}
+                className="text-xs normal-case tracking-normal text-amber-400 hover:underline"
+              >
+                ⚡ След. номер ({getNextCaseNumber(beats)})
+              </button>
+            </div>
             <input {...register("caseNumber")} className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3" />
             {errors.caseNumber ? <span className="text-xs text-[var(--color-alert)]">{errors.caseNumber.message}</span> : null}
           </label>
@@ -585,11 +742,16 @@ export function AdminBeatCrudManager({ beats, hasSupabase }: { beats: Beat[]; ha
           <label className="space-y-2 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <span>Status</span>
             <select {...register("status")} className="w-full border border-[var(--color-line)] bg-[rgba(20,17,15,0.95)] px-4 py-3">
-              <option value="available">available</option>
-              <option value="reserved">reserved</option>
-              <option value="sold">sold</option>
-              <option value="private">private</option>
+              <option value="available">available (В продаже на витрине)</option>
+              <option value="sold">sold (Продан — скрыт с витрины)</option>
+              <option value="reserved">reserved (В резерве)</option>
+              <option value="private">private (Приватный)</option>
             </select>
+            {watchedStatus === "sold" ? (
+              <span className="block border border-red-800/80 bg-red-950/40 p-2.5 text-xs normal-case tracking-normal text-red-300">
+                🔴 Бит помечен как ПРОДАН. Он будет полностью скрыт с публичной витрины и страницы каталога.
+              </span>
+            ) : null}
           </label>
           <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <input type="checkbox" {...register("featured")} className="h-4 w-4" />
