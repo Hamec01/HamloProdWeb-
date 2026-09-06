@@ -8,23 +8,23 @@ const DUMMY = "$argon2id$v=19$m=19456,p=1,t=2$HNMWtfu/uEdj5XRypOxlAg$vob3iMXt3Ef
 type Calls = {
   verify: Array<{ hash: string; password: string }>;
   failures: number;
-  cleared: number;
+  clearedEmail: string[];
   created: number;
 };
 
 function makeLoginPorts(opts: {
   user?: AdminUserRecord | null;
-  password?: string; // the correct password for the user
+  password?: string;
   preBlocked?: boolean;
   blockAfterFailure?: boolean;
 }): { ports: LoginPorts; calls: Calls } {
-  const calls: Calls = { verify: [], failures: 0, cleared: 0, created: 0 };
+  const calls: Calls = { verify: [], failures: 0, clearedEmail: [], created: 0 };
 
   return {
     calls,
     ports: {
       async findUserByEmail(email) {
-        return opts.user === undefined ? null : opts.user && opts.user.email === email ? opts.user : opts.user ?? null;
+        return opts.user && opts.user.email === email ? opts.user : null;
       },
       async verifyPassword(hash, password) {
         calls.verify.push({ hash, password });
@@ -35,7 +35,7 @@ function makeLoginPorts(opts: {
         calls.created += 1;
         return { token: `token-for-${userId}`, expiresAt: new Date(Date.now() + 8 * 3600 * 1000) };
       },
-      throttleKey: (email, ip) => `k:${email}:${ip}`,
+      throttleKeys: (email, ip) => ({ emailKey: `e:${email}`, ipKey: `i:${ip}` }),
       async checkThrottle() {
         return opts.preBlocked ? { blocked: true, retryAfterSeconds: 600 } : { blocked: false };
       },
@@ -43,8 +43,8 @@ function makeLoginPorts(opts: {
         calls.failures += 1;
         return opts.blockAfterFailure ? { blocked: true, retryAfterSeconds: 900 } : { blocked: false };
       },
-      async clearThrottle() {
-        calls.cleared += 1;
+      async clearEmailThrottle(key) {
+        calls.clearedEmail.push(key);
       },
       dummyHash: DUMMY,
     },
@@ -61,17 +61,16 @@ test("foreign origin is rejected before anything else", async () => {
   assert.equal(calls.verify.length, 0);
 });
 
-test("successful login returns 200 + setSession, clears throttle, no sensitive fields", async () => {
+test("successful login returns 200 + setSession, clears the EMAIL throttle only, no sensitive fields", async () => {
   const { ports, calls } = makeLoginPorts({ user: admin, password: "correct-horse-1" });
   const res = await loginAdmin({ ...base, ports, body: { email: " Admin@X.co ", password: "correct-horse-1" } });
 
   assert.equal(res.status, 200);
   assert.deepEqual(res.body, { ok: true });
   assert.ok(res.setSession && res.setSession.token.length > 0);
-  assert.equal(calls.cleared, 1);
+  assert.deepEqual(calls.clearedEmail, ["e:admin@x.co"]);
   assert.equal(calls.created, 1);
-  const serialized = JSON.stringify(res.body);
-  assert.doesNotMatch(serialized, /hash|passwordHash|tokenHash|token-for/i);
+  assert.doesNotMatch(JSON.stringify(res.body), /hash|passwordHash|tokenHash|token-for/i);
 });
 
 test("unknown email, wrong password and wrong role all return an identical 401", async () => {
@@ -80,13 +79,11 @@ test("unknown email, wrong password and wrong role all return an identical 401",
     ports: makeLoginPorts({ user: null }).ports,
     body: { email: "nobody@x.co", password: "some-long-password" },
   });
-
   const wrongPw = await loginAdmin({
     ...base,
     ports: makeLoginPorts({ user: admin, password: "the-right-one" }).ports,
     body: { email: "admin@x.co", password: "the-wrong-one-XX" },
   });
-
   const userRecord: AdminUserRecord = { id: "u1", email: "user@x.co", role: "USER" as UserRole, passwordHash: "hash-user" };
   const wrongRole = await loginAdmin({
     ...base,
@@ -102,7 +99,7 @@ test("unknown email, wrong password and wrong role all return an identical 401",
   assert.equal(unknown.setSession, undefined);
 });
 
-test("unknown email still spends a verify call (against the dummy hash)", async () => {
+test("unknown email still spends a verify call against the dummy hash", async () => {
   const { ports, calls } = makeLoginPorts({ user: null });
   await loginAdmin({ ...base, ports, body: { email: "ghost@x.co", password: "irrelevant-but-long" } });
   assert.equal(calls.verify.length, 1);
@@ -137,7 +134,7 @@ test("malformed body returns the same 401 (no schema details leaked)", async () 
   assert.deepEqual(res.body, { error: "Invalid email or password." });
 });
 
-test("logout is idempotent and always clears the cookie", async () => {
+test("logout is idempotent and always clears the cookie on success", async () => {
   let revoked = 0;
   const ports = { async revokeSession() { revoked += 1; } };
 
@@ -150,6 +147,11 @@ test("logout is idempotent and always clears the cookie", async () => {
   assert.equal(withoutToken.status, 200);
   assert.equal(withoutToken.clearSession, true);
   assert.equal(revoked, 1);
+});
+
+test("logout propagates a failed revoke (route must return 503 and keep the cookie)", async () => {
+  const ports = { async revokeSession() { throw new Error("db down"); } };
+  await assert.rejects(logoutAdmin({ ports, token: "abc", sameOrigin: true }), /db down/);
 });
 
 test("logout rejects a foreign origin", async () => {

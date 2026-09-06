@@ -1,77 +1,120 @@
 /**
  * PostgreSQL-backed login throttle. Server-only.
  *
- * Not an in-memory limiter — Vercel runs many instances, so the counter lives in
- * the database. The key is an HMAC of (normalised email + IP); the plaintext
- * email / IP is never stored.
+ * Two independent scopes, each its own HMAC key (plaintext email / IP is never
+ * stored):
+ *   - email scope: 10 failed attempts / 15 min
+ *   - IP scope:    30 failed attempts / 15 min
+ * A request is blocked when EITHER scope is over its limit.
+ *
+ * Counting is done with a single `INSERT ... ON CONFLICT DO UPDATE` statement, so
+ * concurrent failures cannot lose increments (Postgres locks the conflicting row
+ * for the upsert).
  */
 
 import { createHmac } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 import { getSessionSecret } from "@/lib/auth/config";
 
-export const MAX_FAILED_ATTEMPTS = 10;
-export const WINDOW_MS = 15 * 60 * 1000;
-export const BLOCK_MS = 15 * 60 * 1000;
+export const EMAIL_MAX_ATTEMPTS = 10;
+export const IP_MAX_ATTEMPTS = 30;
+export const WINDOW_MINUTES = 15;
+export const BLOCK_MINUTES = 15;
 const SWEEP_PROBABILITY = 0.05;
 
-export function throttleKey(email: string, ip: string): string {
-  const normalised = `${email.trim().toLowerCase()}|${ip.trim()}`;
-  return createHmac("sha256", getSessionSecret()).update(`auth-throttle:${normalised}`).digest("hex");
+export type ThrottleScope = "email" | "ip";
+
+function scopeKey(scope: ThrottleScope, value: string): string {
+  const normalised = scope === "email" ? value.trim().toLowerCase() : value.trim();
+  return createHmac("sha256", getSessionSecret()).update(`auth-throttle:${scope}:${normalised}`).digest("hex");
+}
+
+export function emailThrottleKey(email: string): string {
+  return scopeKey("email", email);
+}
+
+export function ipThrottleKey(ip: string): string {
+  return scopeKey("ip", ip || "unknown");
 }
 
 export type ThrottleStatus =
   | { blocked: false }
   | { blocked: true; retryAfterSeconds: number };
 
-export async function checkThrottle(keyHash: string): Promise<ThrottleStatus> {
-  const row = await prisma.authThrottle.findUnique({
-    where: { keyHash },
+type UpsertRow = { attempts: number; blocked_until: Date | null };
+
+function blockedFor(blockedUntil: Date | null): number {
+  return blockedUntil ? Math.max(1, Math.ceil((blockedUntil.getTime() - Date.now()) / 1000)) : 0;
+}
+
+/** Check both scopes without recording anything. */
+export async function checkThrottle(keys: { emailKey: string; ipKey: string }): Promise<ThrottleStatus> {
+  const rows = await prisma.authThrottle.findMany({
+    where: { keyHash: { in: [keys.emailKey, keys.ipKey] }, blockedUntil: { gt: new Date() } },
     select: { blockedUntil: true },
   });
 
-  if (row?.blockedUntil && row.blockedUntil.getTime() > Date.now()) {
-    return { blocked: true, retryAfterSeconds: Math.ceil((row.blockedUntil.getTime() - Date.now()) / 1000) };
-  }
-
-  return { blocked: false };
+  const retry = Math.max(0, ...rows.map((row) => blockedFor(row.blockedUntil)));
+  return retry > 0 ? { blocked: true, retryAfterSeconds: retry } : { blocked: false };
 }
 
-/** Record a failed attempt. Returns the resulting status (blocked once the cap is hit). */
-export async function recordFailedAttempt(keyHash: string): Promise<ThrottleStatus> {
-  const now = new Date();
-  const existing = await prisma.authThrottle.findUnique({ where: { keyHash } });
+async function bump(keyHash: string, maxAttempts: number): Promise<UpsertRow> {
+  const windowInterval = `${WINDOW_MINUTES} minutes`;
+  const blockInterval = `${BLOCK_MINUTES} minutes`;
 
-  const windowExpired = !existing || now.getTime() - existing.windowStartedAt.getTime() > WINDOW_MS;
-  const attempts = windowExpired ? 1 : existing.attempts + 1;
-  const windowStartedAt = windowExpired ? now : existing.windowStartedAt;
-  const blockedUntil = attempts >= MAX_FAILED_ATTEMPTS ? new Date(now.getTime() + BLOCK_MS) : null;
+  const rows = await prisma.$queryRaw<UpsertRow[]>`
+    INSERT INTO auth_throttle (id, key_hash, attempts, window_started_at, blocked_until, updated_at)
+    VALUES (gen_random_uuid(), ${keyHash}, 1, now(), NULL, now())
+    ON CONFLICT (key_hash) DO UPDATE SET
+      attempts = CASE
+        WHEN auth_throttle.window_started_at < now() - ${windowInterval}::interval THEN 1
+        ELSE auth_throttle.attempts + 1
+      END,
+      window_started_at = CASE
+        WHEN auth_throttle.window_started_at < now() - ${windowInterval}::interval THEN now()
+        ELSE auth_throttle.window_started_at
+      END,
+      blocked_until = CASE
+        WHEN (CASE
+                WHEN auth_throttle.window_started_at < now() - ${windowInterval}::interval THEN 1
+                ELSE auth_throttle.attempts + 1
+              END) >= ${maxAttempts}
+          THEN now() + ${blockInterval}::interval
+        ELSE NULL
+      END,
+      updated_at = now()
+    RETURNING attempts, blocked_until
+  `;
 
-  await prisma.authThrottle.upsert({
-    where: { keyHash },
-    create: { keyHash, attempts, windowStartedAt, blockedUntil },
-    update: { attempts, windowStartedAt, blockedUntil },
-  });
+  return rows[0] ?? { attempts: 1, blocked_until: null };
+}
+
+/** Record one failed attempt in both scopes atomically. Returns the combined status. */
+export async function recordFailedAttempt(keys: { emailKey: string; ipKey: string }): Promise<ThrottleStatus> {
+  const [emailRow, ipRow] = await Promise.all([
+    bump(keys.emailKey, EMAIL_MAX_ATTEMPTS),
+    bump(keys.ipKey, IP_MAX_ATTEMPTS),
+  ]);
 
   if (Math.random() < SWEEP_PROBABILITY) {
     await sweepExpired();
   }
 
-  if (blockedUntil) {
-    return { blocked: true, retryAfterSeconds: Math.ceil(BLOCK_MS / 1000) };
-  }
-
-  return { blocked: false };
+  const retry = Math.max(blockedFor(emailRow.blocked_until), blockedFor(ipRow.blocked_until));
+  return retry > 0 ? { blocked: true, retryAfterSeconds: retry } : { blocked: false };
 }
 
-/** Clear the throttle for a key after a successful login. */
-export async function clearThrottle(keyHash: string): Promise<void> {
-  await prisma.authThrottle.deleteMany({ where: { keyHash } });
+/**
+ * A successful login clears the EMAIL scope only. The IP scope is left intact
+ * (one good login from a shared / NAT'd address must not wipe the IP counter).
+ */
+export async function clearEmailThrottle(emailKey: string): Promise<void> {
+  await prisma.authThrottle.deleteMany({ where: { keyHash: emailKey } });
 }
 
 /** Remove rows that are idle and not currently blocking. */
 export async function sweepExpired(): Promise<number> {
-  const cutoff = new Date(Date.now() - Math.max(WINDOW_MS, BLOCK_MS) * 2);
+  const cutoff = new Date(Date.now() - (WINDOW_MINUTES + BLOCK_MINUTES) * 60 * 1000 * 2);
   const result = await prisma.authThrottle.deleteMany({
     where: {
       updatedAt: { lt: cutoff },

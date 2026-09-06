@@ -6,8 +6,14 @@
 import { prisma } from "@/lib/db/client";
 import { createAdminSession, revokeAdminSession } from "@/lib/auth/session";
 import { DUMMY_PASSWORD_HASH, verifyPassword } from "@/lib/auth/password";
-import { checkThrottle, clearThrottle, recordFailedAttempt, throttleKey } from "@/lib/auth/throttle";
-import type { LoginPorts, LogoutPorts } from "@/lib/auth/admin-auth-service";
+import {
+  checkThrottle,
+  clearEmailThrottle,
+  emailThrottleKey,
+  ipThrottleKey,
+  recordFailedAttempt,
+} from "@/lib/auth/throttle";
+import type { LoginPorts, LogoutPorts, ThrottleKeys } from "@/lib/auth/admin-auth-service";
 
 export function loginPorts(): LoginPorts {
   return {
@@ -21,10 +27,13 @@ export function loginPorts(): LoginPorts {
       const session = await createAdminSession(userId, meta);
       return { token: session.token, expiresAt: session.expiresAt };
     },
-    throttleKey,
+    throttleKeys: (email, ip): ThrottleKeys => ({
+      emailKey: emailThrottleKey(email),
+      ipKey: ipThrottleKey(ip),
+    }),
     checkThrottle,
     recordFailedAttempt,
-    clearThrottle,
+    clearEmailThrottle,
     dummyHash: DUMMY_PASSWORD_HASH,
   };
 }

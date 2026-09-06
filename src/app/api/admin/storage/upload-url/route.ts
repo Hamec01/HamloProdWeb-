@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionState } from "@/lib/auth/session";
+import { isSameOriginRequest } from "@/lib/auth/origin";
 import { getS3Config, isStorageConfigured } from "@/lib/storage/config";
 import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
 import { createUploadUrl } from "@/lib/storage/upload-service";
@@ -11,9 +12,16 @@ export const runtime = "nodejs";
  * POST /api/admin/storage/upload-url
  *
  * Issues a short-lived (5 min) presigned PUT for ONE server-generated key.
- * Requires an own-auth admin/editor session. Credentials never leave the server.
+ * Requires an own-auth admin/editor session and a same-origin request.
+ * The Origin is checked before S3 is touched. Credentials never leave the server.
  */
 export async function POST(request: Request) {
+  const sameOrigin = isSameOriginRequest(request);
+
+  if (!sameOrigin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   let session;
   try {
     session = await getAdminSessionState();
@@ -39,7 +47,7 @@ export async function POST(request: Request) {
 
   try {
     const storage = new ContaboS3Storage(getS3Config());
-    const result = await createUploadUrl({ isAuthorized: true, body, storage });
+    const result = await createUploadUrl({ isAuthorized: true, sameOrigin, body, storage });
     return NextResponse.json(result.body, { status: result.status });
   } catch (error) {
     console.error("[storage/upload-url] unexpected error", error instanceof Error ? error.message : error);

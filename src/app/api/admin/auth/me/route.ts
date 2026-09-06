@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { jsonNoStore } from "@/lib/auth/response";
 import { getAdminSessionState } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
@@ -8,14 +8,14 @@ export async function GET() {
   try {
     state = await getAdminSessionState();
   } catch {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return jsonNoStore({ authenticated: false }, { status: 401 });
   }
 
   if (!state.isAuthenticated) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return jsonNoStore({ authenticated: false }, { status: 401 });
   }
 
-  return NextResponse.json({
+  return jsonNoStore({
     authenticated: true,
     user: { email: state.email, role: state.role },
     session: { expiresAt: state.expiresAt, shouldRefresh: state.shouldRefresh },

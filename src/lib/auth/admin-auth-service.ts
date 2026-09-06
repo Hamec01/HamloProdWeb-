@@ -6,6 +6,9 @@
  * email is unknown, the password is wrong, or the account lacks an admin role.
  * A dummy Argon2 verification runs even when the email is unknown so timing does
  * not leak account existence.
+ *
+ * Throttling has two independent scopes (email, IP). Logout propagates a failed
+ * revoke — the caller must NOT clear the cookie or report success in that case.
  */
 
 import { z } from "zod";
@@ -21,14 +24,16 @@ export type AdminUserRecord = {
   passwordHash: string | null;
 };
 
+export type ThrottleKeys = { emailKey: string; ipKey: string };
+
 export type LoginPorts = {
   findUserByEmail(email: string): Promise<AdminUserRecord | null>;
   verifyPassword(hash: string, password: string): Promise<boolean>;
   createSession(userId: string, meta: { ip: string | null; userAgent: string | null }): Promise<{ token: string; expiresAt: Date }>;
-  throttleKey(email: string, ip: string): string;
-  checkThrottle(keyHash: string): Promise<ThrottleStatus>;
-  recordFailedAttempt(keyHash: string): Promise<ThrottleStatus>;
-  clearThrottle(keyHash: string): Promise<void>;
+  throttleKeys(email: string, ip: string): ThrottleKeys;
+  checkThrottle(keys: ThrottleKeys): Promise<ThrottleStatus>;
+  recordFailedAttempt(keys: ThrottleKeys): Promise<ThrottleStatus>;
+  clearEmailThrottle(emailKey: string): Promise<void>;
   dummyHash: string;
 };
 
@@ -77,9 +82,9 @@ export async function loginAdmin(input: {
 
   const email = parsed.data.email.trim().toLowerCase();
   const ip = input.ip ?? "unknown";
-  const keyHash = input.ports.throttleKey(email, ip);
+  const keys = input.ports.throttleKeys(email, ip);
 
-  const pre = await input.ports.checkThrottle(keyHash);
+  const pre = await input.ports.checkThrottle(keys);
   if (pre.blocked) {
     return tooMany(pre.retryAfterSeconds);
   }
@@ -91,16 +96,20 @@ export async function loginAdmin(input: {
   const authorized = passwordOk && user !== null && user.passwordHash !== null && isAdminRole(user.role);
 
   if (!authorized) {
-    const post = await input.ports.recordFailedAttempt(keyHash);
+    const post = await input.ports.recordFailedAttempt(keys);
     return post.blocked ? tooMany(post.retryAfterSeconds) : INVALID_CREDENTIALS;
   }
 
-  await input.ports.clearThrottle(keyHash);
+  await input.ports.clearEmailThrottle(keys.emailKey);
   const session = await input.ports.createSession(user!.id, { ip: input.ip, userAgent: input.userAgent });
 
   return { status: 200, body: { ok: true }, setSession: session };
 }
 
+/**
+ * Revokes the current session. Throws if the revoke itself fails — the Route
+ * Handler must then return 503 and keep the cookie so the user can retry.
+ */
 export async function logoutAdmin(input: {
   ports: LogoutPorts;
   token: string | undefined;

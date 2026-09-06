@@ -46,16 +46,25 @@ function unauthorized(): HandlerResult {
   return { status: 401, body: { error: "Unauthorized" } };
 }
 
+function forbidden(): HandlerResult {
+  return { status: 403, body: { error: "Forbidden" } };
+}
+
 function badRequest(message: string, code?: string): HandlerResult {
   return { status: 400, body: code ? { error: message, code } : { error: message } };
 }
 
 export async function createUploadUrl(params: {
   isAuthorized: boolean;
+  sameOrigin: boolean;
   body: unknown;
   storage: UploadPort;
   ttlSeconds?: number;
 }): Promise<HandlerResult> {
+  if (!params.sameOrigin) {
+    return forbidden();
+  }
+
   if (!params.isAuthorized) {
     return unauthorized();
   }
@@ -116,9 +125,14 @@ export async function createUploadUrl(params: {
 
 export async function finalizeUpload(params: {
   isAuthorized: boolean;
+  sameOrigin: boolean;
   body: unknown;
   storage: UploadPort;
 }): Promise<HandlerResult> {
+  if (!params.sameOrigin) {
+    return forbidden();
+  }
+
   if (!params.isAuthorized) {
     return unauthorized();
   }

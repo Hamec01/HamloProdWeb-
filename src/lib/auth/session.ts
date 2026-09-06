@@ -17,6 +17,7 @@ import { prisma } from "@/lib/db/client";
 import { getSessionSecret } from "@/lib/auth/config";
 import { adminCookieName } from "@/lib/auth/cookies";
 import { isAdminRole, type AdminRole } from "@/lib/auth/admin-roles";
+import { inetOrNull } from "@/lib/auth/request";
 
 export { ADMIN_ROLES, isAdminRole, type AdminRole } from "@/lib/auth/admin-roles";
 
@@ -71,7 +72,7 @@ export async function createAdminSession(
       userId,
       tokenHash: hashSessionToken(token),
       expiresAt,
-      ip: meta.ip ?? null,
+      ip: inetOrNull(meta.ip),
       userAgent: meta.userAgent?.slice(0, 512) ?? null,
     },
     select: { id: true },
@@ -143,8 +144,13 @@ export async function revokeAdminSession(input: { token?: string; sessionId?: st
 }
 
 /**
- * Revoke the current session and issue a new one in a single transaction. A
- * replay of the old token fails validation afterwards (revokedAt is set).
+ * Revoke the current session and issue a new one in a single transaction.
+ *
+ * The revoke is a conditional `updateMany` (tokenHash matches, not revoked, not
+ * expired). Two concurrent refreshes race on that UPDATE: exactly one sees
+ * `count === 1` and proceeds; the other sees `count === 0` and returns `null`.
+ * The admin role is re-checked inside the transaction. Unexpected DB errors
+ * propagate (they are NOT collapsed into "invalid session").
  */
 export async function rotateAdminSession(
   token: string,
@@ -154,37 +160,40 @@ export async function rotateAdminSession(
   const newToken = generateSessionToken();
   const expiresAt = new Date(Date.now() + ADMIN_SESSION_TTL_MS);
 
-  try {
-    const created = await prisma.$transaction(async (tx) => {
-      const current = await tx.session.findUnique({
-        where: { tokenHash: oldHash },
-        select: { id: true, userId: true, revokedAt: true, expiresAt: true },
-      });
+  return prisma.$transaction(async (tx) => {
+    const now = new Date();
 
-      if (!current || current.revokedAt !== null || current.expiresAt.getTime() <= Date.now()) {
-        return null;
-      }
-
-      await tx.session.update({ where: { id: current.id }, data: { revokedAt: new Date() } });
-
-      const next = await tx.session.create({
-        data: {
-          userId: current.userId,
-          tokenHash: hashSessionToken(newToken),
-          expiresAt,
-          ip: meta.ip ?? null,
-          userAgent: meta.userAgent?.slice(0, 512) ?? null,
-        },
-        select: { id: true },
-      });
-
-      return next.id;
+    const revoked = await tx.session.updateMany({
+      where: { tokenHash: oldHash, revokedAt: null, expiresAt: { gt: now } },
+      data: { revokedAt: now },
     });
 
-    return created ? { token: newToken, sessionId: created, expiresAt } : null;
-  } catch {
-    return null;
-  }
+    if (revoked.count !== 1) {
+      return null;
+    }
+
+    const current = await tx.session.findUnique({
+      where: { tokenHash: oldHash },
+      select: { userId: true, user: { select: { role: true } } },
+    });
+
+    if (!current || !isAdminRole(current.user.role)) {
+      return null;
+    }
+
+    const next = await tx.session.create({
+      data: {
+        userId: current.userId,
+        tokenHash: hashSessionToken(newToken),
+        expiresAt,
+        ip: inetOrNull(meta.ip),
+        userAgent: meta.userAgent?.slice(0, 512) ?? null,
+      },
+      select: { id: true },
+    });
+
+    return { token: newToken, sessionId: next.id, expiresAt };
+  });
 }
 
 /** Revoke every non-revoked session for a user (e.g. after a password change). */

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -18,6 +18,7 @@ const ADMIN_AUTH_PATH = [
   "src/lib/auth/origin.ts",
   "src/lib/auth/throttle.ts",
   "src/lib/auth/request.ts",
+  "src/lib/auth/response.ts",
   "src/lib/auth/admin-roles.ts",
   "src/lib/auth/admin-auth-service.ts",
   "src/lib/auth/admin-ports.ts",
@@ -32,29 +33,49 @@ const STORAGE_ROUTES = [
   "src/app/api/admin/storage/finalize/route.ts",
 ];
 
+const SUPABASE = /@supabase\/|@\/lib\/supabase\/|supabase\.auth/;
+
 test("no file in the admin auth path imports Supabase", () => {
   for (const file of ADMIN_AUTH_PATH) {
-    const source = read(file);
-    assert.doesNotMatch(source, /@supabase\/|@\/lib\/supabase\//, `${file} imports Supabase`);
+    assert.doesNotMatch(read(file), SUPABASE, `${file} imports Supabase`);
   }
 });
 
 test("storage routes no longer reference Supabase env / client", () => {
   for (const file of STORAGE_ROUTES) {
-    const source = read(file);
-    assert.doesNotMatch(source, /hasSupabaseEnv|@\/lib\/supabase\/|@supabase\//, `${file} still references Supabase`);
+    assert.doesNotMatch(read(file), /hasSupabaseEnv|@\/lib\/supabase\/|@supabase\//, `${file} still references Supabase`);
   }
 });
 
-test("proxy.ts skips Supabase refresh for admin paths", () => {
-  const source = read("src/proxy.ts");
-  assert.match(source, /\/api\/admin/);
-  assert.match(source, /\/admin/);
+test("proxy / middleware does not touch Supabase (file removed in M6.1a)", () => {
+  for (const candidate of ["src/proxy.ts", "src/middleware.ts", "middleware.ts"]) {
+    const abs = resolve(root, candidate);
+    if (existsSync(abs)) {
+      assert.doesNotMatch(readFileSync(abs, "utf8"), SUPABASE, `${candidate} still references Supabase`);
+    }
+  }
+  assert.equal(existsSync(resolve(root, "src/proxy.ts")), false, "src/proxy.ts should be removed");
 });
 
 test("the raw session token is never console-logged in the auth path", () => {
-  for (const file of ["src/lib/auth/session.ts", "src/app/api/admin/auth/login/route.ts", "src/app/api/admin/auth/refresh/route.ts"]) {
-    const source = read(file);
-    assert.doesNotMatch(source, /console\.(log|info|warn|error)\([^)]*\btoken\b/i, `${file} logs a token`);
+  for (const file of [
+    "src/lib/auth/session.ts",
+    "src/app/api/admin/auth/login/route.ts",
+    "src/app/api/admin/auth/logout/route.ts",
+    "src/app/api/admin/auth/refresh/route.ts",
+  ]) {
+    assert.doesNotMatch(read(file), /console\.(log|info|warn|error)\([^)]*\btoken\b/i, `${file} logs a token`);
+  }
+});
+
+test("auth endpoints set Cache-Control: no-store", () => {
+  assert.match(read("src/lib/auth/response.ts"), /no-store/);
+  for (const file of [
+    "src/app/api/admin/auth/login/route.ts",
+    "src/app/api/admin/auth/logout/route.ts",
+    "src/app/api/admin/auth/refresh/route.ts",
+    "src/app/api/admin/auth/me/route.ts",
+  ]) {
+    assert.match(read(file), /jsonNoStore/, `${file} should use jsonNoStore`);
   }
 });

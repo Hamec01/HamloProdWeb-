@@ -3,7 +3,7 @@
  *
  * `argon2` is a native module — it must never be bundled for the browser or the
  * Edge runtime. Import this module only from Node.js Route Handlers / server
- * scripts (never from a Client Component, `proxy.ts`, or an Edge route).
+ * scripts (never from a Client Component, middleware, or an Edge route).
  */
 
 import argon2 from "argon2";

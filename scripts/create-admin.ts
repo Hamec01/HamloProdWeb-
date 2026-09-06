@@ -13,8 +13,10 @@
  *      npx tsx scripts/create-admin.ts
  *    unset ADMIN_BOOTSTRAP_PASSWORD
  *
- * Idempotent: re-running upserts the same row (by normalised email) and resets
- * the password + role. It does NOT revoke existing sessions.
+ * Idempotent. In one transaction it upserts the row (by normalised email), sets
+ * the password + ADMIN role, and revokes every active session of that user (so a
+ * changed password immediately invalidates old logins). The first run also
+ * simply creates the row (0 sessions revoked).
  */
 
 import { prisma } from "@/lib/db/client";
@@ -45,14 +47,23 @@ async function main() {
 
   const passwordHash = await hashPassword(rawPassword);
 
-  const user = await prisma.user.upsert({
-    where: { email },
-    create: { email, passwordHash, role: "ADMIN", emailVerifiedAt: new Date() },
-    update: { passwordHash, role: "ADMIN" },
-    select: { id: true, email: true, role: true, createdAt: true },
+  const { user, revokedCount } = await prisma.$transaction(async (tx) => {
+    const upserted = await tx.user.upsert({
+      where: { email },
+      create: { email, passwordHash, role: "ADMIN", emailVerifiedAt: new Date() },
+      update: { passwordHash, role: "ADMIN" },
+      select: { id: true, email: true, role: true },
+    });
+
+    const revoked = await tx.session.updateMany({
+      where: { userId: upserted.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    return { user: upserted, revokedCount: revoked.count };
   });
 
-  console.log(`ok: ${user.role} ${user.email} (${user.id})`);
+  console.log(`ok: ${user.role} ${user.email} (${user.id}) — revoked ${revokedCount} active session(s)`);
   await prisma.$disconnect();
 }
 
