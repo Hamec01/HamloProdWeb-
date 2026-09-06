@@ -1,0 +1,49 @@
+# HamloProd — self-hosted PostgreSQL (migration phase M1.2).
+#
+# Runs on the project's own VPS, NOT on Vercel. The port is published to
+# 127.0.0.1 only — the database is never reachable from the network. Connecting
+# Vercel to it (TLS proxy / tunnel + a dedicated public endpoint) is a later step.
+#
+# Usage:
+#   cp .env.example .env   # then fill POSTGRES_PASSWORD, APP_DB_PASSWORD, *_URL
+#   docker compose up -d
+#   npm run db:migrate:deploy
+#
+# This compose project is named "hamloprod" so it never collides with the other
+# stacks already on the host.
+
+name: hamloprod
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: hamloprod-postgres
+    restart: unless-stopped
+    # Loopback only. Do NOT change to 0.0.0.0 — Docker would bypass the host firewall.
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-55434}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hamloprod_migrator}
+      POSTGRES_DB: ${POSTGRES_DB:-hamloprod}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      APP_DB_USER: ${APP_DB_USER:-hamloprod_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set APP_DB_PASSWORD in .env}
+      # Keep timestamps unambiguous.
+      TZ: UTC
+      PGTZ: UTC
+    volumes:
+      - ./prisma/docker/initdb:/docker-entrypoint-initdb.d:ro
+      - ${HAMLOPROD_PGDATA:-hamloprod_pgdata}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hamloprod_migrator} -d ${POSTGRES_DB:-hamloprod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    stop_grace_period: 30s
+
+volumes:
+  # Default: a Docker-managed named volume. To store data under the host's
+  # app-data convention instead, set HAMLOPROD_PGDATA=/home/deploy/app-data/hamloprod/pgdata
+  # in .env before the first `up`.
+  hamloprod_pgdata:
+    name: hamloprod_pgdata

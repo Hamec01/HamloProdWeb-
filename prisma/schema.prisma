@@ -1,0 +1,162 @@
+// HamloProd — clean PostgreSQL foundation (migration phase M1.2).
+//
+// This is a fresh database. No data or files are imported from Supabase; content
+// is re-uploaded through the new admin flow. New features use this schema only —
+// they must not read or write Supabase.
+//
+// `DATABASE_URL`  — runtime, least-privilege app role (DML only).
+// `DIRECT_URL`    — migrations, schema-owner role (DDL). Never shipped to the app.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Content/admin roles. A plain visitor has no row-level role (null).
+enum UserRole {
+  admin
+  editor
+  artist
+}
+
+/// One beat = one buyer. `sold`/`private` beats are hidden from the public catalogue.
+enum BeatStatus {
+  available
+  reserved
+  sold
+  private
+}
+
+enum StorageVisibility {
+  public
+  private
+}
+
+/// Entity a pending upload will be attached to. `beat` is the only one with a
+/// typed FK for now; the rest are resolved by the service against `entityId`.
+enum UploadEntityType {
+  beat
+  track
+  artist
+  post
+}
+
+enum UploadIntentState {
+  pending
+  attached
+  deleting
+  expired
+}
+
+/// Matches the storage layer's UploadKind strings (see src/lib/storage/keys.ts).
+enum UploadKind {
+  beatCover    @map("beat-cover")
+  beatPreview  @map("beat-preview")
+  beatMaster   @map("beat-master")
+  beatArchive  @map("beat-archive")
+  trackCover   @map("track-cover")
+  trackAudio   @map("track-audio")
+  artistAvatar @map("artist-avatar")
+  postFile     @map("post-file")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Store normalised (trimmed, lower-cased) email. Uniqueness is enforced here.
+  email           String    @unique
+  /// Null for accounts that cannot password-log-in yet (OAuth / reset required).
+  passwordHash    String?   @map("password_hash")
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  role            UserRole?
+  displayName     String?   @map("display_name")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  sessions      Session[]
+  uploadIntents UploadIntent[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Only the hash of the opaque session token is stored, never the token itself.
+  tokenHash String    @unique @map("token_hash")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ip        String?   @db.Inet
+  userAgent String?   @map("user_agent")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Beat {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug            String     @unique
+  caseNumber      String     @unique @map("case_number")
+  title           String
+  status          BeatStatus @default(available)
+  bpm             Int?
+  /// Whole currency units, matching the current pricing model.
+  priceUsd        Int        @default(0) @map("price_usd")
+  priceRub        Int        @default(0) @map("price_rub")
+  genre           String?
+  substyle        String?
+  mood            String?
+  description     String?
+  durationSeconds Int?       @map("duration_seconds")
+  /// Object-storage keys (not URLs). Public keys resolve via the public base URL;
+  /// private keys are only ever handed out as short-lived signed URLs.
+  coverKey        String?    @map("cover_key")
+  previewKey      String?    @map("preview_key")
+  masterKey       String?    @map("master_key")
+  archiveKey      String?    @map("archive_key")
+  featured        Boolean    @default(false)
+  publishedAt     DateTime?  @map("published_at") @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  uploadIntents UploadIntent[]
+
+  @@index([status])
+  @@index([featured])
+  @@map("beats")
+}
+
+/// A server-authorised, single-use direct upload. Created before a presigned PUT,
+/// moved to `attached` once finalised, and swept when `pending`/`deleting` past
+/// `expiresAt`.
+model UploadIntent {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId     String?           @map("owner_id") @db.Uuid
+  owner       User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  entityType  UploadEntityType  @map("entity_type")
+  entityId    String?           @map("entity_id") @db.Uuid
+  beatId      String?           @map("beat_id") @db.Uuid
+  beat        Beat?             @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  kind        UploadKind
+  visibility  StorageVisibility
+  /// The generated object key. Globally unique across both buckets.
+  key         String            @unique
+  contentType String?           @map("content_type")
+  sizeBytes   BigInt?           @map("size_bytes")
+  state       UploadIntentState @default(pending)
+  expiresAt   DateTime          @map("expires_at") @db.Timestamptz(6)
+  attachedAt  DateTime?         @map("attached_at") @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([state, expiresAt])
+  @@index([entityType, entityId])
+  @@map("upload_intents")
+}
