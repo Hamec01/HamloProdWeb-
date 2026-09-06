@@ -22,3 +22,26 @@ export interface ObjectStorage {
   /** Service checks paid order/other entitlement first. Enforce 300–900 seconds. */
   createSignedDownloadUrl(object: StoredObject, options: { expiresInSeconds: number; downloadName?: string }): Promise<SignedDownload>;
 }
+
+/** Metadata read back from the store after a direct browser upload. */
+export type ObjectHead = { contentType: string | null; contentLength: number | null; etag: string | null };
+
+export type SignedUpload = {
+  url: string;
+  method: "PUT";
+  /** Headers the browser MUST send with the PUT so the signature matches. */
+  headers: Record<string, string>;
+  expiresAt: string;
+};
+
+/**
+ * Direct-to-storage upload capability. Large private assets (WAV, ZIP) must not be
+ * proxied through a Route Handler, so the browser receives a short-lived presigned
+ * PUT for one server-generated key. Credentials never leave the server.
+ */
+export interface DirectUploadStorage extends ObjectStorage {
+  /** TTL is clamped to a short window (≤ 600s). One key, one visibility, one content type. */
+  createSignedUploadUrl(input: StoredObject & { contentType: string; expiresInSeconds: number }): Promise<SignedUpload>;
+  /** Returns null when the object does not exist. Used by finalize to verify a completed upload. */
+  headObject(object: StoredObject): Promise<ObjectHead | null>;
+}
