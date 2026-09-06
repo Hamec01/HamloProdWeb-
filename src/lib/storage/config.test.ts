@@ -99,18 +99,22 @@ test("isStorageConfigured is false for an empty env and true for a full one", ()
   assert.equal(isStorageConfigured(FULL_ENV), true);
 });
 
-test("getStorageBackend defaults to supabase and fails closed on a typo", () => {
-  assert.equal(getStorageBackend({}), "supabase");
-  assert.equal(getStorageBackend({ STORAGE_BACKEND: "supabase" }), "supabase");
+test("getStorageBackend defaults to contabo-s3 and fails closed on a typo", () => {
+  assert.equal(getStorageBackend({}), "contabo-s3");
+  assert.equal(getStorageBackend({ STORAGE_BACKEND: "" }), "contabo-s3");
   assert.equal(getStorageBackend({ STORAGE_BACKEND: "contabo-s3" }), "contabo-s3");
+  assert.equal(getStorageBackend({ STORAGE_BACKEND: "CONTABO-S3" }), "contabo-s3");
+  // legacy value still accepted while routes migrate
+  assert.equal(getStorageBackend({ STORAGE_BACKEND: "supabase" }), "supabase");
   assert.throws(() => getStorageBackend({ STORAGE_BACKEND: "contabo" }), StorageConfigError);
+  assert.throws(() => getStorageBackend({ STORAGE_BACKEND: "s3" }), StorageConfigError);
 });
 
 test("describeStorageConfig reports presence booleans and host, never values", () => {
   const described = describeStorageConfig(FULL_ENV);
 
   assert.equal(described.configured, true);
-  assert.equal(described.backend, "supabase");
+  assert.equal(described.backend, "contabo-s3");
   assert.equal(described.endpointHost, "usc1.contabostorage.com");
   assert.equal(described.present.S3_ACCESS_KEY, true);
   assert.equal(described.present.S3_PUBLIC_BASE_URL, false);

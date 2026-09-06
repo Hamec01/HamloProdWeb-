@@ -1,27 +1,36 @@
-// HamloProd — clean PostgreSQL foundation (migration phase M1.2).
+// HamloProd — clean PostgreSQL foundation (migration phase M1.2 / M1.2a).
 //
-// This is a fresh database. No data or files are imported from Supabase; content
-// is re-uploaded through the new admin flow. New features use this schema only —
-// they must not read or write Supabase.
+// Fresh database. No data or files are imported from Supabase; content is
+// re-uploaded through the new admin flow. New code uses this schema only — it
+// must not read or write Supabase.
 //
-// `DATABASE_URL`  — runtime, least-privilege app role (DML only).
-// `DIRECT_URL`    — migrations, schema-owner role (DDL). Never shipped to the app.
+// Roles:
+//   DATABASE_URL       runtime, hamloprod_app (LOGIN NOSUPERUSER NOCREATEDB
+//                      NOCREATEROLE; CONNECT + USAGE + DML only)
+//   DIRECT_URL         migrations, hamloprod_migrator (owns DB + schema; still
+//                      NOSUPERUSER NOCREATEDB NOCREATEROLE). Never used by the app.
+//   SHADOW_DATABASE_URL dev-only: `prisma migrate dev` shadow DB (the migrator
+//                      cannot CREATE DATABASE, so a dedicated one is pre-created).
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  extensions        = [citext]
 }
 
-/// Content/admin roles. A plain visitor has no row-level role (null).
+/// Every account has a role. A normal visitor is USER.
 enum UserRole {
-  admin
-  editor
-  artist
+  ADMIN
+  EDITOR
+  ARTIST
+  USER
 }
 
 /// One beat = one buyer. `sold`/`private` beats are hidden from the public catalogue.
@@ -32,13 +41,21 @@ enum BeatStatus {
   private
 }
 
+/// Allowed genres — mirrors BEAT_GENRES in src/lib/beats-taxonomy.ts.
+enum BeatGenre {
+  boombap
+  rap
+  trap
+  drill
+  another
+}
+
 enum StorageVisibility {
   public
   private
 }
 
-/// Entity a pending upload will be attached to. `beat` is the only one with a
-/// typed FK for now; the rest are resolved by the service against `entityId`.
+/// Entity a pending upload will be attached to. Resolved by the service against `entityId`.
 enum UploadEntityType {
   beat
   track
@@ -46,11 +63,14 @@ enum UploadEntityType {
   post
 }
 
+/// upload-url -> PENDING; finalize (HeadObject ok) -> FINALIZED; bound to an
+/// entity -> ATTACHED; scheduled for removal -> DELETING; TTL passed -> EXPIRED.
 enum UploadIntentState {
-  pending
-  attached
-  deleting
-  expired
+  PENDING
+  FINALIZED
+  ATTACHED
+  DELETING
+  EXPIRED
 }
 
 /// Matches the storage layer's UploadKind strings (see src/lib/storage/keys.ts).
@@ -67,12 +87,16 @@ enum UploadKind {
 
 model User {
   id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  /// Store normalised (trimmed, lower-cased) email. Uniqueness is enforced here.
-  email           String    @unique
+  /// Stored normalised (trimmed, lower-cased) by the app; `citext` makes the
+  /// uniqueness constraint case-insensitive so the DB enforces it regardless.
+  email           String    @unique @db.Citext
   /// Null for accounts that cannot password-log-in yet (OAuth / reset required).
   passwordHash    String?   @map("password_hash")
   emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
-  role            UserRole?
+  role            UserRole  @default(USER)
+  /// Set for ARTIST accounts — the artist profile they manage (FK added with the
+  /// Artist model in a later phase).
+  artistId        String?   @map("artist_id") @db.Uuid
   displayName     String?   @map("display_name")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -80,6 +104,7 @@ model User {
   sessions      Session[]
   uploadIntents UploadIntent[]
 
+  @@index([artistId])
   @@map("users")
 }
 
@@ -101,62 +126,75 @@ model Session {
 }
 
 model Beat {
-  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug            String     @unique
-  caseNumber      String     @unique @map("case_number")
-  title           String
-  status          BeatStatus @default(available)
-  bpm             Int?
-  /// Whole currency units, matching the current pricing model.
-  priceUsd        Int        @default(0) @map("price_usd")
-  priceRub        Int        @default(0) @map("price_rub")
-  genre           String?
-  substyle        String?
-  mood            String?
-  description     String?
-  durationSeconds Int?       @map("duration_seconds")
-  /// Object-storage keys (not URLs). Public keys resolve via the public base URL;
-  /// private keys are only ever handed out as short-lived signed URLs.
-  coverKey        String?    @map("cover_key")
-  previewKey      String?    @map("preview_key")
-  masterKey       String?    @map("master_key")
-  archiveKey      String?    @map("archive_key")
-  featured        Boolean    @default(false)
-  publishedAt     DateTime?  @map("published_at") @db.Timestamptz(6)
-  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                 String     @unique
+  caseNumber           String     @unique @map("case_number")
+  title                String
+  status               BeatStatus @default(available)
+  genre                BeatGenre  @default(boombap)
+  substyle             String?
+  mood                 String?
+  bpm                  Int?
+  description          String?
+  durationSeconds      Int?       @map("duration_seconds")
+  coverPalette         String     @default("from-stone-700 via-stone-900 to-zinc-950") @map("cover_palette")
+  priceUsd             Int        @default(0) @map("price_usd")
+  priceRub             Int        @default(0) @map("price_rub")
+  featured             Boolean    @default(false)
+  availableForDownload Boolean    @default(false) @map("available_for_download")
 
-  uploadIntents UploadIntent[]
+  /// Object-storage keys only — never a URL, and never a URL for a private file.
+  /// Public keys resolve via the public base URL; private keys are only ever
+  /// handed out as short-lived signed URLs.
+  coverKey             String?    @map("cover_key")
+  previewKey           String?    @map("preview_key")
+  masterKey            String?    @map("master_key")
+  archiveKey           String?    @map("archive_key")
+
+  previewFileName      String?    @map("preview_file_name")
+  previewMimeType      String?    @map("preview_mime_type")
+  previewSizeBytes     Int?       @map("preview_size_bytes")
+
+  publishedAt          DateTime?  @map("published_at") @db.Timestamptz(6)
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([featured])
   @@map("beats")
 }
 
-/// A server-authorised, single-use direct upload. Created before a presigned PUT,
-/// moved to `attached` once finalised, and swept when `pending`/`deleting` past
-/// `expiresAt`.
+/// A server-authorised, single-use direct upload.
+///
+///   upload-url  -> create PENDING (expectedSize + contentType known)
+///   finalize    -> only an existing PENDING intent; after HeadObject, write
+///                  actualSize + finalizedAt and move to FINALIZED
+///   attach      -> bind to its entity, write attachedAt, move to ATTACHED
+///
+/// The storage API is NOT wired to Prisma yet (M7.2) — this is the target schema.
 model UploadIntent {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ownerId     String?           @map("owner_id") @db.Uuid
-  owner       User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  entityType  UploadEntityType  @map("entity_type")
-  entityId    String?           @map("entity_id") @db.Uuid
-  beatId      String?           @map("beat_id") @db.Uuid
-  beat        Beat?             @relation(fields: [beatId], references: [id], onDelete: Cascade)
-  kind        UploadKind
-  visibility  StorageVisibility
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId      String            @map("owner_id") @db.Uuid
+  owner        User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  entityType   UploadEntityType  @map("entity_type")
+  entityId     String            @map("entity_id") @db.Uuid
+  kind         UploadKind
+  visibility   StorageVisibility
   /// The generated object key. Globally unique across both buckets.
-  key         String            @unique
-  contentType String?           @map("content_type")
-  sizeBytes   BigInt?           @map("size_bytes")
-  state       UploadIntentState @default(pending)
-  expiresAt   DateTime          @map("expires_at") @db.Timestamptz(6)
-  attachedAt  DateTime?         @map("attached_at") @db.Timestamptz(6)
-  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  key          String            @unique
+  contentType  String            @map("content_type")
+  /// Size declared at upload-url time. Required.
+  expectedSize BigInt            @map("expected_size")
+  /// Real size from HeadObject at finalize time. Null until FINALIZED.
+  actualSize   BigInt?           @map("actual_size")
+  state        UploadIntentState @default(PENDING)
+  expiresAt    DateTime          @map("expires_at") @db.Timestamptz(6)
+  finalizedAt  DateTime?         @map("finalized_at") @db.Timestamptz(6)
+  attachedAt   DateTime?         @map("attached_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([state, expiresAt])
-  @@index([entityType, entityId])
+  @@index([ownerId])
   @@map("upload_intents")
 }

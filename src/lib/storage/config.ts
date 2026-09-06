@@ -7,8 +7,9 @@
  * config object and its errors are also built so that a secret value is never
  * echoed into an error message or an API response.
  *
- * This module does not switch the runtime storage backend. `STORAGE_BACKEND`
- * defaults to `supabase`; Contabo is only used once it is set to `contabo-s3`.
+ * Contabo is the target object-storage backend. `STORAGE_BACKEND` defaults to
+ * `contabo-s3` when unset; the legacy `supabase` value is still accepted while
+ * routes are migrated, but an unknown value fails closed.
  */
 
 export type S3Config = {
@@ -166,21 +167,23 @@ export function isStorageConfigured(env: EnvSource = process.env): boolean {
 }
 
 /**
- * Active storage backend. Defaults to `supabase`. An unknown value fails closed so
- * a typo never silently points the app at an unconfigured backend.
+ * Active storage backend. Contabo is the target: an unset (or `contabo-s3`) value
+ * resolves to `contabo-s3`. The legacy `supabase` value is still accepted while
+ * routes are migrated. Any other value fails closed so a typo never silently
+ * points the app at an unconfigured backend.
  */
 export function getStorageBackend(env: EnvSource = process.env): StorageBackend {
   const value = (env.STORAGE_BACKEND ?? "").trim().toLowerCase();
 
-  if (value === "" || value === "supabase") {
-    return "supabase";
-  }
-
-  if (value === "contabo-s3") {
+  if (value === "" || value === "contabo-s3") {
     return "contabo-s3";
   }
 
-  throw new StorageConfigError('STORAGE_BACKEND must be "supabase" or "contabo-s3".');
+  if (value === "supabase") {
+    return "supabase";
+  }
+
+  throw new StorageConfigError('STORAGE_BACKEND must be "contabo-s3" (default) or the legacy "supabase".');
 }
 
 /**
