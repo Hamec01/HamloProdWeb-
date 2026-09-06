@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";

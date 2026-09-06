@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { preparePaymentCreation } from "@/lib/payments/create";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { paymentCreateRequestSchema } from "@/lib/validations/payments";

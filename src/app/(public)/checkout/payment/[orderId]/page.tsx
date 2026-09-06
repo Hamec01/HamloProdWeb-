@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PaymentCreatePanel } from "@/components/checkout/payment-create-panel";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 import { formatMarketMoney } from "@/lib/market";

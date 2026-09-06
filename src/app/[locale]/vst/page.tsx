@@ -99,7 +99,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">
             {locale === "ru" ? "Управление VST-постами (admin)" : "VST Post Management (admin)"}
           </p>
-          <AdminPostCrudManager posts={adminPosts} hasSupabase={adminSession.hasSupabase} />
+          <AdminPostCrudManager posts={adminPosts} hasSupabase={false} />
         </section>
       ) : null}
     </section>

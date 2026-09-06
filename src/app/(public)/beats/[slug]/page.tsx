@@ -6,7 +6,7 @@ import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";

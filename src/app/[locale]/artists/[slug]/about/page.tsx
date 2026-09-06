@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { getArtistBySlug, getArtistPosts } from "@/services/content";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { normalizeLocale } from "@/lib/market";
 import { ArtistNewsFeed } from "@/components/artists/artist-news-feed";
 import { dictionary } from "@/lib/i18n";

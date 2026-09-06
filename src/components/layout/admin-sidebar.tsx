@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminLogoutButton } from "@/components/admin/admin-logout-button";
 
 const adminNavigation = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -22,6 +23,8 @@ export function AdminSidebar() {
           </Link>
         ))}
       </nav>
+      <div className="case-divider my-5" />
+      <AdminLogoutButton />
     </aside>
   );
 }

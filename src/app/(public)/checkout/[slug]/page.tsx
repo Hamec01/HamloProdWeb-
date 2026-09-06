@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import type { Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { getDiscountPercent } from "@/lib/loyalty";

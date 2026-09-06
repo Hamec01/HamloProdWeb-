@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionState } from "@/lib/auth/session";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { getS3Config, isStorageConfigured } from "@/lib/storage/config";
 import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
 import { finalizeUpload } from "@/lib/storage/upload-service";
@@ -10,17 +9,18 @@ export const runtime = "nodejs";
 /**
  * POST /api/admin/storage/finalize
  *
- * Verifies a completed direct upload: requires an admin/editor session, accepts
- * only a previously issued key plus its kind, runs HeadObject, and checks the
- * real bucket / content type / size. It never accepts an arbitrary bucket or a
- * key that does not structurally match the kind.
+ * Verifies a completed direct upload: requires an own-auth admin/editor session,
+ * accepts only a previously issued key plus its kind, runs HeadObject, and checks
+ * the real bucket / content type / size. It never accepts an arbitrary bucket or
+ * a key that does not structurally match the kind.
  */
 export async function POST(request: Request) {
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ error: "Supabase env is not configured." }, { status: 503 });
+  let session;
+  try {
+    session = await getAdminSessionState();
+  } catch {
+    return NextResponse.json({ error: "Authentication is not configured." }, { status: 503 });
   }
-
-  const session = await getAdminSessionState();
 
   if (!session.isAuthenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

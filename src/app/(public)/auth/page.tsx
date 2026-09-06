@@ -1,5 +1,5 @@
 import { PublicAuthForm } from "@/components/auth/public-auth-form";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getLocale } from "@/lib/i18n-server";
 
 export default async function PublicAuthPage() {

@@ -1,8 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+// Admin now uses own auth (src/lib/auth/session.ts). Do NOT run the Supabase
+// session refresh for admin paths — it must not touch /admin/* or /api/admin/*.
+const OWN_AUTH_PREFIXES = ["/admin", "/api/admin"];
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request });
+
+  const { pathname } = request.nextUrl;
+  if (OWN_AUTH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    return response;
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

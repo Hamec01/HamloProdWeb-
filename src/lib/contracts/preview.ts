@@ -1,4 +1,4 @@
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getSellerIdentity } from "@/lib/contracts/seller";
 import { renderExclusiveRightsRuTemplate } from "@/lib/contracts/templates/exclusive-rights-ru";
 import { formatMarketMoney, type CurrencyCode } from "@/lib/market";

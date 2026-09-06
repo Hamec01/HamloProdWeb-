@@ -1,7 +1,9 @@
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
+import { requireAdminSession } from "@/lib/auth/session";
 import { getArtists, getBeats, getTracks } from "@/services/content";
 
 export default async function AdminDashboardPage() {
+  await requireAdminSession();
   const [beats, tracks, artists] = await Promise.all([getBeats(), getTracks(), getArtists()]);
 
   return (

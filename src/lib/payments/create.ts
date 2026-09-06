@@ -1,4 +1,4 @@
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { createLavaInvoice } from "@/lib/payments/lava";
 import { hasSupabaseEnv } from "@/lib/supabase/env";

@@ -164,6 +164,20 @@ model Beat {
   @@map("beats")
 }
 
+/// Login rate-limiting. One row per HMAC(normalised email + IP). No email or IP
+/// is stored in the clear. Old rows are swept opportunistically (no cron in M6.1).
+model AuthThrottle {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  keyHash         String    @unique @map("key_hash")
+  attempts        Int       @default(0)
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(6)
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([blockedUntil])
+  @@map("auth_throttle")
+}
+
 /// A server-authorised, single-use direct upload.
 ///
 ///   upload-url  -> create PENDING (expectedSize + contentType known)

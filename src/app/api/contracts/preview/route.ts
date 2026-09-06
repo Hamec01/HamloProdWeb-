@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { generateAndSaveContractSnapshot } from "@/lib/contracts/preview";
 import { contractPreviewRequestSchema } from "@/lib/validations/contracts";

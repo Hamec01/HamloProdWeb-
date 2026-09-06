@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { normalizeLocale } from "@/lib/market";
 import { getReleases, getSingleTracks } from "@/services/content";
 import type { Release } from "@/types";

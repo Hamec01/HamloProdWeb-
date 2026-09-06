@@ -3,8 +3,8 @@ import { requireAdminSession } from "@/lib/auth/session";
 import { getAdminReleases } from "@/services/content";
 
 export default async function AdminReleasesPage() {
-  const session = await requireAdminSession();
+  await requireAdminSession();
   const releases = await getAdminReleases();
 
-  return <AdminReleaseCrudManager releases={releases} hasSupabase={session.hasSupabase} />;
+  return <AdminReleaseCrudManager releases={releases} hasSupabase={false} />;
 }

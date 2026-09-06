@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getArtistBySlug, getArtistReleases } from "@/services/content";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { normalizeLocale } from "@/lib/market";
 import { ReleaseCard } from "@/components/tracks/release-card";
 import { CommentsSection } from "@/components/artists/comments-section";

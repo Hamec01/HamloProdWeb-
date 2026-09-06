@@ -1,7 +1,7 @@
 import { HamContentSection } from "@/components/ham/ham-content-section";
 import { HamPlayerQueueSync } from "@/components/tracks/ham-player-queue-sync";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { getPublicSessionState } from "@/lib/auth/session";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { normalizeLocale, sectorLabels } from "@/lib/market";
 import { getDemoTracks, getReleases, getSingleTracks } from "@/services/content";
 import type { Release, Track } from "@/types";
