@@ -216,68 +216,65 @@ MIME↔расширение, размер, соответствие `kind` ↔ `
 
 ---
 
-## 4. Что нужно сделать владельцу в панели Contabo
+## 4. Настройка Contabo — статус M7.2a
 
-> Всё это выполняется вручную в панели/через S3 API. Секреты не присылать в чат и
-> не коммитить. `usc1` endpoint и path-style уже подтверждены существующим доступом.
+> Секреты (`S3_*`) в чат/Git/логи не выводятся. `usc1` endpoint и path-style
+> подтверждены; `S3_*` уже в локальном `.env` и валидны.
 
-### 4.1 Создать два bucket
+### 4.1 Bucket'ы — **созданы** ✓
 
 ```
 hamloprod-public     — обложки, превью MP3, аватары, медиа постов
 hamloprod-private    — WAV-мастера, ZIP, приватные треки, (позже) договоры
 ```
 
-Регион/endpoint: `https://usc1.contabostorage.com` (US Central), path-style.
-**Bucket `250gb` не использовать** — он под бэкапы других проектов.
+Проверено скриптом: `HeadBucket` на обоих → OK; `ListObjectsV2` под ключом → пусто.
+Bucket `250gb` не тронут.
 
-### 4.2 Отдельный access key для сайта
+### 4.2 Технический access key — **есть** ✓ (object-scoped)
 
-Не переиспользовать ключ из `/home/deploy/.passwd-s3fs` (это ключ бэкапного бакета).
-В панели Contabo Object Storage:
+Ключ в `.env` даёт: `PutObject`, `GetObject`, `DeleteObject`, `HeadObject`,
+`HeadBucket`, `ListObjectsV2`, presigned GET/PUT. **Не даёт** bucket-администрирования:
+`GetBucketPolicy` / `PutBucketPolicy` / `GetBucketCors` / `PutBucketCors` /
+`PutBucketAcl` → `AccessDenied 403`.
 
-1. Object Storage → выбранный instance → **S3 Credentials / Access Keys**.
-2. Создать **новую пару** Access Key / Secret Key, назначение — «hamloprod-web app».
-3. Если Contabo позволяет ограничить ключ бакетами/действиями — ограничить его только
-   `hamloprod-public` и `hamloprod-private` (S3 policy на ключ). Если нет — принять
-   как есть и запланировать ротацию.
-4. Secret показывается один раз — сохранить в менеджере паролей, затем внести в env
-   (раздел 4.5). В Git/чат не отправлять.
+### 4.3 Bucket policy — **действие владельца** (панель Contabo)
 
-### 4.3 Bucket policies
-
-`hamloprod-public`:
-- анонимный `s3:GetObject` — **разрешён** (публичное чтение объектов);
-- `s3:PutObject` / `s3:DeleteObject` — **только** по credentials сервера (ключ из 4.2);
-- листинг бакета анонимно — запрещён.
-
-`hamloprod-private`:
-- анонимного доступа нет вообще (ни GET, ни листинг);
-- любое чтение — только через presigned URL, который сервер выдаёт после проверки прав;
-- запись/удаление — только по credentials сервера.
-
-Пример публичной read-политики для `hamloprod-public` (применить через S3 API,
-`aws s3api put-bucket-policy` или аналог; на VPS CLI не установлен):
+Технический ключ не может применить policy (см. 4.2). В **Contabo customer panel**
+→ Object Storage → `hamloprod-public` → включить публичный доступ / применить
+policy:
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "PublicRead",
+      "Sid": "AnonymousGetObject",
       "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::hamloprod-public/*"
+      "Principal": { "AWS": ["*"] },
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::hamloprod-public/*"]
     }
   ]
 }
 ```
 
-### 4.4 CORS
+- анонимный `s3:GetObject` → разрешён; `ListBucket` / `PutObject` / `DeleteObject`
+  анонимно **не** гранятся (остаются запрещёнными по умолчанию — проверено live:
+  anon PUT → 403, anon DELETE → 403, anon list → 401).
+- `hamloprod-private` — **policy не ставить**. Анонимный доступ отсутствует по
+  умолчанию (проверено live: anon GET private → 401). Чтение — только presigned URL
+  от сервера (проверено live: presigned GET → 200).
 
-Нужен только для direct-to-S3 PUT из браузера. Применить на **оба** бакета
-(или как минимум на тот, куда идёт загрузка из UI):
+Источник policy/CORS в коде: [src/lib/storage/bucket-admin.ts](../src/lib/storage/bucket-admin.ts)
+(`buildPublicReadPolicy`, `buildCorsRules`). Скрипт
+[scripts/storage-provision.mts](../scripts/storage-provision.mts) применяет их и
+печатает точный JSON, если ключ получит права или запуск сделают под admin-ключом
+(`npx tsx scripts/storage-provision.mts` / `--check`).
+
+### 4.4 CORS — **действие владельца** (панель Contabo)
+
+Тем же ключом `PutBucketCors` → `AccessDenied`. Применить на **оба** бакета в панели:
 
 ```json
 [
@@ -291,75 +288,54 @@ hamloprod-private    — WAV-мастера, ZIP, приватные треки,
 ]
 ```
 
-`http://localhost:3000` — только для локальной разработки; в проде можно убрать.
-`*` в `AllowedOrigins` не использовать.
+Wildcard origin не использовать. CORS нужен только для direct-PUT/GET из браузера
+(M7.2b) — на серверный smoke (Node `fetch`) не влияет.
 
-### 4.5 Env (Vercel Environment Variables + локальный `.env.local`)
+### 4.5 Env
 
-Пустой шаблон — [.env.example](../.env.example). Заполнить:
-
-```
-S3_ENDPOINT=https://usc1.contabostorage.com
-S3_REGION=usc1
-S3_ACCESS_KEY=<из 4.2, server-only>
-S3_SECRET_KEY=<из 4.2, server-only>
-S3_BUCKET_PUBLIC=hamloprod-public
-S3_BUCKET_PRIVATE=hamloprod-private
-S3_PUBLIC_BASE_URL=            # пусто ⇒ ${S3_ENDPOINT}/hamloprod-public; задать, если Contabo даёт иной публичный/CDN base
-S3_FORCE_PATH_STYLE=true
-STORAGE_BACKEND=supabase       # НЕ переключать на contabo-s3 в M7.1
-```
-
-`S3_ACCESS_KEY` / `S3_SECRET_KEY` — **без** `NEXT_PUBLIC_`. Проверить, что публичный
-base URL из панели совпадает с тем, что строит `config.ts` (иначе задать `S3_PUBLIC_BASE_URL` явно).
+`S3_*` уже заполнены в локальном `.env` и на используемом Contabo. После включения
+публичного доступа (4.3) **проверить публичный base URL**: если Contabo отдаёт
+`https://usc1.contabostorage.com/<projectId>:hamloprod-public/<key>` (с префиксом
+проекта) — задать `S3_PUBLIC_BASE_URL` явно; иначе `config.ts` строит
+`${S3_ENDPOINT}/hamloprod-public` (проверено: этот путь используется для
+put/get/presign и работает). `S3_ACCESS_KEY` / `S3_SECRET_KEY` — без `NEXT_PUBLIC_`.
 
 ---
 
-## 5. Live S3 smoke test — BLOCKED_BY_CREDENTIALS
+## 5. Live S3 smoke — M7.2a (реальный Contabo)
 
-### 5.1 Почему заблокирован
+`npx tsx scripts/storage-smoke.mts` — вывод без секретов/подписанных URL:
 
-В окружении агента переменные `S3_*` не заданы, доступа к панели Contabo нет,
-ключ из `/home/deploy/.passwd-s3fs` относится к чужому бэкапному бакету и не должен
-использоваться. Secret в чате не запрашивается.
+| # | Проверка | Результат |
+|---|---|---|
+| 1 | public put → **anonymous GET 200** | **FAIL — 401**. Bucket `hamloprod-public` ещё не публичный: техническому ключу `PutBucketPolicy` → `AccessDenied`. Разблокируется действием владельца (4.3) |
+| 2 | private put → anonymous GET 401/403 | **PASS — 401** |
+| 3 | private **presigned GET 200** | **PASS — 200, body-ok** |
+| 4 | delete обоих тестовых объектов | **PASS** |
+| 5 | HeadObject после delete → отсутствуют | **PASS** (public gone, private gone) |
 
-### 5.2 Точный сценарий после получения ключей
+**SMOKE: 4/5 passed.** Единственный fail — это ровно та настройка, которую
+технический ключ применить не может; всё остальное (put / presigned GET / delete /
+head, приватная изоляция) работает на настоящем Contabo. Тестовые объекты удалены.
 
-Запускать локально с заполненным `.env.local` (или на Vercel Preview). Модули
-готовы; нужен только небольшой скрипт-обёртка `scripts/storage-smoke.mts`:
+После включения публичного доступа владельцем — повторить
+`npx tsx scripts/storage-smoke.mts`, ожидать `5/5`.
 
-1. `getS3Config()` → создать `new ContaboS3Storage(config)`.
-2. **public put**: `putObject({ visibility:"public", key:"__smoke/<uuid>.txt", body, contentType:"text/plain", contentLength })`.
-3. **public GET**: `fetch(getPublicUrl({ visibility:"public", key }))` → ожидать `200` и тело.
-4. **private put**: `putObject({ visibility:"private", key:"__smoke/<uuid>.bin", ... })`.
-5. **anonymous private GET**: `fetch("https://usc1.contabostorage.com/hamloprod-private/__smoke/<uuid>.bin")`
-   → ожидать `403`/`401` (НЕ 200).
-6. **signed private GET**: `createSignedDownloadUrl({ visibility:"private", key }, { expiresInSeconds: 600 })`
-   → `fetch(url)` → ожидать `200`.
-7. **cleanup**: `deleteObject` для обоих ключей; повторный `deleteObject` → без ошибки (идемпотентность).
-8. Проверить, что тестовых объектов не осталось (`headObject` → `null`).
-
-Отдельно проверить **presigned PUT из браузера**: `POST /api/admin/storage/upload-url`
-под admin-сессией → `PUT` файла по выданному URL из вкладки браузера → `POST /finalize`
-→ ожидать `200` и корректный `storage` reference. Это подтвердит CORS (4.4).
+Дополнительно для M7.2b: presigned PUT из браузера + `POST /api/admin/storage/finalize`
+проверяют CORS (4.4).
 
 ---
 
-## 6. Результаты проверок M7.1
+## 6. Результаты проверок
 
 | Проверка | Результат |
 |---|---|
-| `npm run lint` | 0 errors, 13 warnings (все — в существующих файлах; новые файлы чистые) |
-| `npm run build` | ✓ Compiled successfully; маршруты `/api/admin/storage/upload-url` и `/api/admin/storage/finalize` собраны |
-| `npm test` (новый storage-код) | 52 теста, 52 pass, 0 fail |
-| Live S3 smoke | **BLOCKED_BY_CREDENTIALS** (раздел 5) |
-| Переключение существующих форм | не выполнялось (по ТЗ); `STORAGE_BACKEND` остаётся `supabase` |
-| Секреты в коде/Git/выводе | нет; `.env.example` — только пустые значения |
-
-Покрытие тестами: выбор public/private bucket, генерация безопасных ключей,
-MIME/extension/size валидация, запрет path traversal, запрет `getPublicUrl` для
-private, отсутствующая/невалидная конфигурация, неавторизованный доступ к API,
-подмена `key`/`kind` при `finalize`, TTL signed URL, идемпотентность delete.
+| `npm run lint` | 0 errors, warnings — только в существующих файлах |
+| `npm run build` | ✓ Compiled successfully |
+| `npm test` | все зелёные (storage: bucket выбор, безопасные ключи, MIME/ext/size, traversal, private `getPublicUrl`, конфиг, unauthorized API, подмена `key`/`kind`, TTL, идемпотентный delete, origin-check; M7.2a: policy/CORS builders) |
+| Live S3 smoke (M7.2a) | **4/5** на настоящем Contabo (раздел 5): всё кроме публичного анонимного GET, который блокирован правами ключа |
+| Переключение существующих форм битов | не выполнялось (вне scope M7.2a) |
+| Секреты в коде/Git/выводе | нет; скрипты печатают только статусы и PASS/FAIL |
 
 ---
 
@@ -402,42 +378,58 @@ signed download → `ContaboS3Storage.createSignedDownloadUrl` после entitl
 
 ---
 
-## 9. ТЗ на M7.2 — подключение Admin Beat UI
+## 9. Точное ТЗ M7.2b — UploadIntent + загрузка cover / preview / WAV / ZIP для битов
 
-Цель: перевести загрузку **файлов бита** (cover, preview, WAV, ZIP) в
-`admin-beat-crud-manager.tsx` на direct-to-S3, оставив Supabase как fallback до M8.
+Цель: доставить прямую загрузку **файлов бита** в Contabo через `UploadIntent`
+(модель уже в Prisma-схеме с M1.2a) и привязку проверенного объекта к биту.
 
-Предусловия (проверить до старта):
-- [ ] `hamloprod-public` и `hamloprod-private` созданы (4.1);
-- [ ] отдельный access key заведён и лежит в env Vercel + `.env.local` (4.2, 4.5);
-- [ ] bucket policies применены и проверены smoke-тестом (4.3, раздел 5);
-- [ ] CORS применён и presigned PUT из браузера проходит (4.4);
-- [ ] «anonymous private GET → 403» подтверждено.
+**Предусловия (действие владельца, см. 4.3–4.4):**
+- [ ] `hamloprod-public` сделан публичным (anon `s3:GetObject`), `hamloprod-private` — нет;
+- [ ] CORS применён на оба bucket;
+- [ ] повторный `npx tsx scripts/storage-smoke.mts` → **5/5**;
+- [ ] если публичный URL с префиксом проекта — `S3_PUBLIC_BASE_URL` задан.
 
-Объём M7.2:
+**Объём:**
 
-1. **Клиентский upload-хелпер** `src/lib/storage/client-upload.ts` (browser):
-   `requestUploadUrl(kind, entityId, file)` → `PUT` файла по presigned URL с
-   обязательными заголовками → `finalizeUpload(key, kind)` → вернуть storage reference.
-   Прогресс загрузки, отмена, таймаут. Никаких S3-кредов на клиенте.
-2. **Флаг ветвления** в форме бита: при `STORAGE_BACKEND==="contabo-s3"` (прокинуть
-   через серверный проп, как `hasSupabase`) использовать новый хелпер; иначе — текущий
-   Supabase-путь без изменений.
-3. **entityId для бита:** при создании бита сначала `POST /api/admin/beats` (черновик,
-   получить `id`), затем загрузка файлов по `beats/<id>/…`, затем `PUT` с путями.
-   Либо: генерировать `beatId` на клиенте (UUID) и принимать его на сервере при create.
-   Выбрать один вариант в M7.2 и фиксировать.
-4. **Серверная валидация в `/api/admin/beats`:** принимать только storage reference,
-   прошедший `finalize` (проверять формат ключа `keyMatchesKind`), не доверять
-   произвольным `coverImagePath` / `wavFilePath` из формы, когда backend = contabo-s3.
-5. **Публичные URL:** для cover/preview сохранять в БД `publicUrl` из `finalize`
-   (не строить на клиенте). Для приватных WAV/ZIP хранить только ключ.
-6. **Тесты:** клиентский хелпер (mock fetch), серверная проверка reference в
-   `/api/admin/beats`, ветвление backend.
-7. **Не входит в M7.2:** перенос существующих файлов (M8), выдача WAV/ZIP покупателю
-   (M9), cleanup осиротевших объектов (отдельная задача), треки/релизы/посты (M8).
+1. **`UploadIntentRepository` + `PrismaUploadIntentRepository`** (`src/lib/data/`):
+   `createPending`, `findByKey`, `markFinalized(key, actualSize)`,
+   `markAttached(key)`, `expireStale(limit)`. `key` unique; `PENDING → FINALIZED
+   → ATTACHED`; `DELETING`/`EXPIRED` для cleanup.
+2. **`/api/admin/storage/upload-url`** — после генерации ключа создаёт `UploadIntent`
+   `PENDING`: `ownerId` из admin-session, `entityType="beat"`, `entityId=<beatId>`,
+   `kind`, `visibility`, `expectedSize`, `contentType`, `expiresAt = now + 5m`.
+   Presigned PUT уже реализован (M7.1); guard `requireAdminMutation` уже стоит (M6.1a).
+3. **`/api/admin/storage/finalize`** — принимает только существующий `PENDING`
+   с этим `key`; `HeadObject` → пишет `actualSize` + `finalizedAt` → `FINALIZED`;
+   сверяет `contentType` и размер по `UPLOAD_RULES` (`src/lib/storage/upload-rules.ts`).
+4. **Привязка к биту** — `POST /api/admin/beats/[id]/assets` (guard
+   `requireAdminMutation`): body `{ kind, key }`. Проверяет `keyMatchesKind(key, kind)`,
+   `UploadIntent` в `FINALIZED`, `entityId === beatId`, `ownerId === session.userId`.
+   В одной транзакции: `beat.<coverKey|previewKey|masterKey|archiveKey> = key`,
+   `UploadIntent → ATTACHED` (`attachedAt`). Старый ключ бита (если был) → `DELETING`.
+5. **`BeatService.attachAsset(beatId, kind, key, actorRole)`** — эта логика.
+   `beatCreateSchema` / `beatUpdateSchema` по-прежнему **не** принимают ключи
+   (`.strict()`).
+6. **Публикация (уточнение M2):** переход бита в `available` требует `coverKey` **и**
+   `previewKey` → иначе 409 `MISSING_REQUIRED_ASSETS`; `masterKey` — обязателен для
+   продажи (проверять на M5).
+7. **Клиентский хелпер** `src/lib/storage/client-upload.ts` (browser):
+   `uploadBeatAsset(beatId, kind, file)` → `POST /upload-url` → `PUT` по presigned
+   URL с обязательными заголовками → `POST /finalize` → `POST /beats/[id]/assets`.
+   Прогресс, отмена, таймаут. **Никаких S3-кредов на клиенте.**
+8. **Admin Beat UI** (`admin-beat-crud-manager.tsx`): включить сейчас disabled
+   file-поля; загрузка идёт по `beatId` после create; показывать
+   `hasCover/hasPreview/hasMaster/hasArchive`; публичные URL cover/preview брать из
+   ответа attach / `AdminBeat` (не строить на клиенте).
+9. **Cleanup** просроченных `PENDING` / `DELETING` `UploadIntent` —
+   оппортунистический sweep (как `AuthThrottle`), + удаление осиротевшего объекта
+   в Contabo после смены `beat.<...>Key`.
+10. **Тесты:** `UploadIntentRepository` (`*.db.test.ts`); `finalize` принимает
+    только `PENDING`; `attach` проверяет `ownerId` / `entityId` / `keyMatchesKind`;
+    `beatCreateSchema` отвергает ключи; публикация без cover/preview → 409;
+    клиентский хелпер (mock fetch); `no-supabase` расширить на новый код.
 
-Гейты выхода M7.2: создание и редактирование бита с загрузкой всех четырёх файлов
-через Contabo на Preview-деплое; публичный рендер обложки и плеера превью; приватные
-WAV/ZIP недоступны анонимно; `lint` + `build` + `test` зелёные; отдельный commit M7.2;
-`STORAGE_BACKEND` в проде всё ещё `supabase` (переключение — не раньше M10).
+**Гейты выхода M7.2b:** бит со всеми 4 файлами через Contabo на Preview-деплое;
+публичный рендер обложки и плеера превью; приватные WAV/ZIP недоступны анонимно
+(anon GET → 403), доступны только по presigned; `lint` + `build` + `test` зелёные;
+отдельный commit M7.2b; `STORAGE_BACKEND` в проде переключается не раньше M10.
