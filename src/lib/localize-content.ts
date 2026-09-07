@@ -11,8 +11,8 @@ export async function localizeBeats(beats: Beat[], locale: Locale): Promise<Beat
     beats.map(async (beat) => ({
       ...beat,
       title: await maybeAutoTranslate(beat.title, locale),
-      mood: await maybeAutoTranslate(beat.mood, locale),
-      description: await maybeAutoTranslate(beat.description, locale),
+      mood: beat.mood ? await maybeAutoTranslate(beat.mood, locale) : beat.mood,
+      description: beat.description ? await maybeAutoTranslate(beat.description, locale) : beat.description,
     })),
   );
 }

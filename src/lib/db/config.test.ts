@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assertPostgresUrl, DatabaseConfigError, describeDatabaseConfig, isDatabaseConfigured } from "./config";
+import { assertPostgresUrl, DatabaseConfigError, describeDatabaseConfig, getDataBackend, isDatabaseConfigured } from "./config";
 
 const URL_APP = "postgresql://hamloprod_app:secret@127.0.0.1:55434/hamloprod?schema=public";
 
@@ -42,4 +42,24 @@ test("describeDatabaseConfig exposes host + database name only, no credentials",
     hasDirectUrl: true,
   });
   assert.doesNotMatch(JSON.stringify(described), /secret/);
+});
+
+test("getDataBackend: unset / postgres → postgres; legacy supabase recognised; typo fails closed", () => {
+  assert.equal(getDataBackend({}), "postgres");
+  assert.equal(getDataBackend({ DATA_BACKEND: "" }), "postgres");
+  assert.equal(getDataBackend({ DATA_BACKEND: "postgres" }), "postgres");
+  assert.equal(getDataBackend({ DATA_BACKEND: "POSTGRES" }), "postgres");
+  assert.equal(getDataBackend({ DATA_BACKEND: "supabase" }), "supabase");
+  assert.throws(() => getDataBackend({ DATA_BACKEND: "mysql" }), DatabaseConfigError);
+  assert.throws(() => getDataBackend({ DATA_BACKEND: "pg" }), DatabaseConfigError);
+});
+
+test("getDataBackend error never contains DATABASE_URL", () => {
+  try {
+    getDataBackend({ DATA_BACKEND: "nope", DATABASE_URL: "postgresql://u:leaky@h/db" });
+    assert.fail("expected throw");
+  } catch (error) {
+    assert.ok(error instanceof DatabaseConfigError);
+    assert.doesNotMatch(error.message, /leaky|postgresql:\/\//);
+  }
 });

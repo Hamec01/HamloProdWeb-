@@ -1,205 +1,87 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getAdminSessionState } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { hasAllowedPreviewExtension, isAllowedPreviewMimeType, isHttpsUrl } from "@/lib/validations/preview-audio";
-import { beatFormSchema } from "@/lib/validations/beat";
+import { requireAdminMutation } from "@/lib/auth/guard";
+import { BeatService } from "@/lib/beats/service";
 
-function unauthorizedResponse(message: string, status = 401) {
-  return NextResponse.json({ error: message }, { status });
+export const runtime = "nodejs";
+
+const service = new BeatService();
+
+function noStore(body: unknown, status = 200) {
+  const response = NextResponse.json(body, { status });
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }
 
-function revalidateBeatPaths(slug?: string) {
-  revalidatePath("/");
-  revalidatePath("/beats");
-  revalidatePath("/admin/beats");
-  revalidatePath("/ru/beats");
-  revalidatePath("/en/beats");
-
-  if (!slug) {
-    return;
+function revalidateBeatPaths(...slugs: Array<string | null | undefined>) {
+  for (const path of ["/", "/beats", "/admin/beats", "/ru/beats", "/en/beats"]) {
+    revalidatePath(path);
   }
-
-  revalidatePath(`/beats/${slug}`);
-  revalidatePath(`/checkout/${slug}`);
-  revalidatePath(`/ru/beats/${slug}`);
-  revalidatePath(`/en/beats/${slug}`);
+  for (const slug of slugs) {
+    if (!slug) continue;
+    for (const path of [`/beats/${slug}`, `/checkout/${slug}`, `/ru/beats/${slug}`, `/en/beats/${slug}`]) {
+      revalidatePath(path);
+    }
+  }
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  let session;
+  try {
+    session = await getAdminSessionState();
+  } catch {
+    return noStore({ error: "Authentication is not available." }, 503);
   }
-
-  const session = await getAdminSessionState();
   if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
-
-  const body = await request.json();
-  const parsed = beatFormSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
+    return noStore({ error: "Unauthorized" }, 401);
   }
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
-  const values = parsed.data;
-  const previewSizeBytes =
-    values.previewSizeBytes === null || values.previewSizeBytes === ""
-      ? null
-      : typeof values.previewSizeBytes === "number"
-        ? values.previewSizeBytes
-        : Number(values.previewSizeBytes);
-
-  if (values.previewUrl && !isHttpsUrl(values.previewUrl)) {
-    return NextResponse.json({ error: "Preview URL must start with https://" }, { status: 400 });
-  }
-
-  if (values.previewMimeType && !isAllowedPreviewMimeType(values.previewMimeType)) {
-    return NextResponse.json({ error: "Unsupported preview mime type." }, { status: 400 });
-  }
-
-  if (previewSizeBytes !== null && (!Number.isInteger(previewSizeBytes) || previewSizeBytes < 0)) {
-    return NextResponse.json({ error: "Invalid preview file size." }, { status: 400 });
-  }
-
-  const previewExtensionSource = values.previewFileName || values.previewUrl || null;
-  if (values.previewUrl && !hasAllowedPreviewExtension(previewExtensionSource)) {
-    return NextResponse.json({ error: "Unsupported preview file extension." }, { status: 400 });
-  }
-
-  const { data: existingBeat } = await supabase
-    .from("beats")
-    .select("slug")
-    .eq("id", id)
-    .maybeSingle<{ slug: string }>();
-
-  const { error } = await supabase
-    .from("beats")
-    .update({
-      title: values.title,
-      slug: values.slug,
-      case_number: values.caseNumber,
-      cover_palette: values.coverPalette,
-      cover_image_url: values.coverImageUrl,
-      cover_image_path: values.coverImagePath,
-      preview_url: values.previewUrl,
-      preview_storage_path: values.previewStoragePath,
-      preview_file_name: values.previewFileName,
-      preview_mime_type: values.previewMimeType,
-      preview_size_bytes: previewSizeBytes,
-      wav_file_path: values.wavFilePath,
-      zip_file_path: values.zipFilePath,
-      genre: values.genre,
-      substyle: values.substyle,
-      bpm: values.bpm,
-      mood: values.mood,
-      description: values.description,
-      duration: values.duration,
-      status: values.status,
-      price_usd: values.priceUsd,
-      price_rub: values.priceRub,
-      featured: values.featured,
-      available_for_download: values.availableForDownload,
-    })
-    .eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  revalidateBeatPaths(values.slug);
-  if (existingBeat?.slug && existingBeat.slug !== values.slug) {
-    revalidateBeatPaths(existingBeat.slug);
-  }
-
-  return NextResponse.json({ ok: true });
+  const beat = await service.getAdminById(id);
+  return beat ? noStore({ beat }) : noStore({ error: "Beat not found." }, 404);
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
-
-  const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+  const guard = await requireAdminMutation(request);
+  if (!guard.ok) {
+    return guard.response;
   }
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
+  const before = await service.getAdminById(id);
 
-  const { data: existingBeat } = await supabase
-    .from("beats")
-    .select("slug")
-    .eq("id", id)
-    .maybeSingle<{ slug: string }>();
-
-  if (!existingBeat) {
-    return NextResponse.json({ error: "Beat not found." }, { status: 404 });
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return noStore({ error: "Invalid JSON body." }, 400);
   }
 
-  const updatePayload: Record<string, unknown> = {};
+  const result = await service.update(id, body, guard.context.role);
 
-  if (body.status && ["available", "reserved", "sold", "private"].includes(body.status)) {
-    updatePayload.status = body.status;
-  }
-  if (typeof body.featured === "boolean") {
-    updatePayload.featured = body.featured;
-  }
-  if (typeof body.availableForDownload === "boolean") {
-    updatePayload.available_for_download = body.availableForDownload;
+  if (!result.ok) {
+    return noStore({ error: result.error, code: result.code }, result.status);
   }
 
-  if (Object.keys(updatePayload).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
-  }
-
-  const { error } = await supabase.from("beats").update(updatePayload).eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  revalidateBeatPaths(existingBeat.slug);
-
-  return NextResponse.json({ ok: true });
+  revalidateBeatPaths(before?.slug, result.data.slug);
+  return noStore({ beat: result.data });
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdminMutation(request);
+  if (!guard.ok) {
+    return guard.response;
   }
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
+  const before = await service.getAdminById(id);
+  const result = await service.delete(id, guard.context.role);
 
-  const { data: existingBeat } = await supabase
-    .from("beats")
-    .select("slug")
-    .eq("id", id)
-    .maybeSingle<{ slug: string }>();
-
-  const { error } = await supabase.from("beats").delete().eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!result.ok) {
+    return noStore({ error: result.error, code: result.code }, result.status);
   }
 
-  revalidateBeatPaths(existingBeat?.slug);
-
-  return NextResponse.json({ ok: true });
+  revalidateBeatPaths(before?.slug);
+  return noStore({ ok: true });
 }

@@ -2,16 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/store/player-store";
-import type { PlayerTrack } from "@/store/player-store";
 import type { Beat } from "@/types";
+import { beatToPlayerTrack as toPlayerBeat } from "@/lib/beats/to-player-track";
 
-function toPlayerBeat(beat: Beat): PlayerTrack {
-  return {
-    ...beat,
-    previewUrl: beat.previewUrl ?? "",
-    kind: "beat",
-  };
-}
 
 export function AdminBeatPlayButton({ beat }: { beat: Beat }) {
   const currentTrack = usePlayerStore((state) => state.currentTrack);

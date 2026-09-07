@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminSessionState } from "@/lib/auth/session";
+import { requireAdminMutation } from "@/lib/auth/guard";
 import { publishBeatToTelegram } from "@/lib/telegram/beats";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -21,7 +22,12 @@ function unauthorizedResponse(message: string, status = 401) {
   return NextResponse.json({ error: message }, { status });
 }
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAdminMutation(request);
+  if (!guard.ok) {
+    return guard.response;
+  }
+
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);
   }

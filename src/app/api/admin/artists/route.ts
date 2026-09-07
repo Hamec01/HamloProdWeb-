@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getAdminSessionState } from "@/lib/auth/session";
+import { requireAdminMutation } from "@/lib/auth/guard";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { artistFormSchema } from "@/lib/validations/artist";
@@ -10,6 +11,11 @@ function unauthorizedResponse(message: string, status = 401) {
 }
 
 export async function POST(request: Request) {
+  const guard = await requireAdminMutation(request);
+  if (!guard.ok) {
+    return guard.response;
+  }
+
   if (!hasSupabaseEnv()) {
     return unauthorizedResponse("Supabase env is not configured.", 503);
   }
