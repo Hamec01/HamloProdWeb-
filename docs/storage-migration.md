@@ -549,9 +549,11 @@ Production `STORAGE_BACKEND` is unchanged; no production deployment was made.
    `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
    `S3_BUCKET_PUBLIC=hamloprod-public`, `S3_BUCKET_PRIVATE=hamloprod-private`,
    `S3_FORCE_PATH_STYLE=true`, и `AUTH_EXTRA_ORIGINS=https://<preview-origin>`.
-   `DATABASE_URL`/`DIRECT_URL` требуют публичного доступа к PostgreSQL на VPS
-   (сейчас порт только на `127.0.0.1` — это отдельный шаг M1; до него Preview
-   поднимется только со storage-частью на любой доступной БД).
+   `DATABASE_URL`/`DIRECT_URL` требуют публичного доступа к PostgreSQL на VPS —
+   схема и конфиг подготовлены в **M1.3** (`docs/preview-db-connection.md`,
+   `deploy/preview-db/`): PgBouncer + `sslmode=verify-full` + SCRAM, порт 6432,
+   5432 наружу не открывается. Активация (DNS `db.hamloprod.org`, LE-сертификат,
+   публикация порта + firewall) — действия владельца, см. тот же документ.
 3. **Contabo -> CORS** на **оба** бакета — получив точный Preview origin, запустить
    `AUTH_EXTRA_ORIGINS="https://<preview-origin>" npx tsx scripts/storage-provision.mts --check`
    и вставить напечатанный «CORS (both buckets)» JSON в панель (он уже включает
@@ -562,3 +564,8 @@ Production `STORAGE_BACKEND` is unchanged; no production deployment was made.
    для WAV и ZIP.
 6. Отметить результаты здесь; production `STORAGE_BACKEND` переключать не раньше
    M10.
+
+**Зависимость M7.2b от M1.3.** Браузерный сценарий (шаг 5) требует работающего
+Preview с доступом к PostgreSQL. Подключение Preview → VPS подготовлено в M1.3
+(`docs/preview-db-connection.md`), но не активировано. **Выходной гейт M7.2b
+остаётся открыт**, пока этот сценарий не пройден на реальном Preview.

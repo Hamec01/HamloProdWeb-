@@ -236,8 +236,8 @@ npm run db:migrate:deploy
 
 | # | Пункт |
 |---|---|
-| R1 | Подключение Vercel → VPS не настроено: TLS-прокси/туннель + публичный endpoint + `sslmode=verify-full` |
-| R2 | Нет PgBouncer — добавить при подключении Vercel |
+| R1 | Подключение Vercel → VPS — **подготовлено в M1.3** (`docs/preview-db-connection.md`, `deploy/preview-db/`): PgBouncer + `sslmode=verify-full` + SCRAM + лимит соединений. Проверено локально (loopback, 8/8). Активация — действия владельца (DNS, LE-сертификат, публикация порта, Vercel Preview) |
+| R2 | PgBouncer — **добавлен в M1.3** как overlay `deploy/preview-db/docker-compose.pgbouncer.yml` (transaction pooling, `default_pool_size=8`); базовый `docker-compose.yml` не изменён |
 | R3 | Нет автоматического бэкапа новой БД — `pg_dump` daily по образцу VPS (`docs/infrastructure-audit.md` §10) |
 | R4 | Апгрейд Prisma до 7/8 (нужен `prisma.config.ts` + driver adapter) — отдельная задача |
 | R5 | Репозитории / сервисы поверх Prisma и переключатель `DATA_BACKEND` в коде — M2 |
@@ -250,3 +250,8 @@ npm run db:migrate:deploy
 
 Авторизация (**M6.1** — собственный admin login) не начинается до приёмки M1.2a.
 ТЗ M6.1 — в отчёте по этому коммиту.
+
+**M1.3 (2026-09-08):** безопасное подключение Vercel Preview → VPS PostgreSQL
+подготовлено — `docs/preview-db-connection.md`. Осталось активировать (владелец):
+DNS `db.hamloprod.org` → VPS, LE-сертификат, публикация порта 6432 + firewall,
+Vercel Preview. Затем закрывается Preview-гейт M7.2b.

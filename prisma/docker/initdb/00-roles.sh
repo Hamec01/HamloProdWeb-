@@ -39,6 +39,13 @@ SELECT format(
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')
 \gexec
 
+-- Bounded connection budget (M1.3): Postgres runs max_connections=40; the app
+-- role is reached through PgBouncer (transaction pooling) and the migrator holds
+-- at most one migration connection. Caps keep a runaway pool from starving
+-- local ops. Mirrors deploy/preview-db/01-connection-limits.sql for running DBs.
+SELECT format('ALTER ROLE %I CONNECTION LIMIT 20', :'app_user')  \gexec
+SELECT format('ALTER ROLE %I CONNECTION LIMIT 4',  :'mig_user') \gexec
+
 SELECT format('CREATE DATABASE %I OWNER %I', :'db_name', :'mig_user')
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'db_name')
 \gexec

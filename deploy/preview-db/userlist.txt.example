@@ -1,0 +1,16 @@
+;; deploy/preview-db/userlist.txt  (copy this file to userlist.txt — the real one
+;; is gitignored). PgBouncer auth_file. ONE line, the least-privilege app role
+;; only. Store the SCRAM verifier, not the plaintext password.
+;;
+;; Generate the exact line from the running database (emits the verifier, never
+;; the password):
+;;
+;;   docker exec hamloprod-postgres psql -U postgres -tAc \
+;;     "SELECT '\"'||rolname||'\" \"'||rolpassword||'\"' \
+;;      FROM pg_authid WHERE rolname = 'hamloprod_app'" \
+;;     > deploy/preview-db/userlist.txt
+;;   chmod 0644 deploy/preview-db/userlist.txt   # readable by the container (uid 70)
+;;
+;; Re-run this whenever hamloprod_app's password is rotated.
+
+"hamloprod_app" "SCRAM-SHA-256$4096:REPLACE_WITH_REAL_SALT$REPLACE_STORED_KEY:REPLACE_SERVER_KEY"

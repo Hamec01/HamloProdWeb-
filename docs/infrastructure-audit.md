@@ -175,6 +175,12 @@ IP-allowlist невозможен без Vercel **Secure Compute** (Enterprise, 
 Значит защищаемся на транспортном и прикладном уровне, а не списком адресов.
 Плюс модель serverless = много коротких подключений → нужен пул соединений.
 
+> **M1.3 (2026-09-08):** этот вариант реализован как конфиг в `deploy/preview-db/`
+> и задокументирован в `docs/preview-db-connection.md` (PgBouncer overlay,
+> `pgbouncer.ini`, cert-runbook, `DOCKER-USER`/fail2ban, `scripts/db-connection-check.mts`).
+> Проверено локально (loopback + self-signed CA): 8/8. Не активировано —
+> ждёт действий владельца (DNS, LE-сертификат, публикация порта, Vercel Preview).
+
 ### Рекомендуемый вариант для M1 (вариант A + харденинг)
 
 ```

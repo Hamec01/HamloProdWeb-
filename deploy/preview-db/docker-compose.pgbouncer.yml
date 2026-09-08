@@ -1,0 +1,57 @@
+# HamloProd — PgBouncer in front of the self-hosted PostgreSQL (migration phase M1.3).
+#
+# This is an OVERLAY on the base docker-compose.yml. It never changes how the
+# database container is published (the base file keeps Postgres on
+# 127.0.0.1:${POSTGRES_HOST_PORT} only). PgBouncer is the ONLY component that may
+# ever face the public internet, and only on a non-standard port, TLS-only, with
+# SCRAM auth and a per-role connection budget.
+#
+#   # local / loopback verification (safe default — nothing is exposed):
+#   docker compose -f docker-compose.yml \
+#     -f deploy/preview-db/docker-compose.pgbouncer.yml up -d
+#
+#   # public endpoint for a Vercel Preview (owner action — see
+#   # docs/preview-db-connection.md; also needs the DOCKER-USER rule + fail2ban):
+#   PGBOUNCER_BIND=0.0.0.0 docker compose -f docker-compose.yml \
+#     -f deploy/preview-db/docker-compose.pgbouncer.yml up -d
+#
+# Prerequisites (see docs/preview-db-connection.md):
+#   * deploy/preview-db/userlist.txt        — SCRAM verifier for hamloprod_app only
+#   * deploy/preview-db/certs/fullchain.pem — TLS cert for db.hamloprod.org
+#   * deploy/preview-db/certs/privkey.pem   — its private key (readable by uid 70)
+#   * ALTER ROLE hamloprod_app CONNECTION LIMIT 20;  (deploy/preview-db/01-connection-limits.sql)
+
+name: hamloprod
+
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.24.1-p1
+    container_name: hamloprod-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Default: loopback only — exposes nothing. Set PGBOUNCER_BIND=0.0.0.0 (owner,
+    # together with the DOCKER-USER rule) to serve a Vercel Preview. Never bind
+    # the Postgres container itself to anything but 127.0.0.1.
+    ports:
+      - "${PGBOUNCER_BIND:-127.0.0.1}:6432:6432"
+    volumes:
+      - ./deploy/preview-db/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./deploy/preview-db/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+      - ./deploy/preview-db/certs:/etc/pgbouncer/certs:ro
+    # No DB_* / DATABASE_URL env here on purpose: a complete pgbouncer.ini is
+    # mounted, so the image entrypoint runs pgbouncer directly without generating
+    # config or touching the userlist.
+    environment:
+      TZ: UTC
+    mem_limit: 96m
+    healthcheck:
+      # Liveness only: pg_isready reports "accepting connections" once PgBouncer
+      # answers the startup packet (before auth), which is all we need here.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -d hamloprod || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 15s

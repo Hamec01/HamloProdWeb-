@@ -37,6 +37,14 @@ yarn-error.log*
 # vercel
 .vercel
 
+# deploy/ operational material (M1.3 preview DB link) — templates are committed,
+# real secrets are not. *.pem is already ignored above.
+/deploy/preview-db/certs/*
+!/deploy/preview-db/certs/.gitkeep
+/deploy/preview-db/userlist.txt
+/deploy/**/*.env
+!/deploy/**/*.env.example
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
