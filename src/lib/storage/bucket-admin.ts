@@ -44,6 +44,20 @@ export function buildPublicReadPolicy(bucket: string): string {
   );
 }
 
+/**
+ * The full CORS origin list = the fixed browser origins + any entries in
+ * `AUTH_EXTRA_ORIGINS` (comma-separated, http/https, no wildcard). Keeping this in
+ * sync with the auth mutation allow-list means the owner sets the Preview URL in
+ * one place (`AUTH_EXTRA_ORIGINS`) and both the app and the bucket CORS use it.
+ */
+export function corsOriginsFromEnv(env: Record<string, string | undefined> = process.env): string[] {
+  const extra = (env.AUTH_EXTRA_ORIGINS ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0 && /^https?:\/\/[^*]+$/.test(v));
+  return [...new Set([...ALLOWED_BROWSER_ORIGINS, ...extra])];
+}
+
 /** CORS for browser direct uploads / reads. No wildcard origin. */
 export function buildCorsRules(origins: readonly string[] = ALLOWED_BROWSER_ORIGINS): CORSRule[] {
   return [

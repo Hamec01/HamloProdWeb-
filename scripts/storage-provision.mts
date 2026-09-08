@@ -16,6 +16,7 @@ import {
   applyBucketPolicy,
   buildCorsRules,
   buildPublicReadPolicy,
+  corsOriginsFromEnv,
   makeAdminClient,
   readBucketCors,
   readBucketPolicy,
@@ -24,6 +25,7 @@ import {
 const checkOnly = process.argv.includes("--check");
 const cfg = getS3Config();
 const client = makeAdminClient(cfg);
+const corsOrigins = corsOriginsFromEnv();
 
 function line(label: string, value: string) {
   console.log(`  ${label.padEnd(26)} ${value}`);
@@ -43,12 +45,13 @@ async function apply(bucket: string, opts: { policy: boolean }) {
     const res = await applyBucketPolicy(client, bucket, buildPublicReadPolicy(bucket));
     line("PutBucketPolicy", res.ok ? "OK" : `FAIL ${res.code}${res.status ? ` ${res.status}` : ""}`);
   }
-  const corsRes = await applyBucketCors(client, bucket, buildCorsRules());
+  const corsRes = await applyBucketCors(client, bucket, buildCorsRules(corsOrigins));
   line("PutBucketCors", corsRes.ok ? "OK" : `FAIL ${corsRes.code}${corsRes.status ? ` ${corsRes.status}` : ""}`);
 }
 
 console.log(`endpoint host: ${new URL(cfg.endpoint).host}  path-style: ${cfg.forcePathStyle}`);
 console.log(`public bucket: ${cfg.publicBucket}   private bucket: ${cfg.privateBucket}`);
+console.log(`cors origins:  ${corsOrigins.join(", ")}`);
 
 await reportBucket(cfg.publicBucket);
 await reportBucket(cfg.privateBucket);
@@ -65,4 +68,4 @@ if (!checkOnly) {
 console.log("\nIf Put*/Get* returned AccessDenied the S3 key is object-scoped. Set this in the");
 console.log("Contabo customer panel (Object Storage → bucket → Permissions / CORS):");
 console.log(`\n  ${cfg.publicBucket} bucket policy:\n${buildPublicReadPolicy(cfg.publicBucket).split("\n").map((l) => "    " + l).join("\n")}`);
-console.log(`\n  CORS (both buckets):\n${JSON.stringify(buildCorsRules(), null, 2).split("\n").map((l) => "    " + l).join("\n")}`);
+console.log(`\n  CORS (both buckets) — set AUTH_EXTRA_ORIGINS to add the Vercel Preview URL:\n${JSON.stringify(buildCorsRules(corsOrigins), null, 2).split("\n").map((l) => "    " + l).join("\n")}`);

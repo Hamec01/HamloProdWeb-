@@ -274,7 +274,8 @@ policy:
 
 ### 4.4 CORS — **действие владельца** (панель Contabo)
 
-Тем же ключом `PutBucketCors` → `AccessDenied`. Применить на **оба** бакета в панели:
+Тем же ключом `PutBucketCors` / `GetBucketCors` → `AccessDenied 403`. Применить на
+**оба** бакета (`hamloprod-public` и `hamloprod-private`) в панели:
 
 ```json
 [
@@ -290,6 +291,23 @@ policy:
 
 Wildcard origin не использовать. CORS нужен только для direct-PUT/GET из браузера
 (M7.2b) — на серверный smoke (Node `fetch`) не влияет.
+
+**Preview-origin.** Для браузерной проверки M7.2b на Vercel Preview точный origin
+деплоя (например `https://hamloprod-web-git-<branch>-<scope>.vercel.app`, без
+wildcard) нужно добавить **и** в `AUTH_EXTRA_ORIGINS` (env приложения), **и** в
+`AllowedOrigins` CORS обоих бакетов. Чтобы это была одна настройка,
+[bucket-admin.ts](../src/lib/storage/bucket-admin.ts) экспортирует
+`corsOriginsFromEnv()` — три фиксированных origin + записи `AUTH_EXTRA_ORIGINS`
+(comma-separated, http/https, без `*`, дедуп). `scripts/storage-provision.mts`
+берёт origins из неё и печатает готовый CORS-JSON:
+
+```
+AUTH_EXTRA_ORIGINS="https://<точный-preview-origin>" \
+  npx tsx scripts/storage-provision.mts --check
+```
+
+Вывод раздела «CORS (both buckets)» — это ровно тот JSON, который владелец
+вставляет в панель. `--check` только печатает (ключ применить не может).
 
 ### 4.5 Env
 
@@ -485,3 +503,62 @@ three origins in the provisioning script do not include a `*.vercel.app`
 deployment. Do not use a wildcard origin. Repeat the
 five-check smoke and then the four-file browser flow on the actual Preview URL.
 Production `STORAGE_BACKEND` is unchanged; no production deployment was made.
+
+### M7.2b verification follow-up (2026-09-08)
+
+Повторная проверка от `8bacdf0` без переписывания этапа. Реализация M7.2b не
+менялась. Изменения этого прохода: `corsOriginsFromEnv()` в
+[bucket-admin.ts](../src/lib/storage/bucket-admin.ts) + его тест,
+`scripts/storage-provision.mts` берёт CORS-origins из `AUTH_EXTRA_ORIGINS`,
+комментарий `AUTH_EXTRA_ORIGINS` в `.env.example`, эта запись.
+
+Что реально проверено сейчас:
+
+| Проверка | Команда | Результат |
+|---|---|---|
+| Юнит-тесты | `npm test` | **166/166**, 0 fail, 0 skip (добавлен тест `corsOriginsFromEnv`) |
+| Lint | `npm run lint` | 0 errors, 12 warnings (все в неизменённых файлах) |
+| Build | `npm run build` | Compiled successfully |
+| Prisma | `prisma migrate status` | up to date, дрейфа нет; контейнер `hamloprod-postgres` healthy |
+| Bucket policy/CORS (оба бакета) | `storage-provision.mts --check` | **`AccessDenied 403`** на read policy и read CORS — ключ object-scoped, без изменений |
+| Live S3 smoke | `storage-smoke.mts` | **4/5**. FAIL: `public put -> anonymous GET` -> **401**. PASS: private anon GET 401, private presigned GET 200 body-ok, delete обоих, HeadObject после delete = absent |
+| Локальный e2e (HTTP API + реальный Contabo + локальный PostgreSQL) | одноразовый скрипт, удалён после прогона | **34/34**: логин админа -> создание private-бита -> publish без ассетов `409 MISSING_REQUIRED_ASSETS` -> upload-url->PUT->finalize->attach для cover/preview/WAV/ZIP (4 intents `ATTACHED`, метаданные превью записаны) -> публикация -> публичный каталог отдаёт обложку, приватных ключей в HTML нет -> WAV/ZIP anon GET 401, presigned GET 200, байты совпадают -> replay conditional PUT 412 -> замена обложки: старый ключ `DELETING`. Все объекты и строки БД удалены после прогона (оба бакета 0 объектов) |
+
+**Не проверено (блокировано доступом владельца):**
+
+- **Storage smoke 5/5** — упирается в отсутствующую anon `s3:GetObject` policy на
+  `hamloprod-public`. Ключ применить не может (см. 4.2-4.3).
+- **CORS обоих бакетов** — `PutBucketCors`/`GetBucketCors` -> 403. Установленную
+  политику подтвердить нельзя; live OPTIONS отдаёт `Access-Control-Allow-Origin: *`
+  (эффективно пропускает локальную загрузку, но это не подтверждение нужной
+  ограниченной политики).
+- **Vercel Preview** — деплоя для этой ветки нет, CLI/токена Vercel в окружении
+  нет. Браузерная проверка на Preview (создание бита, загрузка 4 файлов,
+  attachment, публикация, публичная обложка, **реальное воспроизведение аудио**,
+  anon-запрет + signed-доступ для WAV/ZIP) — **не выполнена**. Выходной гейт
+  M7.2b остаётся **открыт**.
+
+**Точный следующий шаг — действие владельца:**
+
+1. **Contabo -> Object Storage -> `hamloprod-public` -> Permissions** — вставить
+   bucket policy из 4.3 (anon `s3:GetObject`, ничего больше). `hamloprod-private`
+   — policy не трогать.
+2. **Vercel -> Preview** для ветки `migration/self-hosted-backend` (Production не
+   трогать). Env только на Preview: `DATA_BACKEND=postgres`,
+   `STORAGE_BACKEND=contabo-s3`, `DATABASE_URL`, `DIRECT_URL`, `SESSION_SECRET`,
+   `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
+   `S3_BUCKET_PUBLIC=hamloprod-public`, `S3_BUCKET_PRIVATE=hamloprod-private`,
+   `S3_FORCE_PATH_STYLE=true`, и `AUTH_EXTRA_ORIGINS=https://<preview-origin>`.
+   `DATABASE_URL`/`DIRECT_URL` требуют публичного доступа к PostgreSQL на VPS
+   (сейчас порт только на `127.0.0.1` — это отдельный шаг M1; до него Preview
+   поднимется только со storage-частью на любой доступной БД).
+3. **Contabo -> CORS** на **оба** бакета — получив точный Preview origin, запустить
+   `AUTH_EXTRA_ORIGINS="https://<preview-origin>" npx tsx scripts/storage-provision.mts --check`
+   и вставить напечатанный «CORS (both buckets)» JSON в панель (он уже включает
+   Preview origin; без wildcard).
+4. Повторить `npx tsx scripts/storage-smoke.mts` — ожидать **5/5**.
+5. На Preview прогнать браузерный сценарий из выходного гейта M7.2b, включая
+   реальное воспроизведение превью и проверку `anon GET 401` / `signed GET 200`
+   для WAV и ZIP.
+6. Отметить результаты здесь; production `STORAGE_BACKEND` переключать не раньше
+   M10.

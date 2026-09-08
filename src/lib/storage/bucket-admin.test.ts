@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ALLOWED_BROWSER_ORIGINS, buildCorsRules, buildPublicReadPolicy } from "./bucket-admin";
+import { ALLOWED_BROWSER_ORIGINS, buildCorsRules, buildPublicReadPolicy, corsOriginsFromEnv } from "./bucket-admin";
 
 test("public-read policy: anonymous s3:GetObject on every object, nothing else", () => {
   const policy = JSON.parse(buildPublicReadPolicy("hamloprod-public")) as {
@@ -39,4 +39,13 @@ test("CORS rules: exact origins, PUT/GET/HEAD, ETag exposed, no wildcard origin"
 test("CORS accepts a custom origin list but the default matches the constant", () => {
   assert.deepEqual(buildCorsRules(["https://preview.example"])[0].AllowedOrigins, ["https://preview.example"]);
   assert.deepEqual(buildCorsRules()[0].AllowedOrigins, [...ALLOWED_BROWSER_ORIGINS]);
+});
+
+test("corsOriginsFromEnv merges AUTH_EXTRA_ORIGINS, dedupes, rejects wildcards/blanks", () => {
+  assert.deepEqual(corsOriginsFromEnv({}), [...ALLOWED_BROWSER_ORIGINS]);
+  assert.deepEqual(
+    corsOriginsFromEnv({ AUTH_EXTRA_ORIGINS: " https://hp-git-x.vercel.app , , https://*.evil , https://hamloprod.org " }),
+    [...ALLOWED_BROWSER_ORIGINS, "https://hp-git-x.vercel.app"],
+  );
+  assert.ok(!corsOriginsFromEnv({ AUTH_EXTRA_ORIGINS: "https://*.vercel.app" }).some((o) => o.includes("*")));
 });
