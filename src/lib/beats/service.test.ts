@@ -127,14 +127,14 @@ test("create: default status is private and publishedAt stays null", async () =>
   }
 });
 
-test("create: explicit available status sets publishedAt", async () => {
+test("create: available without assets is rejected", async () => {
   const svc = new BeatService(new FakeRepo());
   const res = await svc.create(
     { title: "Live One", slug: "live-one", caseNumber: "CASE-8", genre: "trap", priceUsd: 100, priceRub: 8000, featured: false, availableForDownload: false, status: "available" },
     ADMIN,
   );
-  assert.equal(res.ok, true);
-  if (res.ok) assert.notEqual(res.data.publishedAt, null);
+  assert.equal(res.ok, false);
+  if (!res.ok) assert.equal(res.code, "MISSING_REQUIRED_ASSETS");
 });
 
 test("update: missing beat → 404", async () => {
@@ -145,7 +145,7 @@ test("update: missing beat → 404", async () => {
 });
 
 test("update: publishing sets publishedAt once, never clears it", async () => {
-  const repo = new FakeRepo([makeRecord({ id: "b1", status: "private", publishedAt: null })]);
+  const repo = new FakeRepo([makeRecord({ id: "b1", status: "private", publishedAt: null, coverKey: "cover", previewKey: "preview" })]);
   const svc = new BeatService(repo);
 
   const first = await svc.update("b1", { status: "available" }, ADMIN);
@@ -224,4 +224,14 @@ test("listAdmin: clamps limit to 1..100 and offset to >= 0", async () => {
   await svc.listAdmin({ limit: 5000, offset: -3 });
   assert.equal(repo.lastListQuery?.limit, 100);
   assert.equal(repo.lastListQuery?.offset, 0);
+});
+
+
+test("publishing requires both cover and preview; master is not a publication requirement", async () => {
+  for (const assets of [{}, { coverKey: "cover" }, { previewKey: "preview" }]) {
+    const svc = new BeatService(new FakeRepo([makeRecord({ id: "b1", ...assets })]));
+    const result = await svc.update("b1", { status: "available" }, ADMIN);
+    assert.equal(result.ok, false);
+    if (!result.ok) { assert.equal(result.status, 409); assert.equal(result.code, "MISSING_REQUIRED_ASSETS"); }
+  }
 });

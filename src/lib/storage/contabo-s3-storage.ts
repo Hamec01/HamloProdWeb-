@@ -216,14 +216,15 @@ export class ContaboS3Storage implements DirectUploadStorage {
       Bucket: this.bucketFor(input.visibility),
       Key: input.key,
       ContentType: input.contentType,
+      IfNoneMatch: "*",
     });
 
-    const url = await this.sign(this.client, command, { expiresIn: ttl });
+    const url = await this.sign(this.client, command, { expiresIn: ttl, signableHeaders: new Set(["if-none-match", "content-type"]) });
 
     return {
       url,
       method: "PUT",
-      headers: { "Content-Type": input.contentType },
+      headers: { "Content-Type": input.contentType, "If-None-Match": "*" },
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
     };
   }

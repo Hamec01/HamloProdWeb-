@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { uploadBeatAsset } from "@/lib/storage/client-upload";
+import type { BeatAssetKind } from "@/lib/data/repositories/upload-intent.repository";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { AdminBeatPlayButton } from "@/components/admin/admin-beat-play-button";
@@ -86,6 +88,30 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [assetBeat, setAssetBeat] = useState<AdminBeat | null>(null);
+  const [uploading, setUploading] = useState<BeatAssetKind | null>(null);
+  const [progress, setProgress] = useState(0);
+  const uploadController = useRef<AbortController | null>(null);
+  useEffect(() => () => uploadController.current?.abort(), []);
+
+  const uploadFile = async (kind: BeatAssetKind, file: File) => {
+    if (!editingId || uploadController.current) return;
+    const controller = new AbortController();
+    uploadController.current = controller;
+    setUploading(kind);
+    setMessage(null);
+    try {
+      const beat = await uploadBeatAsset(editingId, kind, file, { signal: controller.signal, onProgress: setProgress });
+      setAssetBeat(beat);
+      setMessage("File attached.");
+      router.refresh();
+    } catch (error) {
+      setMessage(controller.signal.aborted ? "Upload cancelled." : error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      uploadController.current = null;
+      setUploading(null);
+    }
+  };
 
   const {
     register,
@@ -114,12 +140,16 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   }, [beats, editingId, setValue]);
 
   const resetForm = () => {
+    if (uploadController.current) return;
+    setAssetBeat(null);
     setEditingId(null);
     setSlugTouched(false);
     reset({ ...DEFAULTS, caseNumber: getNextCaseNumber(beats) });
   };
 
   const startEdit = (beat: AdminBeat) => {
+    if (uploadController.current) return;
+    setAssetBeat(beat);
     setEditingId(beat.id);
     setSlugTouched(true);
     setMessage(null);
@@ -164,15 +194,15 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
       body: JSON.stringify(payload),
     });
 
-    const body = (await response.json().catch(() => null)) as { error?: string; beat?: { id: string; slug: string } } | null;
+    const body = (await response.json().catch(() => null)) as { error?: string; beat?: AdminBeat } | null;
 
     if (!response.ok) {
       setMessage(body?.error ?? `Save failed (${response.status}).`);
       return;
     }
 
-    setMessage(editingId ? "Beat updated." : `Beat created (${body?.beat?.id ?? "id"}). It is PRIVATE until files are attached in the next phase.`);
-    resetForm();
+    if (body?.beat) startEdit(body.beat);
+    setMessage(editingId ? "Beat updated." : "Beat created. Upload cover and preview, then publish.");
     router.refresh();
   });
 
@@ -189,6 +219,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   };
 
   const removeBeat = async (beat: AdminBeat) => {
+    if (uploadController.current) return;
     if (!window.confirm(`Delete "${beat.title}"?`)) return;
     const response = await fetch(`/api/admin/beats/${beat.id}`, { method: "DELETE" });
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -236,18 +267,17 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   return (
     <div className="space-y-6">
       <section className="case-panel p-6">
-        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">PostgreSQL CRUD</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Catalogue management</p>
         <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Beats Admin</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-paper-200)]">
-          Metadata is stored in PostgreSQL. A new beat is created <strong>PRIVATE</strong>; cover / preview / master / archive
-          files attach through the verified Contabo upload flow in the next phase.
+          Create a private beat, upload its files, then publish once the cover and preview are ready.
         </p>
       </section>
 
       <section className="case-panel p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
           <h2 className="font-sans text-4xl uppercase tracking-[0.05em]">{editingId ? "Edit Beat" : "Create Beat"}</h2>
-          {editingId ? <Button variant="ghost" onClick={resetForm}>Cancel edit</Button> : null}
+          {editingId ? <Button variant="ghost" onClick={resetForm} disabled={Boolean(uploading)}>Cancel edit</Button> : null}
         </div>
 
         <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
@@ -277,7 +307,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
           <label className={label}>
             <span>Substyle</span>
             <select {...register("substyle")} className={field}>
-              {substyleOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+              {substyleOptions.map((s) => <option key={s} value={s} disabled={!editingId && s === "available"}>{s}</option>)}
             </select>
           </label>
           <label className={label}>
@@ -305,7 +335,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
           <label className={label}>
             <span>Status</span>
             <select {...register("status")} className={field}>
-              {BEAT_STATUS_VALUES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {BEAT_STATUS_VALUES.map((s) => <option key={s} value={s} disabled={!editingId && s === "available"}>{s}</option>)}
             </select>
             {watchedStatus === "private" ? (
               <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">Hidden from the public catalogue.</span>
@@ -326,16 +356,33 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
           <div className="md:col-span-2 border border-[var(--color-line)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-[var(--color-paper-300)]">
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-paper-400)]">Files</p>
-            <p className="mt-2">Cover, preview, master (WAV) and archive (ZIP) upload is delivered in the next phase (Contabo direct upload). This form saves metadata only.</p>
-            <div className="mt-3 grid gap-2 md:grid-cols-4">
-              {["Cover", "Preview", "WAV", "ZIP"].map((name) => (
-                <input key={name} type="file" disabled title="Подключение Contabo выполняется следующим этапом" className="w-full cursor-not-allowed border border-[var(--color-line)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-xs opacity-50" />
+            <p className="mt-2">{editingId ? "Choose a file to upload or replace an asset. WAV and ZIP remain private." : "Save the beat first to enable file uploads."}</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-4">
+              {([
+                ["beat-cover", "Cover", ".jpg,.jpeg,.png,.webp", assetBeat?.hasCover],
+                ["beat-preview", "Preview", ".mp3", assetBeat?.hasPreview],
+                ["beat-master", "WAV", ".wav", assetBeat?.hasMaster],
+                ["beat-archive", "ZIP", ".zip", assetBeat?.hasArchive],
+              ] as const).map(([kind, name, accept, attached]) => (
+                <label key={kind} className="space-y-2">
+                  <span>{name}: {attached ? "Attached" : "Missing"}</span>
+                  <input type="file" accept={accept} disabled={!editingId || Boolean(uploading) || isSubmitting}
+                    onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadFile(kind, file); }}
+                    className="w-full border border-[var(--color-line)] px-3 py-2 text-xs disabled:opacity-50" />
+                </label>
               ))}
             </div>
+            {uploading ? <div className="mt-3 flex items-center gap-3" role="status">
+              <progress value={progress} max={100} aria-label="Upload progress" />
+              <span>{progress === 100 ? "Verifying and attaching…" : `${progress}%`}</span>
+              <Button type="button" variant="ghost" onClick={() => uploadController.current?.abort()}>Cancel upload</Button>
+            </div> : null}
+            {assetBeat?.coverImageUrl ? <a className="mt-3 block underline" href={assetBeat.coverImageUrl} target="_blank" rel="noreferrer">View cover</a> : null}
+            {assetBeat?.previewUrl ? <audio className="mt-3 w-full" controls src={assetBeat.previewUrl} preload="none" aria-label="Beat preview" /> : null}
           </div>
 
           <div className="md:col-span-2 flex items-center gap-3">
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving" : editingId ? "Save changes" : "Create beat"}</Button>
+            <Button type="submit" disabled={isSubmitting || Boolean(uploading)}>{isSubmitting ? "Saving" : editingId ? "Save changes" : "Create beat"}</Button>
             {message ? <span className="text-sm text-[var(--color-paper-200)]">{message}</span> : null}
           </div>
         </form>
@@ -343,7 +390,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
       <AdminCollectionTable
         title="Existing beats"
-        description="Metadata from PostgreSQL. Private beats are hidden from the public catalogue."
+        description="Private beats are hidden from the public catalogue."
         columns={["Play", "Title", "Cover", "Preview", "WAV", "ZIP", "BPM", "Price", "Status", "Actions"]}
         rows={rows}
       />

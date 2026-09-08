@@ -1,10 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { ObjectHead } from "./object-storage";
-import { createUploadUrl, finalizeUpload, type UploadPort } from "./upload-service";
+import { createUploadUrl as create, finalizeUpload as finalize, type UploadPort } from "./upload-service";
 
 const BEAT_ID = "11111111-2222-4333-8444-555555555555";
 const MB = 1024 * 1024;
+import { TestIntents } from "./test-intents";
+import type { BeatAssetKind } from "@/lib/data/repositories/upload-intent.repository";
+const ownerId = "aaaaaaaa-2222-4333-8444-555555555555";
+function createUploadUrl(params: Omit<Parameters<typeof create>[0], "ownerId" | "intents" | "beatExists">) {
+  return create({ ownerId, intents: new TestIntents(), beatExists: async () => true, ...params });
+}
+async function finalizeUpload(params: Omit<Parameters<typeof finalize>[0], "ownerId" | "intents">) {
+  const intents = new TestIntents();
+  const { key, kind } = params.body as { key: string; kind: BeatAssetKind };
+  if (key) await intents.createPending({ key, kind, entityType: "beat", entityId: BEAT_ID, ownerId, visibility: kind === "beat-master" ? "private" : "public", expectedSize: 2 * MB, contentType: "image/png", expiresAt: new Date(Date.now() + 300_000) });
+  return finalize({ ownerId, intents, ...params });
+}
+
 
 function fakePort(overrides: Partial<UploadPort> & { head?: ObjectHead | null } = {}): UploadPort & { uploads: unknown[] } {
   const uploads: unknown[] = [];
@@ -191,4 +204,44 @@ test("finalizeUpload rejects a stored object whose real type is wrong (422)", as
 
   assert.equal(result.status, 422);
   assert.equal(result.body.code, "INVALID_CONTENT_TYPE");
+});
+
+
+test("finalize rejects unissued, foreign, expired and non-PENDING intents before HEAD", async () => {
+  const key = `beats/${BEAT_ID}/cover/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.png`;
+  for (const state of [null, "PENDING", "FINALIZED", "ATTACHED", "DELETING", "EXPIRED", "foreign", "expired"] as const) {
+    const intents = new TestIntents();
+    if (state) {
+      await intents.createPending({ key, kind: "beat-cover", entityType: "beat", entityId: BEAT_ID, ownerId: state === "foreign" ? "other" : ownerId, visibility: "public", expectedSize: 2 * MB, contentType: "image/png", expiresAt: new Date(Date.now() + (state === "expired" ? -1000 : 300_000)) });
+      if (state !== "foreign" && state !== "expired") intents.rows.get(key)!.state = state;
+    }
+    let heads = 0;
+    const result = await finalize({ ownerId, intents, isAuthorized: true, sameOrigin: true, body: { key, kind: "beat-cover" }, storage: fakePort({ async headObject() { heads++; return { contentLength: 2 * MB, contentType: "image/png", etag: null }; } }) });
+    assert.equal(result.status, state === "PENDING" ? 200 : state === null || state === "foreign" ? 404 : 409);
+    assert.equal(heads, state === "PENDING" ? 1 : 0);
+  }
+});
+
+test("finalize rejects declared size mismatch and concurrent transition", async () => {
+  const intents = new TestIntents();
+  const key = `beats/${BEAT_ID}/cover/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.png`;
+  await intents.createPending({ key, kind: "beat-cover", entityType: "beat", entityId: BEAT_ID, ownerId, visibility: "public", expectedSize: MB, contentType: "image/png", expiresAt: new Date(Date.now() + 300_000) });
+  const params = { ownerId, intents, isAuthorized: true, sameOrigin: true, body: { key, kind: "beat-cover" }, storage: fakePort() };
+  assert.equal((await finalize(params)).body.code, "UPLOAD_METADATA_MISMATCH");
+  intents.rows.get(key)!.expectedSize = 2 * MB;
+  const results = await Promise.all([finalize(params), finalize(params)]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+});
+
+test("upload-url persists owner, beat and declaration; missing beat cannot upload", async () => {
+  const intents = new TestIntents();
+  const params = { ownerId, intents, isAuthorized: true, sameOrigin: true, body: { kind: "beat-cover", entityId: BEAT_ID, originalFileName: "c.png", contentType: "image/png", size: MB }, storage: fakePort() };
+  assert.equal((await create({ ...params, beatExists: async () => false })).status, 404);
+  assert.equal(intents.rows.size, 0);
+  const result = await create({ ...params, beatExists: async () => true });
+  const row = await intents.findByKey(String(result.body.key));
+  assert.equal(row?.ownerId, ownerId);
+  assert.equal(row?.entityId, BEAT_ID);
+  assert.equal(row?.state, "PENDING");
+  assert.equal(row?.expectedSize, MB);
 });

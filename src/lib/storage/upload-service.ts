@@ -12,6 +12,7 @@
  */
 
 import { z } from "zod";
+import { isBeatAssetKind, type UploadIntentRepository } from "@/lib/data/repositories/upload-intent.repository";
 import type { ObjectHead, SignedUpload, StorageVisibility, StoredObject } from "./object-storage";
 import { assertSafeObjectKey, generateObjectKey, isUploadKind, keyMatchesKind, UnsafeObjectKeyError } from "./keys";
 import { getUploadRule, validateFinalizedObject, validateUploadRequest, visibilityForKind } from "./upload-rules";
@@ -35,12 +36,12 @@ const uploadUrlSchema = z.object({
   originalFileName: z.string().min(1).max(255),
   contentType: z.string().min(1).max(255),
   size: z.number().int().positive(),
-});
+}).strict();
 
 const finalizeSchema = z.object({
   key: z.string().min(1).max(1024),
   kind: z.string().min(1),
-});
+}).strict();
 
 function unauthorized(): HandlerResult {
   return { status: 401, body: { error: "Unauthorized" } };
@@ -59,6 +60,9 @@ export async function createUploadUrl(params: {
   sameOrigin: boolean;
   body: unknown;
   storage: UploadPort;
+  ownerId: string;
+  intents: UploadIntentRepository;
+  beatExists: (id: string) => Promise<boolean>;
   ttlSeconds?: number;
 }): Promise<HandlerResult> {
   if (!params.sameOrigin) {
@@ -99,9 +103,13 @@ export async function createUploadUrl(params: {
     return badRequest("Could not generate a storage key for this request.");
   }
 
+  if (!isBeatAssetKind(kind)) return badRequest("Only beat uploads are supported.", "INVALID_UPLOAD_KIND");
+  if (!await params.beatExists(entityId)) return { status: 404, body: { error: "Beat not found.", code: "NOT_FOUND" } };
   const visibility: StorageVisibility = validation.rule.visibility;
   const ttlSeconds = params.ttlSeconds ?? DEFAULT_UPLOAD_URL_TTL_SECONDS;
 
+  await params.intents.createPending({ ownerId: params.ownerId, entityType: "beat", entityId, kind, visibility, key,
+    expectedSize: size, contentType: validation.contentType, expiresAt: new Date(Date.now() + ttlSeconds * 1000) });
   const signed = await params.storage.createSignedUploadUrl({
     visibility,
     key,
@@ -128,6 +136,8 @@ export async function finalizeUpload(params: {
   sameOrigin: boolean;
   body: unknown;
   storage: UploadPort;
+  ownerId: string;
+  intents: UploadIntentRepository;
 }): Promise<HandlerResult> {
   if (!params.sameOrigin) {
     return forbidden();
@@ -166,6 +176,11 @@ export async function finalizeUpload(params: {
   }
 
   const visibility = visibilityForKind(kind);
+  const intent = await params.intents.findByKey(key);
+  if (!intent || intent.ownerId !== params.ownerId) return { status: 404, body: { error: "Upload intent not found.", code: "UPLOAD_NOT_FOUND" } };
+  if (intent.state !== "PENDING" || intent.expiresAt <= new Date() || intent.kind !== kind || intent.visibility !== visibility || intent.entityType !== "beat" || key.split("/")[1] !== intent.entityId) {
+    return { status: 409, body: { error: "Upload is not pending or has expired.", code: "INVALID_UPLOAD_STATE" } };
+  }
   const head = await params.storage.headObject({ visibility, key });
 
   if (!head) {
@@ -182,6 +197,12 @@ export async function finalizeUpload(params: {
     return { status: 422, body: { error: validation.message, code: validation.code } };
   }
 
+  if (head.contentLength !== intent.expectedSize || validation.contentType !== intent.contentType) {
+    return { status: 422, body: { error: "Stored object differs from the upload declaration.", code: "UPLOAD_METADATA_MISMATCH" } };
+  }
+  if (!await params.intents.markFinalized(key, head.contentLength!)) {
+    return { status: 409, body: { error: "Upload is no longer pending.", code: "INVALID_UPLOAD_STATE" } };
+  }
   const rule = getUploadRule(kind);
 
   return {

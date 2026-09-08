@@ -10,6 +10,14 @@ const read = (rel: string) => readFileSync(resolve(root, rel), "utf8");
 const SUPABASE = /@supabase\/|@\/lib\/supabase\/|supabase\.(auth|from|storage)/;
 
 const BEAT_PATH = [
+  "src/lib/data/postgres/upload-intent.postgres.ts",
+  "src/lib/data/repositories/upload-intent.repository.ts",
+  "src/lib/storage/upload-service.ts",
+  "src/lib/storage/client-upload.ts",
+  "src/lib/storage/cleanup.ts",
+  "src/app/api/admin/storage/upload-url/route.ts",
+  "src/app/api/admin/storage/finalize/route.ts",
+  "src/app/api/admin/beats/[id]/assets/route.ts",
   "src/lib/beats/service.ts",
   "src/lib/beats/to-player-track.ts",
   "src/lib/data/beat-mappers.ts",
@@ -40,4 +48,9 @@ test("content.ts beat functions no longer use the Supabase mock fallback", () =>
   assert.match(content, /beatService = new BeatService\(\)/);
   assert.doesNotMatch(content, /mockBeats/);
   assert.match(beatSection, /beatService\.listPublic/);
+});
+
+
+test("browser upload helper cannot access server credentials", () => {
+  assert.doesNotMatch(read("src/lib/storage/client-upload.ts"), /S3_ACCESS_KEY|S3_SECRET_KEY|process\.env|storage\/config|@aws-sdk|@prisma/);
 });

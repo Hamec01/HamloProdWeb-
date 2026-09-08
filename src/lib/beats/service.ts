@@ -1,5 +1,5 @@
 /**
- * Beat metadata service — PostgreSQL only, no Supabase, no mock fallback.
+ * Beat metadata and asset service — PostgreSQL only, no Supabase, no mock fallback.
  *
  * Owns validation, normalisation, the publish/status rules and the delete rules.
  * The Route Handlers do auth + origin (via requireAdminMutation) and translate
@@ -16,6 +16,9 @@ import type {
 } from "@/lib/data/repositories/beat.repository";
 import { toAdminBeat, toPublicBeat } from "@/lib/data/beat-mappers";
 import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
+import { PrismaUploadIntentRepository } from "@/lib/data/postgres/upload-intent.postgres";
+import { isBeatAssetKind, type UploadIntentRepository } from "@/lib/data/repositories/upload-intent.repository";
+import { isUuid, keyMatchesKind } from "@/lib/storage/keys";
 import type { AdminBeat, Beat, BeatStatus } from "@/types/beat";
 
 export type BeatServiceFailure = {
@@ -46,7 +49,19 @@ function fail(status: BeatServiceFailure["status"], error: string, code?: string
 }
 
 export class BeatService {
-  constructor(private readonly repo: BeatRepository = new PrismaBeatRepository()) {}
+  constructor(private readonly repo: BeatRepository = new PrismaBeatRepository(), private readonly intents: UploadIntentRepository = new PrismaUploadIntentRepository()) {}
+
+  async attachAsset(beatId: string, kind: unknown, key: unknown, actorRole: AdminRole, ownerId: string): Promise<BeatServiceResult<AdminBeat>> {
+    if (!isAdminRole(actorRole)) return fail(403, "Forbidden");
+    if (!isUuid(beatId) || !isBeatAssetKind(kind) || typeof key !== "string" || !keyMatchesKind(key, kind) || key.split("/")[1] !== beatId) return fail(422, "Storage key does not match this beat and kind.", "KEY_KIND_MISMATCH");
+    if (!await this.repo.findById(beatId)) return fail(404, "Beat not found.", "NOT_FOUND");
+    const intent = await this.intents.findByKey(key);
+    if (!intent || intent.ownerId !== ownerId || intent.entityType !== "beat" || intent.entityId !== beatId) return fail(403, "Upload does not belong to this owner and beat.", "UPLOAD_OWNER_MISMATCH");
+    if (intent.state !== "FINALIZED" || intent.kind !== kind || intent.expiresAt <= new Date()) return fail(409, "Upload must be finalized before attachment.", "INVALID_UPLOAD_STATE");
+    const record = await this.intents.attachBeatAsset(beatId, kind, key, ownerId);
+    if (!record) return fail(409, "Upload can no longer be attached.", "INVALID_UPLOAD_STATE");
+    return { ok: true, data: toAdminBeat(record, BeatService.resolveUrl) };
+  }
 
   // ── public catalogue ──────────────────────────────────────────────────────
 
@@ -108,9 +123,9 @@ export class BeatService {
     }
 
     const values = parsed.data;
-    // M2: a new beat is PRIVATE until M7.2 attaches the required cover / preview /
-    // master files, unless an admin explicitly chose a status.
+    // Public availability requires attached cover and preview assets.
     const status: BeatStatus = values.status ?? "private";
+    if (status === "available") return fail(409, "Attach a cover and preview before publishing.", "MISSING_REQUIRED_ASSETS");
 
     const input: BeatCreateInput = {
       slug: values.slug,
@@ -159,6 +174,7 @@ export class BeatService {
     }
 
     const values = parsed.data;
+    if (values.status === "available" && (!existing.coverKey || !existing.previewKey)) return fail(409, "Attach a cover and preview before publishing.", "MISSING_REQUIRED_ASSETS");
     const input: BeatUpdateInput = {};
 
     if (values.title !== undefined) input.title = values.title;

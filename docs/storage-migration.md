@@ -433,3 +433,55 @@ signed download → `ContaboS3Storage.createSignedDownloadUrl` после entitl
 публичный рендер обложки и плеера превью; приватные WAV/ZIP недоступны анонимно
 (anon GET → 403), доступны только по presigned; `lint` + `build` + `test` зелёные;
 отдельный commit M7.2b; `STORAGE_BACKEND` в проде переключается не раньше M10.
+
+### M7.2b implementation and verification (2026-09-08)
+
+Implemented `UploadIntentRepository` / `PrismaUploadIntentRepository`, guarded
+upload-url/finalize/attach routes and the four-file admin flow. The owner comes
+from the admin session; the client cannot submit object keys through metadata
+CRUD. Finalize requires an unexpired PENDING intent, checks HEAD against both
+UPLOAD_RULES and the declared size/MIME, and atomically advances to FINALIZED.
+Attachment rechecks owner/entity/kind/state inside a transaction that locks the
+beat, swaps its asset key, marks the new intent ATTACHED and the old one DELETING.
+Publishing as available requires cover + preview (`409 MISSING_REQUIRED_ASSETS`).
+The browser uses only server-returned public URLs; WAV/ZIP receive no public URL.
+
+Presigned PUT includes signed `Content-Type` and `If-None-Match: *` headers.
+Contabo live verification: first PUT 200, replay 412. This prevents replacement
+of a previously verified object while its upload URL remains valid.
+
+Cleanup runs opportunistically after storage requests / attachment, at most once
+per minute per process, up to 20 records. Failed deletes retain DELETING for
+retry. PENDING expires after 5 minutes; cleanup waits an additional hour for
+in-flight PUTs. FINALIZED gets a 24-hour attachment window and is also collected
+if abandoned (plus the same grace period). Displaced keys wait one hour before
+deletion to avoid recreation via an outstanding PUT. EXPIRED means deletion
+succeeded. Without subsequent requests, a sweep does not run; this is not a cron.
+
+Verification evidence:
+- `npm test`: 165/165, no failures or skips; lint: 0 errors, 12 existing
+  warnings outside the changed files; `npm run build`: passes.
+- Local production build: admin form renders; creating a private beat returns
+  201 and enables all four file inputs. Browser cover upload and attachment also
+  pass and display “Attached”.
+- Local HTTP API + real Contabo + PostgreSQL: upload-url → PUT → finalize → attach
+  passed for cover, preview, WAV and ZIP, with all four intents ATTACHED. This used
+  small transport fixtures, not a playback test or a Preview deployment.
+- WAV and ZIP: anonymous GET 401 (Contabo's denial response), presigned GET 200,
+  bytes match. Conditional PUT replay 412. Temporary data is removed after checks.
+- Existing bucket smoke remains **4/5**: public anonymous GET **401**. Bucket policy
+  and CORS reads return **403 AccessDenied** with the supplied object-scoped key.
+- Live OPTIONS for both buckets allows the local browser origin via
+  `Access-Control-Allow-Origin: *` and echoes `content-type,if-none-match`. This
+  effective response permits the local upload, but does not confirm that the
+  requested restricted bucket CORS policy is installed (GetBucketCors is denied).
+- The current migration has no matching Vercel Preview deployment. The Preview
+  browser/upload/public playback exit gate remains **open**, not passed.
+
+To close the external gate, the bucket owner must apply the public GetObject
+policy and CORS in §4.3–4.4. A Preview browser origin also needs an explicit entry
+in **both** the intended restricted bucket CORS and `AUTH_EXTRA_ORIGINS`; the
+three origins in the provisioning script do not include a `*.vercel.app`
+deployment. Do not use a wildcard origin. Repeat the
+five-check smoke and then the four-file browser flow on the actual Preview URL.
+Production `STORAGE_BACKEND` is unchanged; no production deployment was made.

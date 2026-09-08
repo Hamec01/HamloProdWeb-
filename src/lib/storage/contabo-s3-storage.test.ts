@@ -215,7 +215,8 @@ test("createSignedUploadUrl returns a presigned PUT with a short TTL", async () 
   });
 
   assert.equal(signed.method, "PUT");
-  assert.deepEqual(signed.headers, { "Content-Type": "audio/wav" });
+  assert.deepEqual(signed.headers, { "Content-Type": "audio/wav", "If-None-Match": "*" });
+  assert.match(decodeURIComponent(signed.url), /X-Amz-SignedHeaders=[^&]*if-none-match/);
   assert.match(signed.url, /^https:\/\/usc1\.contabostorage\.com\/hamloprod-private\//);
   assert.match(signed.url, /X-Amz-Expires=300/);
 });
