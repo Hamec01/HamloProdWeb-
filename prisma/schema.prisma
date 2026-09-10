@@ -105,11 +105,19 @@ model User {
   artistId        String?   @map("artist_id") @db.Uuid
   artist          Artist?   @relation(fields: [artistId], references: [id], onDelete: SetNull)
   displayName     String?   @map("display_name")
+  /// Last successful sign-in (own auth or, historically, Supabase). Informational.
+  lastSignInAt    DateTime? @map("last_sign_in_at") @db.Timestamptz(6)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   sessions      Session[]
   uploadIntents UploadIntent[]
+  orders        Order[]
+  purchases     BeatPurchase[]
+  reactions     BeatReaction[]
+  comments      ContentComment[]
+  ratings       ContentRating[]
+  loyalty       LoyaltyPoint?
 
   @@index([artistId])
   @@map("users")
@@ -190,6 +198,11 @@ model Beat {
   publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  orders    Order[]
+  contracts Contract[]
+  purchases BeatPurchase[]
+  reactions BeatReaction[]
 
   @@index([status])
   @@index([featured])
@@ -322,4 +335,181 @@ model UploadIntent {
   @@index([state, expiresAt])
   @@index([ownerId])
   @@map("upload_intents")
+}
+
+/// Beat rights purchase order. Text status/currency/etc. mirror the legacy
+/// Supabase table (CHECK constraints, not Prisma enums, keep it faithful).
+model Order {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beatId               String    @map("beat_id") @db.Uuid
+  beat                 Beat      @relation(fields: [beatId], references: [id], onDelete: Restrict)
+  buyerUserId          String?   @map("buyer_user_id") @db.Uuid
+  buyerUser            User?     @relation(fields: [buyerUserId], references: [id], onDelete: SetNull)
+  buyerEmail           String    @map("buyer_email")
+  buyerName            String?   @map("buyer_name")
+  buyerCountry         String?   @map("buyer_country")
+  buyerCity            String?   @map("buyer_city")
+  buyerPhone           String?   @map("buyer_phone")
+  buyerFullName        String?   @map("buyer_full_name")
+  buyerStageName       String?   @map("buyer_stage_name")
+  /// USD historically; `basePrice`/`finalPrice` are the market-currency amounts.
+  basePriceUsd         Int       @map("base_price_usd")
+  finalPriceUsd        Int       @map("final_price_usd")
+  basePrice            Int       @default(0) @map("base_price")
+  finalPrice           Int       @default(0) @map("final_price")
+  discountPercent      Int       @default(0) @map("discount_percent")
+  currency             String    @default("USD")
+  market               String    @default("global")
+  provider             String    @default("paypal")
+  paymentProvider      String?   @map("payment_provider")
+  status               String    @default("draft")
+  licenseType          String    @default("basic") @map("license_type")
+  contractLanguage     String    @default("ru") @map("contract_language")
+  rightsFormStatus     String    @default("not_started") @map("rights_form_status")
+  contractTemplateType String?   @map("contract_template_type")
+  /// Object-storage key of the generated rights PDF (private bucket). Never a URL.
+  contractPdfKey       String?   @map("contract_pdf_key")
+  paymentExternalId    String?   @map("payment_external_id")
+  paymentUrl           String?   @map("payment_url")
+  downloadToken        String?   @unique @map("download_token")
+  expiresAt            DateTime? @map("expires_at") @db.Timestamptz(6)
+  paidAt               DateTime? @map("paid_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contract Contract?
+
+  @@index([beatId])
+  @@index([buyerUserId])
+  @@index([status, createdAt])
+  @@index([paymentExternalId])
+  @@map("orders")
+}
+
+/// One contract per order — the HTML snapshot shown at checkout and the optional
+/// generated PDF key.
+model Contract {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String    @unique @map("order_id") @db.Uuid
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  beatId       String   @map("beat_id") @db.Uuid
+  beat         Beat     @relation(fields: [beatId], references: [id], onDelete: Restrict)
+  buyerEmail   String   @map("buyer_email")
+  htmlSnapshot String   @map("html_snapshot")
+  /// Private object-storage key of the rendered PDF. Never a URL.
+  pdfKey       String?  @map("pdf_key")
+  issuedAt     DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([beatId])
+  @@index([buyerEmail])
+  @@map("contracts")
+}
+
+/// Loyalty-point purchase ledger row (one per checkout of a free/paid beat).
+model BeatPurchase {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beatId          String   @map("beat_id") @db.Uuid
+  beat            Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  beatTitle       String   @map("beat_title")
+  userId          String   @map("user_id") @db.Uuid
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail       String   @map("user_email")
+  basePriceUsd    Int      @map("base_price_usd")
+  discountPercent Int      @map("discount_percent")
+  finalPriceUsd   Int      @map("final_price_usd")
+  pointsEarned    Int      @default(1) @map("points_earned")
+  orderId         String?  @map("order_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@map("beat_purchases")
+}
+
+/// One like/dislike per (beat, user).
+model BeatReaction {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beatId    String   @map("beat_id") @db.Uuid
+  beat      Beat     @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail String   @map("user_email")
+  reaction  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([beatId, userId])
+  @@index([beatId])
+  @@map("beat_reactions")
+}
+
+/// Public comment on a beat or track (polymorphic `contentId`, no FK).
+model ContentComment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentType String   @map("content_type")
+  contentId   String   @map("content_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail   String   @map("user_email")
+  comment     String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([contentType, contentId, createdAt])
+  @@index([userId])
+  @@map("content_comments")
+}
+
+/// One 1–5 star rating per (contentType, contentId, user).
+model ContentRating {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentType String   @map("content_type")
+  contentId   String   @map("content_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail   String   @map("user_email")
+  rating      Int      @db.SmallInt
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([contentType, contentId, userId])
+  @@index([contentType, contentId])
+  @@map("content_ratings")
+}
+
+/// Running loyalty-point balance, one row per user.
+model LoyaltyPoint {
+  userId    String   @id @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userEmail String   @map("user_email")
+  points    Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_loyalty_points")
+}
+
+/// Free MP3 download audit rows (buyer-facing beat/track downloads).
+model BeatDownloadLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  beatId     String   @map("beat_id") @db.Uuid
+  beatTitle  String   @map("beat_title")
+  fileFormat String   @default("mp3") @map("file_format")
+  userId     String   @map("user_id") @db.Uuid
+  userEmail  String   @map("user_email")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("beat_downloads")
+}
+
+model TrackDownloadLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  trackId    String   @map("track_id") @db.Uuid
+  trackTitle String   @map("track_title")
+  userId     String   @map("user_id") @db.Uuid
+  userEmail  String   @map("user_email")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("track_downloads")
 }
