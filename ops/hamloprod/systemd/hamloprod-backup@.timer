@@ -1,0 +1,18 @@
+# /etc/systemd/system/hamloprod-backup@.timer
+# HamloProd — daily backup timer (roadmap_v2.md §15).
+#   sudo systemctl enable --now hamloprod-backup@production.timer
+#
+# 04:40 UTC — after titanorgroup-backup (03:30 local) and titanor-time-backup (04:10 UTC) so the
+# three do not contend for the s3fs off-box path at the same minute.
+
+[Unit]
+Description=Run the HamloProd %i PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 04:40:00 UTC
+Persistent=true
+RandomizedDelaySec=15m
+Unit=hamloprod-backup@%i.service
+
+[Install]
+WantedBy=timers.target

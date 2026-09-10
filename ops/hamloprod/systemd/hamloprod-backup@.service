@@ -1,0 +1,24 @@
+# /etc/systemd/system/hamloprod-backup@.service
+# HamloProd — scheduled PostgreSQL backup (roadmap_v2.md §15).
+# Templated by environment: %i is "production" (or "staging" later).
+#   sudo systemctl enable --now hamloprod-backup@production.timer
+#
+# Per-instance config lives in /etc/hamloprod/backup-%i.env (mode 0600, root:root) and is the ONLY
+# place the container / db / paths / rotation are set. See ops/hamloprod/systemd/backup-production.env.example.
+
+[Unit]
+Description=HamloProd %i PostgreSQL backup
+Wants=docker.service
+After=docker.service network-online.target
+After=mnt-250gb.mount
+OnFailure=hamloprod-backup-failed@%i.service
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+EnvironmentFile=/etc/hamloprod/backup-%i.env
+ExecStart=/bin/bash -lc '${HP_BACKUP_SCRIPT:?set HP_BACKUP_SCRIPT in /etc/hamloprod/backup-%i.env} scheduled'
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1800

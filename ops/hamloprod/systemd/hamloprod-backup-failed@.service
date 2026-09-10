@@ -1,0 +1,12 @@
+# /etc/systemd/system/hamloprod-backup-failed@.service
+# HamloProd — backup failure notifier. Invoked by OnFailure= of hamloprod-backup@%i.service.
+# Writes a marker file + a journal line only. NO email/SMTP, NO secrets, NO row content.
+
+[Unit]
+Description=HamloProd %i backup FAILED notifier
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+ExecStart=/bin/bash -lc 'ts=$(date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ); mkdir -p /home/deploy/backups/hamloprod; echo "$ts backup FAILED for env=%i — see: journalctl -u hamloprod-backup@%i.service -n 50" | tee -a /home/deploy/backups/hamloprod/BACKUP_FAILED.log; logger -t hamloprod-backup "backup FAILED for env=%i"'
