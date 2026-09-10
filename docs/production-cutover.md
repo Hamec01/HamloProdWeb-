@@ -33,11 +33,21 @@ production alias / env / DNS не тронут. Откат не требовал
 `git grep` Supabase в `src/` — только assert-регулярки в `*no-supabase*.test.ts`,
 0 runtime-импортов · `git diff --check` OK · секретов в tracked-файлах нет.
 
-### 3. Preview E2E — **substitute проведён (51/51), браузерный STOP-gate за владельцем**
+### 3. Preview E2E — **substitute 51/51 + владелец визуально проверил Preview → принято**
 
 Preview `dpl_Bu8KsTz7oGFasAzrBAQfxCyskecx` (commit `b2d78aa`) — **READY** на
 проекте `hamlo-prod-web`. Под Vercel SSO; создание Protection-Bypass secret и
-Vercel MCP в сессии недоступны → браузерный прогон 12 пунктов **не сделан**.
+Vercel MCP в сессии недоступны → автоматический браузерный прогон 12 пунктов из
+сессии не выполнялся.
+
+**Решение владельца (msg 2026-09-10):** не блокировать cutover из-за
+невозможности автоматического обхода Preview SSO. Основание принято:
+(а) сквозной HTTP E2E 51/51 против прод-сборки + реальный PostgreSQL + реальный
+Contabo (ниже); (б) владелец лично открыл Preview в браузере и визуально
+подтвердил каталог, страницу бита, вход и проигрывание. Это зафиксировано как
+принятое владельцем подтверждение STOP-gate 3. Остаётся обязательным только
+пост-cutover просмотр **Vercel Runtime Logs** (Preview и Production) на предмет
+Prisma init errors / connection timeouts / 5xx.
 
 Substitute: сквозной HTTP E2E против `next start` прод-сборки worktree + реальный
 PostgreSQL (`hamloprod-postgres` через тот же `db.hamloprod.org:6432` PgBouncer) +
@@ -145,16 +155,20 @@ DB-контейнер заблокированы защитой сессии →
   `SESSION_SECRET`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`,
   `S3_BUCKET_PUBLIC`, `S3_BUCKET_PRIVATE`, `S3_FORCE_PATH_STYLE`,
   `S3_PUBLIC_BASE_URL`, `NEXT_PUBLIC_SITE_URL`.
-- **Нет вообще (нужны от владельца):** `LAVA_API_BASE_URL`, `LAVA_API_KEY`,
-  `LAVA_WEBHOOK_SECRET`, `SELLER_*`, `SELLER_SIGNATURE_PATH`. Без них: Lava-оплата
-  RU-заказов → 503 (бесплатный checkout работает); генерация PDF договора → 500
-  (HTML-превью договора работает).
+- **Новый обязательный флаг:** `PAID_CHECKOUT_ENABLED=false` (kill switch платного
+  checkout — см. раздел 12).
+- **НЕ обязательны для cutover (решение владельца — платежи отложены):**
+  `LAVA_API_BASE_URL`, `LAVA_API_KEY`, `LAVA_WEBHOOK_SECRET`, `SELLER_*`,
+  `SELLER_SIGNATURE_PATH`. Пока `PAID_CHECKOUT_ENABLED` ≠ `true` они не читаются:
+  `/api/checkout`, `/api/payments/create`, `/api/contracts/preview|pdf` отвечают
+  контролируемым `503 {code:"PAID_CHECKOUT_DISABLED"}` до подключения провайдера
+  (backlog «Подключение платёжных систем и генерации договоров», раздел 12).
 
 Preview env уже содержит корректные `DATABASE_URL` / `SESSION_SECRET` / `S3_*` /
 `DATA_BACKEND` / `STORAGE_BACKEND` — их можно скопировать в Production (кроме:
 отдельный прод `SESSION_SECRET`; `AUTH_EXTRA_ORIGINS` в Production **не задавать**;
-добавить `NEXT_PUBLIC_SITE_URL`). Запись env через API не выполнялась (защита
-сессии + часть секретов недоступна).
+добавить `NEXT_PUBLIC_SITE_URL` и `PAID_CHECKOUT_ENABLED=false`). Запись env через
+API не выполнялась (защита сессии + часть секретов недоступна).
 
 ### 8. Миграции — OK (no-op)
 
@@ -213,19 +227,21 @@ Previous production deployment ID для будущего отката — за�
    | `SESSION_SECRET` | **новый** прод-секрет: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
    | `S3_ENDPOINT` `S3_REGION` `S3_ACCESS_KEY` `S3_SECRET_KEY` `S3_BUCKET_PUBLIC` `S3_BUCKET_PRIVATE` `S3_FORCE_PATH_STYLE` `S3_PUBLIC_BASE_URL` | скопировать из Preview env (там уже корректны; `S3_PUBLIC_BASE_URL` = `https://usc1.contabostorage.com/<tenant>:hamloprod-public`) |
    | `NEXT_PUBLIC_SITE_URL` | `https://hamloprod.org` |
-   | `LAVA_API_BASE_URL` `LAVA_API_KEY` `LAVA_WEBHOOK_SECRET` | реальные значения (нигде на VPS их нет) |
-   | `SELLER_*` `SELLER_SIGNATURE_PATH` | реальные значения |
+   | `PAID_CHECKOUT_ENABLED` | `false` (платный checkout закрыт — раздел 12) |
    | `TELEGRAM_BOT_TOKEN` `TELEGRAM_CHAT_ID` `NEXT_PUBLIC_LICENSE_REQUEST_URL` | оставить как есть |
+
+   `LAVA_*` / `SELLER_*` **НЕ задавать** — платежи отложены, флаг закрыт. Добавить
+   позже вместе с `PAID_CHECKOUT_ENABLED=true` (backlog, раздел 12).
 
    Правила: пароль в `DATABASE_URL` — URL-encoded; `DIRECT_URL` для Vercel **не
    задавать**; `AUTH_EXTRA_ORIGINS` в Production **не задавать** (прод-origins уже
    в фиксированном allow-list кода); `NEXT_PUBLIC_` копий секретов не создавать.
 
-5. **Preview browser E2E (STOP-gate 3).** Прогнать 12 пунктов
-   `docs/legacy-restore.md` §5 на
-   `https://hamlo-prod-web-git-migration-sel-bf2e3e-inkeritm-4372s-projects.vercel.app`
-   (share-link или временный bypass, не снимая защиту с production). После —
-   Vercel Runtime Logs Preview: 0 Prisma init errors / connection timeouts / 5xx.
+5. **Preview browser E2E (STOP-gate 3) — ПРИНЯТО владельцем.** Основание: HTTP
+   E2E 51/51 + личная визуальная проверка Preview владельцем (раздел 3).
+   Отдельного прогона больше не требуется. Обязателен только просмотр **Vercel
+   Runtime Logs** (Preview + Production) после cutover: 0 Prisma init errors /
+   connection timeouts / 5xx.
 
 6. **Cutover (после 1–5).**
    - Зафиксировать ID текущего рабочего Production deployment (для rollback).
@@ -239,15 +255,19 @@ Previous production deployment ID для будущего отката — за�
      работает во время сборки).
 
 7. **Немедленный prod smoke + 30 мин наблюдения** — `docs/claude-handoff-
-   production-cutover.md` §10 (public RU/EN pages, media Range 206, buyer +
-   legacy login, admin login/CRUD с cleanup, private beat upload/attach/publish,
-   private anon-запрет + signed GET, profile/loyalty/social, contract
-   preview/PDF без реального платежа, Lava invalid-signature webhook → отклонён,
-   отсутствие секретов в HTML, security headers + cookie флаги, Runtime Logs,
-   PgBouncer/Postgres/CPU/RAM/disk, fail2ban+firewall active). Тестовые
-   prod-сущности — с узнаваемым префиксом и удалить через API. Rollback trigger:
-   устойчивая 5xx / login не работает / нет каталога / плеер не играет / ошибка
-   private access / DB saturation.
+   production-cutover.md` §10 **без платёжного сценария** (public RU/EN pages,
+   media Range 206, buyer + legacy login, admin login/CRUD с cleanup, private
+   beat upload/attach/publish, private anon-запрет + signed GET,
+   profile/loyalty/social, отсутствие секретов в HTML, security headers + cookie
+   флаги, Runtime Logs, PgBouncer/Postgres/CPU/RAM/disk, fail2ban+firewall
+   active). **Вместо** contract preview/PDF и Lava webhook:
+   `POST /api/checkout` (авторизованным buyer) → **503** с телом
+   `{"code":"PAID_CHECKOUT_DISABLED"}`, **не** 500; в БД не появился новый `Order`;
+   страница бита и `/checkout/<slug>` показывают «Онлайн-оплата временно
+   недоступна». Тестовые prod-сущности — с узнаваемым префиксом и удалить через
+   API. Rollback trigger: устойчивая 5xx / login не работает / нет каталога /
+   плеер не играет / ошибка private access / DB saturation / `/api/checkout`
+   отдаёт 500 вместо 503.
 
 8. **Rollback (если trigger)** — `docs/claude-handoff-production-cutover.md` §11:
    переназначить Vercel production alias на предыдущий READY deployment; **не**
@@ -261,11 +281,66 @@ Previous production deployment ID для будущего отката — за�
 
 ---
 
+## 12. Временный режим отключённых платных покупок (`PAID_CHECKOUT_ENABLED`)
+
+Решение владельца: Lava и остальные платёжные системы подключаются позже.
+Production идёт LIVE **без онлайн-оплаты**. Реализован server-only kill switch,
+Lava-код сохранён нетронутым.
+
+### Флаг
+
+`PAID_CHECKOUT_ENABLED` (`src/lib/checkout/config.ts`) — server-only, без
+`NEXT_PUBLIC_`. Включено **только** при точном значении `true` (trim + lower-case);
+любое другое значение и отсутствие переменной ⇒ **выключено** (fail-closed).
+`default = false`.
+
+### Поведение при `false` (текущий production)
+
+| Точка | Поведение |
+|---|---|
+| `POST /api/checkout` | `503 {error, code:"PAID_CHECKOUT_DISABLED"}` до валидации тела; `Order` не создаётся и не меняется |
+| `POST /api/payments/create` | `503` до обращения к Lava; Lava не вызывается |
+| `POST /api/contracts/preview` | `503`; новый snapshot договора не генерируется |
+| `POST /api/contracts/pdf` | `503`; новый PDF прав не генерируется, `Order` не меняется |
+| `POST /api/lava/webhook` | подпись всё равно проверяется; затем `200 {ok:true, ignored:true, reason:"paid_checkout_disabled"}` — БД не трогается |
+| `/beats/[slug]`, `/checkout/[slug]`, `/checkout/{preview,payment,rights}/[id]` | вместо CTA — блок «Онлайн-оплата временно недоступна» / «Online payments are temporarily unavailable» + ссылка в Telegram; каталог, плеер, регистрация, профиль, админка работают |
+| `/profile` | импортированные заказы и история покупок видны **только для чтения**; ссылка «Заполнить передачу прав» скрыта |
+| `POST /api/beats/[id]/purchase` (бесплатный loyalty-flow) | **не тронут** — не создаёт `Order` и не обращается к платежам |
+
+### Тесты
+
+`src/lib/checkout/config.test.ts` (5) + `src/lib/checkout/paid-checkout-guard.test.ts`
+(18): выключено по умолчанию; только `"true"` включает; `503` (не `500`) с
+предсказуемым `code`; guard стоит раньше любой записи `Order` / вызова Lava /
+генерации договора / парсинга тела; ни одной активной точки входа в платный
+checkout в UI мимо флага. `npm test` — **202 pass / 0 fail**. Включённый flow
+(`PAID_CHECKOUT_ENABLED=true`) остаётся рабочим — существующие тесты checkout/
+payments/contracts проходят без изменений.
+
+### Backlog-этап: «Подключение платёжных систем и генерации договоров»
+
+Отдельная будущая работа, вне текущего cutover:
+
+1. Получить и завести в Production env: `LAVA_API_BASE_URL`, `LAVA_API_KEY`,
+   `LAVA_WEBHOOK_SECRET`, `SELLER_*`, `SELLER_SIGNATURE_PATH`.
+2. Проверить Lava sandbox: `create` → webhook (валидная и невалидная подпись) →
+   смена статуса заказа → beat `sold`.
+3. Проверить генерацию: HTML-превью договора, PDF прав, подпись продавца.
+4. Прогнать платный E2E на Preview.
+5. Выставить `PAID_CHECKOUT_ENABLED=true` в Production, redeploy, prod smoke уже
+   **с** платёжным сценарием.
+6. Обновить `.env.example` и этот раздел (режим → «включено»).
+
+---
+
 ## Артефакты этой ветки (`release/production-cutover`)
 
 - `974d6cb` — `ops/hamloprod/` backup + restore-test + systemd
-- `<этот commit>` — `deploy/preview-db/{pg_hba.conf,gen-internal-pg-cert.sh}`,
+- `cb276bf` — `deploy/preview-db/{pg_hba.conf,gen-internal-pg-cert.sh}`,
   переписанный `postgres-tls.md`, `docs/production-cutover.md`, `docs/legacy-restore.md` §5
+- `<этот commit>` — `PAID_CHECKOUT_ENABLED` kill switch (`src/lib/checkout/*`,
+  `src/components/checkout/payments-disabled-notice.tsx`, guards в 5 API-роутах +
+  6 страницах), `.env.example`, разделы 3/4/5/7/12 этого документа
 
 Бэкап `/home/deploy/backups/hamloprod/production-20260910T194248Z-manual`
 (+ off-box) оставлен на месте.

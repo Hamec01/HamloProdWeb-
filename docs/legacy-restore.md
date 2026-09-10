@@ -1,6 +1,6 @@
 # Legacy restore — accounts, orders, contracts, social + runtime off Supabase
 
-Статус: **runtime полностью на PostgreSQL/Contabo; Preview E2E — в процессе.**
+Статус: **runtime полностью на PostgreSQL/Contabo; Preview E2E-гейт принят владельцем (HTTP 51/51 + визуальная проверка).**
 Ветка `migration/self-hosted-backend`. ТЗ: `docs/claude-handoff-legacy-restore.md`.
 Основание: `roadmap_v2.md` §16 (M2–M6, M11), `docs/postgres-foundation.md`,
 `docs/storage-migration.md`, `docs/preview-db-connection.md`.
@@ -121,8 +121,13 @@ Build: `prisma generate` ок (client v6.19.3), `next build` ✓, все роу�
 
 **Браузерный E2E (визуальный рендер + `<audio>` playback) не выполнен из сессии:** Preview под Vercel SSO
 (`ssoProtection: all_except_custom_domains`), Protection-Bypass secret не заведён,
-Vercel MCP (`web_fetch_vercel_url`) в сессии недоступен. Нужен доступ владельца
-(share-link, временное снятие SSO, или прогон вручную).
+Vercel MCP (`web_fetch_vercel_url`) в сессии недоступен.
+
+**Решение владельца (2026-09-10): гейт принят.** Основание: HTTP E2E 51/51 +
+владелец лично открыл Preview и визуально подтвердил каталог, страницу бита, вход
+и проигрывание. Автоматический прогон чеклиста ниже больше не требуется;
+обязателен только просмотр Vercel Runtime Logs (Preview + Production) после
+cutover. Подробнее — `docs/production-cutover.md` §3.
 
 ### Чеклист для владельца (Preview)
 
@@ -163,8 +168,8 @@ timeouts, 500.
 
 - [x] source/target counts совпадают (раздел 1)
 - [x] runtime не зависит от Supabase (раздел 3, `rg` + тест)
-- [ ] полный Preview E2E пройден (раздел 5)
-- [ ] Vercel Runtime Logs чисты
+- [x] Preview E2E — HTTP 51/51 + визуальная проверка владельцем; гейт принят (раздел 5)
+- [ ] Vercel Runtime Logs чисты — проверить после cutover
 - [x] документация обновлена
 - [x] production не затронут
 

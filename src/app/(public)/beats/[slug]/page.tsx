@@ -4,9 +4,11 @@ import type { Metadata } from "next";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
+import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
@@ -70,6 +72,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
+  const paidCheckoutEnabled = isPaidCheckoutEnabled();
   const buyLicenseHref = locale === "ru" ? "https://t.me/Andrei91S" : `/checkout/${beat.slug}`;
 
   return (
@@ -123,20 +126,26 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               <span className="text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.currentPrice}</span>
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{priceLabel}</span>
             </div>
-            <p className="mt-4 text-sm leading-7 text-[var(--color-paper-200)]">
-              {locale === "ru"
-                ? `Рынок: ${market.market.toUpperCase()} / Провайдер оплаты: ${market.paymentProvider}`
-                : `Market: ${market.market} / Payment provider: ${market.paymentProvider}`}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={buyLicenseHref}
-                className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
-              >
-                {t.buyLicense}
-                <ArrowRight size={14} />
-              </Link>
-            </div>
+            {paidCheckoutEnabled ? (
+              <>
+                <p className="mt-4 text-sm leading-7 text-[var(--color-paper-200)]">
+                  {locale === "ru"
+                    ? `Рынок: ${market.market.toUpperCase()} / Провайдер оплаты: ${market.paymentProvider}`
+                    : `Market: ${market.market} / Payment provider: ${market.paymentProvider}`}
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href={buyLicenseHref}
+                    className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
+                  >
+                    {t.buyLicense}
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <PaymentsDisabledNotice locale={locale} className="mt-6" />
+            )}
           </section>
 
           <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />

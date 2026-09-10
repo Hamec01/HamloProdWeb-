@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";
@@ -49,6 +50,7 @@ function formatDate(value: string, locale: string) {
 export default async function ProfilePage() {
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
   const t = dictionary[locale];
+  const paidCheckoutEnabled = isPaidCheckoutEnabled();
 
   if (!session.isAuthenticated || !session.userId) {
     redirect(`/auth?next=${encodeURIComponent("/profile")}`);
@@ -137,20 +139,21 @@ export default async function ProfilePage() {
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
                   <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
                   <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "отчуждение прав" : "rights transfer"}</span>
-                  {(order.status === "paid" || order.status === "pending_free_checkout") && (
-                    <Link
-                      href={`/checkout/rights/${order.id}`}
-                      className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline decoration-dotted"
-                    >
-                      {locale === "ru"
-                        ? order.rights_form_status === "not_started" || !order.rights_form_status
-                          ? "Заполнить передачу прав"
-                          : "Открыть форму передачи прав"
-                        : order.rights_form_status === "not_started" || !order.rights_form_status
-                          ? "Fill Rights Form"
-                          : "Open Rights Form"}
-                    </Link>
-                  )}
+                  {paidCheckoutEnabled &&
+                    (order.status === "paid" || order.status === "pending_free_checkout") && (
+                      <Link
+                        href={`/checkout/rights/${order.id}`}
+                        className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline decoration-dotted"
+                      >
+                        {locale === "ru"
+                          ? order.rights_form_status === "not_started" || !order.rights_form_status
+                            ? "Заполнить передачу прав"
+                            : "Открыть форму передачи прав"
+                          : order.rights_form_status === "not_started" || !order.rights_form_status
+                            ? "Fill Rights Form"
+                            : "Open Rights Form"}
+                      </Link>
+                    )}
                 </div>
               </div>
             );

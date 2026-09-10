@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import {
   generateAndSaveContractSnapshot,
   getContractByOrderId,
@@ -24,6 +26,15 @@ export default async function ContractPreviewPage({
   const session = await getPublicSessionState();
   if (!session.isAuthenticated || !session.userId) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/preview/${orderId}`)}`);
+  }
+
+  if (!isPaidCheckoutEnabled()) {
+    return (
+      <section className="space-y-6">
+        <SectionHeading eyebrow="Contract" title={locale === "ru" ? "Превью договора" : "Contract Preview"} />
+        <PaymentsDisabledNotice locale={locale} />
+      </section>
+    );
   }
 
   try {

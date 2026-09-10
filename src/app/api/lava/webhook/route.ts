@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import {
   mapLavaWebhookToOrderStatus,
   verifyLavaWebhookSignature,
@@ -35,6 +36,12 @@ export async function POST(request: NextRequest) {
   if (!verifyLavaWebhookSignature({ rawBody, authorizationHeader: authHeader, webhookSecret })) {
     console.warn("[lava:webhook] signature verification failed");
     return NextResponse.json({ error: "Unauthorized webhook." }, { status: 401 });
+  }
+
+  // Paid checkout is off → no Lava invoices are created, so any delivery here is
+  // stale/replayed. Acknowledge without touching an Order or a beat.
+  if (!isPaidCheckoutEnabled()) {
+    return NextResponse.json({ ok: true, ignored: true, reason: "paid_checkout_disabled" });
   }
 
   let payload: LavaWebhookPayload | null;

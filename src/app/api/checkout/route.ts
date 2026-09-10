@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
+import { isPaidCheckoutEnabled, paidCheckoutDisabledResponse } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { getMarketContext } from "@/lib/market";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
@@ -15,6 +16,12 @@ function err(message: string, status: number) {
 export async function POST(request: NextRequest) {
   const guard = await requireBuyer(request);
   if (!guard.ok) return guard.response;
+
+  // Paid checkout is off → never create or change an Order.
+  if (!isPaidCheckoutEnabled()) {
+    const d = paidCheckoutDisabledResponse();
+    return NextResponse.json(d.body, { status: d.status });
+  }
 
   const parsed = checkoutFormSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {

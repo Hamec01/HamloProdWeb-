@@ -2,9 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import type { Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { getDiscountPercent } from "@/lib/loyalty";
@@ -34,6 +36,28 @@ export default async function CheckoutPage({
 
   if (!beat) {
     notFound();
+  }
+
+  if (!isPaidCheckoutEnabled()) {
+    const eyebrow = locale === "ru" ? "Покупка прав" : "Rights Purchase";
+    const heading = locale === "ru" ? "Оформление заказа" : "Checkout";
+    return (
+      <section className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <Link
+            href={`/${locale}/beats/${slug}`}
+            className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
+          >
+            <ArrowLeft size={14} />
+            {locale === "ru" ? "Назад к биту" : "Back to Beat"}
+          </Link>
+        </div>
+        <SectionHeading eyebrow={eyebrow} title={heading} />
+        <div className="mx-auto max-w-2xl">
+          <PaymentsDisabledNotice locale={locale} />
+        </div>
+      </section>
+    );
   }
 
   if (beat.status === "sold" || beat.status === "private") {

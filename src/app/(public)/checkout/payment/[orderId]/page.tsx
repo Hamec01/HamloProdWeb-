@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PaymentCreatePanel } from "@/components/checkout/payment-create-panel";
+import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
+import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 import { formatMarketMoney } from "@/lib/market";
@@ -23,6 +25,15 @@ export default async function CheckoutPaymentPage({
 
   if (!session.isAuthenticated) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/payment/${orderId}`)}`);
+  }
+
+  if (!isPaidCheckoutEnabled()) {
+    return (
+      <section className="space-y-6">
+        <SectionHeading eyebrow="Payment" title={locale === "ru" ? "Оплата" : "Payment"} />
+        <PaymentsDisabledNotice locale={locale} />
+      </section>
+    );
   }
 
   let paymentData: Awaited<ReturnType<typeof getOrderForPayment>>;

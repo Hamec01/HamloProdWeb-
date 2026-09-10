@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireBuyer } from "@/lib/auth/public-guard";
+import { isPaidCheckoutEnabled, paidCheckoutDisabledResponse } from "@/lib/checkout/config";
 import { contractPdfCreateSchema } from "@/lib/validations/rights-form";
 import { createRightsContractPdf } from "@/lib/contracts/pdf";
 
@@ -12,6 +13,12 @@ function err(message: string, status: number) {
 export async function POST(request: NextRequest) {
   const guard = await requireBuyer(request);
   if (!guard.ok) return guard.response;
+
+  // Paid checkout is off → never generate a new rights PDF or mutate an order.
+  if (!isPaidCheckoutEnabled()) {
+    const d = paidCheckoutDisabledResponse();
+    return NextResponse.json(d.body, { status: d.status });
+  }
 
   const parsed = contractPdfCreateSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
