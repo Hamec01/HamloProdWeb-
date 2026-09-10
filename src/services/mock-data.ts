@@ -5,7 +5,7 @@ export const siteSettings: SiteSettings = {
   subtitle: "Ты ещё вернёшься",
   archiveHeadline: "Archive Case Files",
   archiveDescription:
-    "Select a beat from the archives. Final content will come from Supabase, not from page code.",
+    "Select a beat from the archives.",
 };
 
 export const mockTracks: Track[] = [

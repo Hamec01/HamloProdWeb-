@@ -244,6 +244,38 @@ model Track {
   @@map("tracks")
 }
 
+model Post {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title        String
+  slug         String   @unique
+  excerpt      String
+  content      String
+  category     String   @default("news")
+  section      String   @default("general")
+  coverPalette String   @default("from-amber-900 via-stone-900 to-black") @map("cover_palette")
+  ctaLabel     String?  @map("cta_label")
+  ctaUrl       String?  @map("cta_url")
+  published    Boolean  @default(true)
+  featured     Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([section, published, createdAt])
+  @@map("posts")
+}
+
+model SiteSetting {
+  key                String   @id
+  title              String
+  subtitle           String
+  archiveHeadline    String   @map("archive_headline")
+  archiveDescription String   @map("archive_description")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_settings")
+}
+
 /// Login rate-limiting. One row per HMAC(normalised email + IP). No email or IP
 /// is stored in the clear. Old rows are swept opportunistically (no cron in M6.1).
 model AuthThrottle {

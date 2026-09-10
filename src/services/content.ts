@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { mockArtistPosts, mockArtists, mockComments, mockPosts, mockReleases, siteSettings } from "@/services/mock-data";
+import { mockArtistPosts, mockArtists, mockComments, mockReleases, siteSettings } from "@/services/mock-data";
 import type { Artist, ArtistPost, Beat, Comment, Post, Release, ReleaseTrack, SiteSettings, Track, TrackDownloadLog } from "@/types";
 import { BeatService } from "@/lib/beats/service";
 import { prisma } from "@/lib/db/client";
@@ -93,30 +93,6 @@ type CommentRow = {
   body: string;
   stars: number | null;
   created_at: string;
-};
-
-type PostRow = {
-  id: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string;
-  category: string;
-  section: Post["section"];
-  cover_palette: string;
-  cta_label: string | null;
-  cta_url: string | null;
-  published: boolean;
-  featured: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-type SiteSettingsRow = {
-  title: string;
-  subtitle: string;
-  archive_headline: string;
-  archive_description: string;
 };
 
 function mapReleaseTrack(row: ReleaseTrackRow): ReleaseTrack {
@@ -280,31 +256,34 @@ function mapComment(row: CommentRow): Comment {
   };
 }
 
-function mapPost(row: PostRow): Post {
+const LEGACY_PUBLIC_STORAGE_URL = /https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/([a-z0-9-]+)\/([^\s)"']+)/gi;
+const PUBLIC_LEGACY_BUCKETS = new Set(["media-images", "post-files", "beat-previews"]);
+
+function rewriteLegacyPublicStorageUrls(value: string): string {
+  return value.replace(LEGACY_PUBLIC_STORAGE_URL, (original, bucket: string, path: string) => {
+    if (!PUBLIC_LEGACY_BUCKETS.has(bucket)) return original;
+    return resolvePublicObjectUrl(`legacy-supabase/${bucket}/${path}`) ?? original;
+  });
+}
+
+type PostgresPostRow = Awaited<ReturnType<typeof prisma.post.findFirst>>;
+
+function mapPostgresPost(row: NonNullable<PostgresPostRow>): Post {
   return {
     id: row.id,
     title: row.title,
     slug: row.slug,
     excerpt: row.excerpt,
-    content: row.content,
+    content: rewriteLegacyPublicStorageUrls(row.content),
     category: row.category,
-    section: row.section,
-    coverPalette: row.cover_palette,
-    ctaLabel: row.cta_label,
-    ctaUrl: row.cta_url,
+    section: row.section as Post["section"],
+    coverPalette: row.coverPalette,
+    ctaLabel: row.ctaLabel,
+    ctaUrl: row.ctaUrl ? rewriteLegacyPublicStorageUrls(row.ctaUrl) : null,
     published: row.published,
     featured: row.featured,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function mapSiteSettings(row: SiteSettingsRow): SiteSettings {
-  return {
-    title: row.title,
-    subtitle: row.subtitle,
-    archiveHeadline: row.archive_headline,
-    archiveDescription: row.archive_description,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -343,20 +322,14 @@ function filterPostsBySection(posts: Post[], section?: Post["section"]) {
 }
 
 export async function getSiteSettings() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("site_settings")
-      .select("title, subtitle, archive_headline, archive_description")
-      .eq("key", "primary")
-      .maybeSingle<SiteSettingsRow>();
-
-    if (error || !data) {
-      return siteSettings;
-    }
-
-    return mapSiteSettings(data);
-  }, siteSettings);
+  const row = await prisma.siteSetting.findUnique({ where: { key: "primary" } });
+  if (!row) return siteSettings;
+  return {
+    title: row.title,
+    subtitle: row.subtitle,
+    archiveHeadline: row.archiveHeadline,
+    archiveDescription: row.archiveDescription,
+  } satisfies SiteSettings;
 }
 
 // ── Beats: PostgreSQL only (BeatService). No Supabase, no mock fallback. ──────
@@ -500,24 +473,11 @@ export async function getComments(entity: Comment["entity"], contentId: string):
 }
 
 export async function getPosts(section?: Post["section"]) {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("posts")
-      .select(
-        "id, title, slug, excerpt, content, category, section, cover_palette, cta_label, cta_url, published, featured, created_at, updated_at",
-      )
-      .eq("published", true)
-      .order("featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .returns<PostRow[]>();
-
-    if (error || !data) {
-      return filterPostsBySection(mockPosts, section);
-    }
-
-    return filterPostsBySection(data.map(mapPost), section);
-  }, filterPostsBySection(mockPosts, section));
+  const rows = await prisma.post.findMany({
+    where: { published: true },
+    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+  });
+  return filterPostsBySection(rows.map(mapPostgresPost), section);
 }
 
 export async function getAdminBeats() {
@@ -548,23 +508,8 @@ export async function getAdminArtists() {
 }
 
 export async function getAdminPosts() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("posts")
-      .select(
-        "id, title, slug, excerpt, content, category, section, cover_palette, cta_label, cta_url, published, featured, created_at, updated_at",
-      )
-      .order("featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .returns<PostRow[]>();
-
-    if (error || !data) {
-      return mockPosts;
-    }
-
-    return data.map(mapPost);
-  }, mockPosts);
+  const rows = await prisma.post.findMany({ orderBy: [{ featured: "desc" }, { createdAt: "desc" }] });
+  return rows.map(mapPostgresPost);
 }
 
 export async function getAdminTrackDownloads() {
