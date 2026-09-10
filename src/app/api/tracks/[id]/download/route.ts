@@ -1,55 +1,48 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { TRACK_DOWNLOADS_BUCKET } from "@/lib/storage/media";
+import { prisma } from "@/lib/db/client";
+import { requireBuyer } from "@/lib/auth/public-guard";
+import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
+import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
+import { getS3Config } from "@/lib/storage/config";
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
+export const runtime = "nodejs";
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return errorResponse("Supabase env is not configured.", 503);
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResponse("Login required.", 401);
-  }
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const { data: track, error: trackError } = await supabase
-    .from("tracks")
-    .select("id, title, mp3_file_path")
-    .eq("id", id)
-    .maybeSingle<{ id: string; title: string; mp3_file_path: string | null }>();
-
-  if (trackError || !track?.mp3_file_path) {
-    return errorResponse("MP3 is not available for this track.", 404);
-  }
-
-  const { error: logError } = await supabase.from("track_downloads").insert({
-    track_id: track.id,
-    track_title: track.title,
-    user_id: user.id,
-    user_email: user.email ?? "unknown",
+  const track = await prisma.track.findUnique({
+    where: { id },
+    select: { id: true, title: true, audioKey: true },
   });
 
-  if (logError) {
-    return errorResponse(logError.message, 400);
+  if (!track?.audioKey) {
+    return NextResponse.json({ error: "MP3 is not available for this track." }, { status: 404 });
   }
 
-  const { data: signedData, error: signedError } = await supabase.storage
-    .from(TRACK_DOWNLOADS_BUCKET)
-    .createSignedUrl(track.mp3_file_path, 60);
+  await prisma.trackDownloadLog.create({
+    data: {
+      trackId: track.id,
+      trackTitle: track.title,
+      userId: guard.context.userId,
+      userEmail: guard.context.email,
+    },
+  });
 
-  if (signedError || !signedData?.signedUrl) {
-    return errorResponse(signedError?.message ?? "Failed to prepare download.", 400);
+  const publicUrl = resolvePublicObjectUrl(track.audioKey);
+  if (publicUrl) {
+    return NextResponse.json({ url: publicUrl });
   }
 
-  return NextResponse.json({ url: signedData.signedUrl });
+  try {
+    const storage = new ContaboS3Storage(getS3Config());
+    const signed = await storage.createSignedDownloadUrl(
+      { visibility: "private", key: track.audioKey },
+      { expiresInSeconds: 300 },
+    );
+    return NextResponse.json({ url: signed.url });
+  } catch {
+    return NextResponse.json({ error: "Failed to prepare download." }, { status: 503 });
+  }
 }

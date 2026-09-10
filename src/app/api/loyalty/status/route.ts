@@ -1,31 +1,23 @@
 import { NextResponse } from "next/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db/client";
+import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getDiscountPercent } from "@/lib/loyalty";
 
+export const runtime = "nodejs";
+
 export async function GET() {
-  if (!hasSupabaseEnv()) {
+  const session = await getPublicSessionState();
+
+  if (!session.isAuthenticated || !session.userId) {
     return NextResponse.json({ points: 0, discountPercent: 0, nextThreshold: 2 });
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const row = await prisma.loyaltyPoint.findUnique({
+    where: { userId: session.userId },
+    select: { points: true },
+  });
 
-  if (!user) {
-    return NextResponse.json({ points: 0, discountPercent: 0, nextThreshold: 2 });
-  }
-
-  const { data } = await supabase
-    .from("user_loyalty_points")
-    .select("points")
-    .eq("user_id", user.id)
-    .maybeSingle<{ points: number }>();
-
-  const points = data?.points ?? 0;
-  const discountPercent = getDiscountPercent(points);
+  const points = row?.points ?? 0;
   const nextThreshold = points < 2 ? 2 : points < 4 ? 4 : null;
-
-  return NextResponse.json({ points, discountPercent, nextThreshold });
+  return NextResponse.json({ points, discountPercent: getDiscountPercent(points), nextThreshold });
 }

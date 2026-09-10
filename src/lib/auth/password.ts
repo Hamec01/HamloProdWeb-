@@ -50,9 +50,14 @@ export function assertBuyerPasswordPolicy(password: string): void {
   assertPasswordPolicy(password, MIN_BUYER_PASSWORD_LENGTH);
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  assertPasswordPolicy(password);
+export async function hashPassword(password: string, minLength = MIN_PASSWORD_LENGTH): Promise<string> {
+  assertPasswordPolicy(password, minLength);
   return argon2.hash(password, ARGON2_OPTIONS);
+}
+
+/** Hash a buyer password (min 8). */
+export async function hashBuyerPassword(password: string): Promise<string> {
+  return hashPassword(password, MIN_BUYER_PASSWORD_LENGTH);
 }
 
 /**

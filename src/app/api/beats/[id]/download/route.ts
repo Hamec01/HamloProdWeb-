@@ -1,76 +1,51 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { BEAT_PREVIEWS_BUCKET } from "@/lib/storage/media";
+import { prisma } from "@/lib/db/client";
+import { requireBuyer } from "@/lib/auth/public-guard";
+import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
+import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
+import { getS3Config } from "@/lib/storage/config";
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
+export const runtime = "nodejs";
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return errorResponse("Supabase env is not configured.", 503);
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResponse("Login required.", 401);
-  }
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const { data: beat, error: beatError } = await supabase
-    .from("beats")
-    .select("id, title, preview_url, preview_storage_path, available_for_download")
-    .eq("id", id)
-    .maybeSingle<{
-      id: string;
-      title: string;
-      preview_url: string | null;
-      preview_storage_path: string | null;
-      available_for_download: boolean;
-    }>();
-
-  if (beatError || !beat) {
-    return errorResponse("Beat not found.", 404);
-  }
-
-  if (!beat.available_for_download) {
-    return errorResponse("Downloads are not available for this beat.", 404);
-  }
-
-  const { error: logError } = await supabase.from("beat_downloads").insert({
-    beat_id: beat.id,
-    beat_title: beat.title,
-    file_format: "mp3",
-    user_id: user.id,
-    user_email: user.email ?? "unknown",
+  const beat = await prisma.beat.findUnique({
+    where: { id },
+    select: { id: true, title: true, previewKey: true, availableForDownload: true },
   });
 
-  const isMissingDownloadLogTable = Boolean(logError?.message && /beat_downloads/i.test(logError.message));
-
-  if (logError && !isMissingDownloadLogTable) {
-    return errorResponse(logError.message, 400);
+  if (!beat) return NextResponse.json({ error: "Beat not found." }, { status: 404 });
+  if (!beat.availableForDownload || !beat.previewKey) {
+    return NextResponse.json({ error: "Downloads are not available for this beat." }, { status: 404 });
   }
 
-  if (!beat.preview_storage_path) {
-    if (!beat.preview_url) {
-      return errorResponse("Preview file is missing.", 404);
-    }
+  await prisma.beatDownloadLog.create({
+    data: {
+      beatId: beat.id,
+      beatTitle: beat.title,
+      fileFormat: "mp3",
+      userId: guard.context.userId,
+      userEmail: guard.context.email,
+    },
+  });
 
-    return NextResponse.json({ url: beat.preview_url, format: "mp3" });
+  // Legacy beat previews live in the public bucket (legacy-supabase/beat-previews/…).
+  const publicUrl = resolvePublicObjectUrl(beat.previewKey);
+  if (publicUrl) {
+    return NextResponse.json({ url: publicUrl, format: "mp3" });
   }
 
-  const { data: signedData, error: signedError } = await supabase.storage
-    .from(BEAT_PREVIEWS_BUCKET)
-    .createSignedUrl(beat.preview_storage_path, 60);
-
-  if (signedError || !signedData?.signedUrl) {
-    return errorResponse(signedError?.message ?? "Failed to prepare download.", 400);
+  try {
+    const storage = new ContaboS3Storage(getS3Config());
+    const signed = await storage.createSignedDownloadUrl(
+      { visibility: "private", key: beat.previewKey },
+      { expiresInSeconds: 300 },
+    );
+    return NextResponse.json({ url: signed.url, format: "mp3" });
+  } catch {
+    return NextResponse.json({ error: "Failed to prepare download." }, { status: 503 });
   }
-
-  return NextResponse.json({ url: signedData.signedUrl, format: "mp3" });
 }

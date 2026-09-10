@@ -1,65 +1,47 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { requireBuyer } from "@/lib/auth/public-guard";
+
+export const runtime = "nodejs";
+
+const mutateSchema = z.object({ trackId: z.string().uuid(), isFavorite: z.boolean() });
 
 export async function GET() {
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ favorites: [], isAuthenticated: false });
-  }
-
   const session = await getPublicSessionState();
   if (!session.isAuthenticated || !session.userId) {
     return NextResponse.json({ favorites: [], isAuthenticated: false });
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("favorites")
-    .select("track_id")
-    .eq("user_id", session.userId);
-
-  if (error || !data) {
-    return NextResponse.json({ favorites: [], isAuthenticated: true });
-  }
-
-  return NextResponse.json({ favorites: data.map((f: { track_id: string }) => f.track_id), isAuthenticated: true });
+  const rows = await prisma.favorite.findMany({
+    where: { userId: session.userId },
+    select: { trackId: true },
+  });
+  return NextResponse.json({ favorites: rows.map((r) => r.trackId), isAuthenticated: true });
 }
 
 export async function POST(request: Request) {
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
+
+  const parsed = mutateSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
   }
 
-  const session = await getPublicSessionState();
-  if (!session.isAuthenticated || !session.userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { trackId, isFavorite } = (await request.json()) as { trackId: string; isFavorite: boolean };
-
-  const supabase = await createSupabaseServerClient();
+  const { trackId, isFavorite } = parsed.data;
 
   if (isFavorite) {
-    const { error } = await supabase
-      .from("favorites")
-      .insert([{ user_id: session.userId, track_id: trackId }]);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ ok: true });
-  }
-
-  const { error } = await supabase
-    .from("favorites")
-    .delete()
-    .eq("user_id", session.userId)
-    .eq("track_id", trackId);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const track = await prisma.track.findUnique({ where: { id: trackId }, select: { id: true } });
+    if (!track) return NextResponse.json({ error: "Track not found." }, { status: 404 });
+    await prisma.favorite.upsert({
+      where: { userId_trackId: { userId: guard.context.userId, trackId } },
+      create: { userId: guard.context.userId, trackId },
+      update: {},
+    });
+  } else {
+    await prisma.favorite.deleteMany({ where: { userId: guard.context.userId, trackId } });
   }
 
   return NextResponse.json({ ok: true });

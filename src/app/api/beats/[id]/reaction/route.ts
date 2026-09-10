@@ -1,88 +1,51 @@
 import { NextResponse } from "next/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db/client";
+import { getPublicSessionState } from "@/lib/auth/public-session";
+import { requireBuyer } from "@/lib/auth/public-guard";
+
+export const runtime = "nodejs";
 
 type Reaction = "like" | "dislike";
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
-
-async function getReactionStats(beatId: string, userId: string | null) {
-  const supabase = await createSupabaseServerClient();
-
-  const [countsResult, userResult] = await Promise.all([
-    supabase.from("beat_reactions").select("reaction").eq("beat_id", beatId),
+async function reactionStats(beatId: string, userId: string | null) {
+  const [grouped, mine] = await Promise.all([
+    prisma.beatReaction.groupBy({ by: ["reaction"], where: { beatId }, _count: { _all: true } }),
     userId
-      ? supabase
-          .from("beat_reactions")
-          .select("reaction")
-          .eq("beat_id", beatId)
-          .eq("user_id", userId)
-          .maybeSingle<{ reaction: Reaction }>()
-      : Promise.resolve({ data: null, error: null }),
+      ? prisma.beatReaction.findUnique({
+          where: { beatId_userId: { beatId, userId } },
+          select: { reaction: true },
+        })
+      : Promise.resolve(null),
   ]);
 
-  const rows = countsResult.data ?? [];
-  const likes = rows.filter((item) => item.reaction === "like").length;
-  const dislikes = rows.filter((item) => item.reaction === "dislike").length;
-
-  return {
-    likes,
-    dislikes,
-    userReaction: userResult.data?.reaction ?? null,
-  };
+  const count = (r: Reaction) => grouped.find((g) => g.reaction === r)?._count._all ?? 0;
+  return { likes: count("like"), dislikes: count("dislike"), userReaction: (mine?.reaction as Reaction | undefined) ?? null };
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ likes: 0, dislikes: 0, userReaction: null });
-  }
-
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const stats = await getReactionStats(id, user?.id ?? null);
-  return NextResponse.json(stats);
+  const session = await getPublicSessionState();
+  return NextResponse.json(await reactionStats(id, session.userId));
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return errorResponse("Supabase env is not configured.", 503);
-  }
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResponse("Login required.", 401);
-  }
-
   const body = (await request.json().catch(() => null)) as { reaction?: Reaction } | null;
   if (body?.reaction !== "like" && body?.reaction !== "dislike") {
-    return errorResponse("Invalid reaction.", 400);
+    return NextResponse.json({ error: "Invalid reaction." }, { status: 400 });
   }
 
-  const { error } = await supabase.from("beat_reactions").upsert(
-    {
-      beat_id: id,
-      user_id: user.id,
-      user_email: user.email ?? "unknown",
-      reaction: body.reaction,
-    },
-    { onConflict: "beat_id,user_id" },
-  );
+  const beat = await prisma.beat.findUnique({ where: { id }, select: { id: true } });
+  if (!beat) return NextResponse.json({ error: "Beat not found." }, { status: 404 });
 
-  if (error) {
-    return errorResponse(error.message, 400);
-  }
+  await prisma.beatReaction.upsert({
+    where: { beatId_userId: { beatId: id, userId: guard.context.userId } },
+    create: { beatId: id, userId: guard.context.userId, userEmail: guard.context.email, reaction: body.reaction },
+    update: { reaction: body.reaction, userEmail: guard.context.email },
+  });
 
-  const stats = await getReactionStats(id, user.id);
-  return NextResponse.json(stats);
+  return NextResponse.json(await reactionStats(id, guard.context.userId));
 }

@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db/client";
 import { createPublicSession, revokePublicSession } from "@/lib/auth/public-session-store";
 import {
   DUMMY_PASSWORD_HASH,
-  hashPassword,
+  hashBuyerPassword,
   isLegacyBcryptHash,
   verifyPasswordAnyFormat,
 } from "@/lib/auth/password";
@@ -31,7 +31,7 @@ export function publicAuthPorts(): PublicAuthPorts {
       }),
     verifyPassword: verifyPasswordAnyFormat,
     isLegacyHash: isLegacyBcryptHash,
-    hashPassword,
+    hashPassword: hashBuyerPassword,
     upgradePasswordHash: async (userId, passwordHash) => {
       await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
     },

@@ -118,6 +118,8 @@ model User {
   comments      ContentComment[]
   ratings       ContentRating[]
   loyalty       LoyaltyPoint?
+  authoredComments Comment[]
+  favorites     Favorite[]
 
   @@index([artistId])
   @@map("users")
@@ -256,6 +258,8 @@ model Track {
   isDemo        Boolean  @default(false) @map("is_demo")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  favorites Favorite[]
 
   @@index([releaseId, trackNumber])
   @@map("tracks")
@@ -516,4 +520,36 @@ model TrackDownloadLog {
 
   @@index([createdAt])
   @@map("track_downloads")
+}
+
+/// Threaded public comment / mini-review on a release or artist post (also beat /
+/// track). `contentId` is polymorphic — no FK. Empty in the legacy export; the
+/// table did not exist in Supabase.
+model Comment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entity      String
+  contentId   String   @map("content_id") @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  displayName String   @map("display_name")
+  body        String
+  stars       Int?     @db.SmallInt
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entity, contentId, createdAt])
+  @@index([authorId])
+  @@map("comments")
+}
+
+/// A user's favourited track. Empty in the legacy export; the table did not exist.
+model Favorite {
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId   String   @map("track_id") @db.Uuid
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([userId, trackId])
+  @@index([userId])
+  @@map("favorites")
 }

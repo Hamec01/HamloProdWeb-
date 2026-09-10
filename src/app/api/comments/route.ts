@@ -1,80 +1,77 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPublicSessionState } from "@/lib/auth/public-session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { prisma } from "@/lib/db/client";
+import { requireBuyer } from "@/lib/auth/public-guard";
+
+export const runtime = "nodejs";
+
+const ENTITIES = ["release", "artist_post", "beat", "track"] as const;
 
 const createSchema = z.object({
-  entity: z.enum(["release", "artist_post", "beat", "track"]),
+  entity: z.enum(ENTITIES),
   contentId: z.string().uuid(),
-  displayName: z.string().min(1).max(60).default("Слушатель"),
-  body: z.string().min(1).max(1000),
+  displayName: z.string().trim().min(1).max(60).default("Слушатель"),
+  body: z.string().trim().min(1).max(1000),
   stars: z.number().int().min(1).max(5).optional().nullable(),
 });
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const entity = searchParams.get("entity") as "release" | "artist_post" | "beat" | "track" | null;
+  const entity = searchParams.get("entity");
   const contentId = searchParams.get("contentId");
 
-  if (!entity || !contentId) {
+  if (!entity || !contentId || !(ENTITIES as readonly string[]).includes(entity)) {
     return NextResponse.json({ error: "entity and contentId required" }, { status: 400 });
   }
 
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ comments: [] });
-  }
+  const rows = await prisma.comment.findMany({
+    where: { entity, contentId },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: { id: true, entity: true, contentId: true, authorId: true, displayName: true, body: true, stars: true, createdAt: true },
+  });
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("comments")
-    .select("id, entity, content_id, author_id, display_name, body, stars, created_at")
-    .eq("entity", entity)
-    .eq("content_id", contentId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ comments: data ?? [] });
+  return NextResponse.json({
+    comments: rows.map((c) => ({
+      id: c.id,
+      entity: c.entity,
+      content_id: c.contentId,
+      author_id: c.authorId,
+      display_name: c.displayName,
+      body: c.body,
+      stars: c.stars,
+      created_at: c.createdAt.toISOString(),
+    })),
+  });
 }
 
 export async function POST(request: Request) {
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
-  }
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
 
-  const session = await getPublicSessionState();
-  if (!session.isAuthenticated || !session.userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const parsed = createSchema.safeParse(await request.json());
+  const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
   }
 
   const { entity, contentId, displayName, body, stars } = parsed.data;
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("comments")
-    .insert({
-      entity,
-      content_id: contentId,
-      author_id: session.userId,
-      display_name: displayName,
-      body,
-      stars: stars ?? null,
-    })
-    .select("id, entity, content_id, author_id, display_name, body, stars, created_at")
-    .single();
+  const created = await prisma.comment.create({
+    data: { entity, contentId, authorId: guard.context.userId, displayName, body, stars: stars ?? null },
+    select: { id: true, entity: true, contentId: true, authorId: true, displayName: true, body: true, stars: true, createdAt: true },
+  });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  return NextResponse.json({ ok: true, comment: data });
+  return NextResponse.json({
+    ok: true,
+    comment: {
+      id: created.id,
+      entity: created.entity,
+      content_id: created.contentId,
+      author_id: created.authorId,
+      display_name: created.displayName,
+      body: created.body,
+      stars: created.stars,
+      created_at: created.createdAt.toISOString(),
+    },
+  });
 }

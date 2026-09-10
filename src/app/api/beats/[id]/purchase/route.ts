@@ -1,86 +1,57 @@
 import { NextResponse } from "next/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db/client";
+import { requireBuyer } from "@/lib/auth/public-guard";
 import { getDiscountPercent } from "@/lib/loyalty";
 
-function errorResponse(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
-}
+export const runtime = "nodejs";
 
-export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return errorResponse("Supabase env is not configured.", 503);
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return errorResponse("Login required.", 401);
-  }
+/**
+ * Loyalty "purchase" — records a free-tier acquisition and bumps the buyer's
+ * point balance. The real paid flow is /api/checkout + /api/payments.
+ */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireBuyer(request);
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const { data: beat, error: beatError } = await supabase
-    .from("beats")
-    .select("id, title, price_usd, status")
-    .eq("id", id)
-    .maybeSingle<{ id: string; title: string; price_usd: number; status: string }>();
+  const beat = await prisma.beat.findUnique({
+    where: { id },
+    select: { id: true, title: true, priceUsd: true, status: true },
+  });
 
-  if (beatError || !beat) {
-    return errorResponse("Beat not found.", 404);
-  }
-
+  if (!beat) return NextResponse.json({ error: "Beat not found." }, { status: 404 });
   if (beat.status === "sold" || beat.status === "private") {
-    return errorResponse("Beat is not available for purchase.", 409);
+    return NextResponse.json({ error: "Beat is not available for purchase." }, { status: 409 });
   }
 
-  const { data: pointsRow } = await supabase
-    .from("user_loyalty_points")
-    .select("points")
-    .eq("user_id", user.id)
-    .maybeSingle<{ points: number }>();
+  const result = await prisma.$transaction(async (tx) => {
+    const current = await tx.loyaltyPoint.findUnique({ where: { userId: guard.context.userId }, select: { points: true } });
+    const pointsBefore = current?.points ?? 0;
+    const discountPercent = getDiscountPercent(pointsBefore);
+    const finalPriceUsd = Math.max(0, Math.round((beat.priceUsd * (100 - discountPercent)) / 100));
+    const pointsAfter = pointsBefore + 1;
 
-  const pointsBefore = pointsRow?.points ?? 0;
-  const discountPercent = getDiscountPercent(pointsBefore);
-  const finalPriceUsd = Math.max(0, Math.round((beat.price_usd * (100 - discountPercent)) / 100));
-  const pointsAfter = pointsBefore + 1;
+    await tx.beatPurchase.create({
+      data: {
+        beatId: beat.id,
+        beatTitle: beat.title,
+        userId: guard.context.userId,
+        userEmail: guard.context.email,
+        basePriceUsd: beat.priceUsd,
+        discountPercent,
+        finalPriceUsd,
+        pointsEarned: 1,
+      },
+    });
 
-  const { error: purchaseError } = await supabase.from("beat_purchases").insert({
-    beat_id: beat.id,
-    beat_title: beat.title,
-    user_id: user.id,
-    user_email: user.email ?? "unknown",
-    base_price_usd: beat.price_usd,
-    discount_percent: discountPercent,
-    final_price_usd: finalPriceUsd,
-    points_earned: 1,
+    await tx.loyaltyPoint.upsert({
+      where: { userId: guard.context.userId },
+      create: { userId: guard.context.userId, userEmail: guard.context.email, points: pointsAfter },
+      update: { points: pointsAfter, userEmail: guard.context.email },
+    });
+
+    return { basePriceUsd: beat.priceUsd, finalPriceUsd, discountPercent, pointsBefore, pointsAfter, pointsEarned: 1 };
   });
 
-  if (purchaseError) {
-    return errorResponse(purchaseError.message, 400);
-  }
-
-  const { error: pointsError } = await supabase.from("user_loyalty_points").upsert(
-    {
-      user_id: user.id,
-      user_email: user.email ?? "unknown",
-      points: pointsAfter,
-    },
-    { onConflict: "user_id" },
-  );
-
-  if (pointsError) {
-    return errorResponse(pointsError.message, 400);
-  }
-
-  return NextResponse.json({
-    basePriceUsd: beat.price_usd,
-    finalPriceUsd,
-    discountPercent,
-    pointsBefore,
-    pointsAfter,
-    pointsEarned: 1,
-  });
+  return NextResponse.json(result);
 }
