@@ -18,9 +18,16 @@ TLSv1.3; plaintext backend-соединение отклоняется. Все 1
 runtime добавлены только в Vercel Production; `PAID_CHECKOUT_ENABLED=false`.
 Старые Supabase/Postgres env сохранены для rollback.
 
-Остаётся переключить `origin/main`, проверить новый deployment и production
-smoke. Старый deployment для rollback:
-`dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK`.
+`origin/main` переключён fast-forward на `374931a`. Production deployment
+`dpl_5RV455Htq6C6cM3fEx41vp2y34Ln` — **READY**, alias `hamloprod.org` назначен.
+Production smoke прошёл: публичные страницы 200; каталог читает 41 бит и 198
+треков из PostgreSQL; регистрация, сессия и logout работают; тестовый аккаунт
+удалён; checkout авторизованного пользователя возвращает контролируемый 503
+`PAID_CHECKOUT_DISABLED` без создания заказа; публичные cover/MP3 отдают Range
+206; Runtime Logs уровня error пусты. После очистки baseline сохранён: 4
+пользователя, 3 заказа, 9 покупок. Backend-соединения — TLSv1.3.
+
+Старый deployment для rollback: `dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK`.
 
 Ежедневный systemd timer ещё требует одной команды с `sudo`; наличие последнего
 проверенного backup позволяет выполнить это сразу после запуска сайта.
