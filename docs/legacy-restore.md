@@ -117,7 +117,9 @@ Build: `prisma generate` ок (client v6.19.3), `next build` ✓, все роу�
 (dynamic). `db.hamloprod.org:6432` (PgBouncer) — **открыт и отвечает**;
 `hamloprod_app` имеет DML на всех новых таблицах.
 
-**Браузерный E2E не выполнен из этой сессии:** Preview под Vercel SSO
+**Substitute HTTP E2E (production-cutover session): 51/51 PASS** против `next start` прод-сборки + реальный PostgreSQL + реальный Contabo — все 12 пунктов ниже на уровне HTTP (статусы, заголовки, byte-match, cookie-флаги, no-secrets). Детали: `docs/production-cutover.md` §3.
+
+**Браузерный E2E (визуальный рендер + `<audio>` playback) не выполнен из сессии:** Preview под Vercel SSO
 (`ssoProtection: all_except_custom_domains`), Protection-Bypass secret не заведён,
 Vercel MCP (`web_fetch_vercel_url`) в сессии недоступен. Нужен доступ владельца
 (share-link, временное снятие SSO, или прогон вручную).
