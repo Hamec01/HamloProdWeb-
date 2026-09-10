@@ -4,15 +4,28 @@
 `origin/migration/self-hosted-backend` @ `b2d78aa`). ТЗ:
 `docs/claude-handoff-production-cutover.md`.
 
-## ИТОГ: **STOPPED — production НЕ переключён**
+## ИТОГ: **STOPPED — production НЕ переключён** (не из-за Lava)
 
-`hamloprod.org` продолжает работать на прежнем Supabase-runtime. Ни один
-production alias / env / DNS не тронут. Откат не требовался (переключения не
-было).
+`hamloprod.org` продолжает работать на прежнем runtime — deployment
+`dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` (commit `405b3870f` = `origin/main`), **READY**.
+Ни один production alias / env / DNS не тронут. Откат не требовался (переключения
+не было).
 
-4 STOP-gate не могут быть закрыты из автоматической сессии и требуют владельца
-(раздел «Оставшиеся действия владельца»). Всё, что можно было подготовить и
-проверить независимо — сделано и зафиксировано.
+Причина STOPPED — **не** отсутствие Lava (платежи сознательно отложены,
+`PAID_CHECKOUT_ENABLED=false`, раздел 12). Причина: 4 действия физически
+недоступны из автоматической сессии — Vercel env write и `docker`-шаги в
+работающий DB-контейнер заблокированы classifier'ом, `sudo` недоступен,
+Supabase-credentials источника нет. Каждое вынесено в раздел «Оставшиеся
+действия владельца» как один точный шаг. Всё независимое — сделано:
+
+| | |
+|---|---|
+| `PAID_CHECKOUT_ENABLED` kill switch + тесты + docs | commit `ef25d0a`, `npm test` 202/0, lint 0, build 0 |
+| Свежий verified backup | `production-20260910T203426Z-manual` (287 rows, 9 migr., off-box OK) |
+| Restore-test свежего backup | **13/13 PASS** (disposable `postgres:16`) |
+| Внутренний CA + server-cert для backend TLS | `deploy/preview-db/certs/` сгенерированы (SAN `postgres`, до 2028-12) |
+| `release/production-cutover` | запушен (`ef25d0a`), `origin/main` — предок, fast-forward чистый |
+| Prod deployment для отката зафиксирован | `dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` |
 
 ---
 
@@ -28,10 +41,11 @@ production alias / env / DNS не тронут. Откат не требовал
 
 ### 2. Повторная проверка кода — OK
 
-`npm ci` · `npm test` **184/184** (0 skipped — db-тесты выполнены) · `npm run lint`
-0 errors (9 warnings в ранее существовавших файлах) · `npm run build` exit 0 ·
-`git grep` Supabase в `src/` — только assert-регулярки в `*no-supabase*.test.ts`,
-0 runtime-импортов · `git diff --check` OK · секретов в tracked-файлах нет.
+`npm ci` · `npm test` **202/0** (было 184; +18 checkout-guard тестов; 0 skipped —
+db-тесты выполнены) · `npm run lint` 0 errors (9 warnings в ранее существовавших
+файлах) · `npm run build` exit 0 · `git grep` Supabase в `src/` — только
+assert-регулярки в `*no-supabase*.test.ts`, 0 runtime-импортов · `git diff
+--check` OK · секретов в tracked-файлах нет.
 
 ### 3. Preview E2E — **substitute 51/51 + владелец визуально проверил Preview → принято**
 
@@ -111,6 +125,12 @@ Restore-test: **13/13 PASS** — migrations 9==9, 23 таблицы, 47 routines
 (citext), 0 triggers, 19 FK, 251 CHECK, 67 индексов, per-table row-counts
 идентичны, all-data fingerprint совпал точно. Disposable-контейнер удалён.
 
+**Повтор в cutover-сессии (2026-09-10):** свежий `manual` бэкап
+`production-20260910T203426Z-manual` — dump 101180 B, 169 TOC, **287 rows**,
+9 миграций (идентично бэкапу `…194248Z` — ноль записей в PostgreSQL за 40 мин).
+`migration_history_sha256 99052fed…`, `all_data_sha256 4b01ab95…`. Off-box copy
++ `SHA256SUMS` re-verify OK. Restore-test: **13/13 PASS**.
+
 **Ещё нужно:** свежий `pre-migration` бэкап + restore-test ПОСЛЕ дельты (gate 4),
 `sudo systemctl enable --now hamloprod-backup@production.timer` (см.
 `ops/hamloprod/README.md`).
@@ -136,13 +156,17 @@ fail2ban после recreate контейнера (сервисы active/enabled
 настроены).
 
 **Backend TLS (PgBouncer→PostgreSQL) — НЕ включён.** Сейчас `server_tls_sslmode
-= prefer`, Postgres `ssl=off`, hop plaintext на изолированном docker-bridge.
-Полностью готовый runbook — `deploy/preview-db/postgres-tls.md` (исправлен баг
-SAN из черновика: внутренний CA + server-cert с `SAN=postgres`, скрипт
-`deploy/preview-db/gen-internal-pg-cert.sh`, `deploy/preview-db/pg_hba.conf`
-`hostssl`-only для bridge). Шаги `docker cp`/`docker exec` в работающий
-DB-контейнер заблокированы защитой сессии → **STOP-gate**, выполняет владелец
-после бэкапа.
+= prefer`, Postgres `ssl=off`, hop plaintext на изолированном docker-bridge
+(`hamloprod_default`, subnet подтверждён `172.25.0.0/16` = строка в
+`pg_hba.conf`). Runbook — `deploy/preview-db/postgres-tls.md`.
+
+Сессия 2026-09-10: **сертификаты сгенерированы** —
+`deploy/preview-db/gen-internal-pg-cert.sh` → `deploy/preview-db/certs/`
+{`pg-internal-ca.pem`, `pg-server.crt`, `pg-server.key`}, SAN
+`DNS:postgres, DNS:hamloprod-postgres, DNS:localhost, IP:127.0.0.1`, годен до
+2028-12-13, ключ `0600`, всё gitignored. `docker cp`/`docker exec`/`docker
+restart` в работающий DB-контейнер — **classifier заблокировал**
+(перепроверено). Владелец выполняет шаги 2–6 runbook'а (готовы as-is).
 
 ### 7. Vercel Production env — INVENTORY OK, запись STOP
 
@@ -164,11 +188,18 @@ DB-контейнер заблокированы защитой сессии →
   контролируемым `503 {code:"PAID_CHECKOUT_DISABLED"}` до подключения провайдера
   (backlog «Подключение платёжных систем и генерации договоров», раздел 12).
 
-Preview env уже содержит корректные `DATABASE_URL` / `SESSION_SECRET` / `S3_*` /
-`DATA_BACKEND` / `STORAGE_BACKEND` — их можно скопировать в Production (кроме:
-отдельный прод `SESSION_SECRET`; `AUTH_EXTRA_ORIGINS` в Production **не задавать**;
-добавить `NEXT_PUBLIC_SITE_URL` и `PAID_CHECKOUT_ENABLED=false`). Запись env через
-API не выполнялась (защита сессии + часть секретов недоступна).
+Preview env содержит корректные значения. Ключевые (`DATABASE_URL`,
+`SESSION_SECRET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `DATA_BACKEND`,
+`STORAGE_BACKEND`) помечены в Vercel типом **`sensitive`** → их **нельзя**
+прочитать назад через API (ни из сессии, ни владельцу). Копировать в Production
+из локального gitignored `.env` в worktree (значения там же). Правила: отдельный
+**новый** прод `SESSION_SECRET`; `AUTH_EXTRA_ORIGINS` и `DIRECT_URL` в Production
+**не задавать**; добавить `NEXT_PUBLIC_SITE_URL` и `PAID_CHECKOUT_ENABLED=false`.
+
+Сессия 2026-09-10: env read через API — OK (инвентаризация выше). env **write**
+через API (`POST /v10/projects/…/env`) — перепроверено, **classifier
+заблокировал** даже для несекретного `NEXT_PUBLIC_SITE_URL`. Всю запись
+выполняет владелец (раздел «Действия владельца» п. 4).
 
 ### 8. Миграции — OK (no-op)
 
@@ -179,83 +210,100 @@ grants app-роли.
 
 ### 9–11. Deployment / smoke / rollback — НЕ выполнялись
 
-Production не переключался (см. STOP-gates 3/4/6/7). Rollback не требовался.
-Previous production deployment ID для будущего отката — зафиксировать перед
-переключением (см. runbook).
+Production не переключался (см. STOP-gates 4/6/7 + отложенные п.1–2). Rollback не
+требовался. **Rollback-цель зафиксирована:** текущий рабочий production deployment
+`dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` (commit `405b3870f` = `origin/main` HEAD),
+state READY. При откате — переназначить alias `hamloprod.org` на него.
 
 ---
 
-## Оставшиеся действия владельца (по порядку)
+## Оставшиеся действия владельца (строго по порядку, по одному шагу)
 
-1. **Финальная дельта Supabase (STOP-gate 4).** Либо явно подтвердить, что после
-   snapshot 2026-09-09 в старый Supabase не было записей, либо предоставить
-   временный read-only доступ к source и запустить сверку (count + PK + max
-   `updated_at` + хэш нормализованных строк по: users/profiles, beats/releases/
-   tracks/artists/posts, orders/contracts/purchases, reactions/ratings/comments/
-   favorites/loyalty, storage inventory, pending/in-flight orders). Дельту, если
-   есть, применить существующими idempotent-скриптами.
+Все инфра-фиксы уже закоммичены и запушены (`release/production-cutover` @
+`ef25d0a`). `origin/main` (`405b3870f`) — предок этой ветки, fast-forward чистый.
 
-2. **Свежий бэкап + restore-test (STOP-gate 5, после п.1).**
-   ```
-   cd /home/deploy/projects/hamloprod-web
-   HP_REPO_DIR=$PWD ops/hamloprod/backup-hamloprod.sh pre-migration
-   ops/hamloprod/restore-test-hamloprod.sh "$(ls -d /home/deploy/backups/hamloprod/production-*-pre-migration | tail -1)"
-   sudo bash -c 'install -D -m0644 ops/hamloprod/systemd/hamloprod-backup@.service /etc/systemd/system/hamloprod-backup@.service; \
-     install -D -m0644 ops/hamloprod/systemd/hamloprod-backup-failed@.service /etc/systemd/system/hamloprod-backup-failed@.service; \
-     install -D -m0644 ops/hamloprod/systemd/hamloprod-backup@.timer /etc/systemd/system/hamloprod-backup@.timer; \
-     install -D -m0600 ops/hamloprod/systemd/backup-production.env.example /etc/hamloprod/backup-production.env; \
-     systemctl daemon-reload; systemctl enable --now hamloprod-backup@production.timer'
-   systemctl list-timers hamloprod-backup@production.timer
-   ```
+### Шаг 1 — Финальная дельта Supabase
 
-3. **Backend TLS (STOP-gate 6).** Выполнить runbook
-   `deploy/preview-db/postgres-tls.md` целиком (генерация внутреннего CA →
-   `docker cp` cert в контейнер → `pg_hba.conf` → `ALTER SYSTEM SET ssl=on` →
-   `docker restart hamloprod-postgres` → `pgbouncer.ini` `verify-full` → recreate
-   pgbouncer). Проверить: `SHOW ssl = on`, `db-connection-check.mts` «backend hop
-   ssl=true», `sslmode=disable` из bridge отклонён.
+Либо явно подтвердить, что после snapshot 2026-09-09 в старый Supabase не было
+записей (нет активного трафика на `hamloprod.org` кроме статики — вероятно так и
+есть), либо дать временный read-only доступ к source: сверка count + PK + max
+`updated_at` + хэш нормализованных строк по users/profiles, beats/releases/tracks/
+artists/posts, orders/contracts/purchases, reactions/ratings/comments/favorites/
+loyalty, storage inventory, pending/in-flight orders. Дельту, если есть, применить
+idempotent-скриптами `scripts/import-legacy-*.mts`.
 
-4. **Production env (STOP-gate 7).** В проекте **`hamlo-prod-web`** только для
-   target **Production** (Preview не трогать, старые `POSTGRES_*`/`SUPABASE_*`
-   **не удалять** — нужны прежнему deployment для rollback):
+### Шаг 2 — Свежий `pre-migration` бэкап + restore-test (после шага 1)
 
-   | Variable | Значение |
-   |---|---|
-   | `DATA_BACKEND` | `postgres` |
-   | `STORAGE_BACKEND` | `contabo-s3` |
-   | `DATABASE_URL` | `postgresql://hamloprod_app:<URL-ENCODED APP_DB_PASSWORD из .env>@db.hamloprod.org:6432/hamloprod?sslmode=verify-full&pgbouncer=true&connection_limit=3&pool_timeout=15&connect_timeout=10` |
-   | `SESSION_SECRET` | **новый** прод-секрет: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
-   | `S3_ENDPOINT` `S3_REGION` `S3_ACCESS_KEY` `S3_SECRET_KEY` `S3_BUCKET_PUBLIC` `S3_BUCKET_PRIVATE` `S3_FORCE_PATH_STYLE` `S3_PUBLIC_BASE_URL` | скопировать из Preview env (там уже корректны; `S3_PUBLIC_BASE_URL` = `https://usc1.contabostorage.com/<tenant>:hamloprod-public`) |
-   | `NEXT_PUBLIC_SITE_URL` | `https://hamloprod.org` |
-   | `PAID_CHECKOUT_ENABLED` | `false` (платный checkout закрыт — раздел 12) |
-   | `TELEGRAM_BOT_TOKEN` `TELEGRAM_CHAT_ID` `NEXT_PUBLIC_LICENSE_REQUEST_URL` | оставить как есть |
+```bash
+cd /home/deploy/projects/hamloprod-web-worktrees/production-cutover
+HP_REPO_DIR=$PWD ops/hamloprod/backup-hamloprod.sh pre-migration
+ops/hamloprod/restore-test-hamloprod.sh "$(ls -d /home/deploy/backups/hamloprod/production-*-pre-migration | tail -1)"
+```
+Ожидать: `RESTORE TEST: 13 passed, 0 failed`. (В сессии этот же прогон на `manual`
+бэкапе прошёл 13/13 — см. раздел 5.)
 
-   `LAVA_*` / `SELLER_*` **НЕ задавать** — платежи отложены, флаг закрыт. Добавить
-   позже вместе с `PAID_CHECKOUT_ENABLED=true` (backlog, раздел 12).
+### Шаг 3 — Ежедневный backup timer (`sudo`)
 
-   Правила: пароль в `DATABASE_URL` — URL-encoded; `DIRECT_URL` для Vercel **не
-   задавать**; `AUTH_EXTRA_ORIGINS` в Production **не задавать** (прод-origins уже
-   в фиксированном allow-list кода); `NEXT_PUBLIC_` копий секретов не создавать.
+```bash
+cd /home/deploy/projects/hamloprod-web-worktrees/production-cutover
+sudo bash -c 'install -D -m0644 ops/hamloprod/systemd/hamloprod-backup@.service        /etc/systemd/system/hamloprod-backup@.service; \
+  install -D -m0644 ops/hamloprod/systemd/hamloprod-backup-failed@.service /etc/systemd/system/hamloprod-backup-failed@.service; \
+  install -D -m0644 ops/hamloprod/systemd/hamloprod-backup@.timer          /etc/systemd/system/hamloprod-backup@.timer; \
+  install -D -m0600 ops/hamloprod/systemd/backup-production.env.example    /etc/hamloprod/backup-production.env; \
+  systemctl daemon-reload; systemctl enable --now hamloprod-backup@production.timer'
+systemctl list-timers hamloprod-backup@production.timer
+```
 
-5. **Preview browser E2E (STOP-gate 3) — ПРИНЯТО владельцем.** Основание: HTTP
-   E2E 51/51 + личная визуальная проверка Preview владельцем (раздел 3).
-   Отдельного прогона больше не требуется. Обязателен только просмотр **Vercel
-   Runtime Logs** (Preview + Production) после cutover: 0 Prisma init errors /
-   connection timeouts / 5xx.
+### Шаг 4 — Backend TLS (`docker`, не `sudo`)
 
-6. **Cutover (после 1–5).**
-   - Зафиксировать ID текущего рабочего Production deployment (для rollback).
-   - Убедиться, что все infra/docs-фиксы закоммичены и Preview этого commit
-     проверен.
-   - Fast-forward `origin/main` → HEAD `release/production-cutover` через PR merge
-     или обычный fast-forward push (**без force-push**, без переписывания истории).
-   - Дождаться Production deployment на **`hamlo-prod-web`** до `READY`; убедиться,
-     что deployment commit == release HEAD и alias `hamloprod.org` указывает на
-     него (Vercel меняет alias только после успешного build — старый production
-     работает во время сборки).
+Сертификаты уже сгенерированы в `deploy/preview-db/certs/`. Выполнить шаги 2–6
+runbook'а `deploy/preview-db/postgres-tls.md` дословно:
+`docker cp` трёх файлов в `hamloprod-postgres` → `chown`/`chmod` → `docker cp
+pg_hba.conf` → `ALTER SYSTEM SET ssl='on'` → `docker restart hamloprod-postgres`
+→ правка `deploy/preview-db/pgbouncer.ini` (`server_tls_sslmode = verify-full` +
+`server_tls_ca_file = /etc/pgbouncer/certs/pg-internal-ca.pem`) → recreate
+pgbouncer. Проверка (раздел «Verify» runbook'а): `SHOW ssl` → `on`;
+`db-connection-check.mts` → «backend hop … ssl=true»; `sslmode=disable` из bridge
+→ FATAL.
 
-7. **Немедленный prod smoke + 30 мин наблюдения** — `docs/claude-handoff-
-   production-cutover.md` §10 **без платёжного сценария** (public RU/EN pages,
+### Шаг 5 — Vercel Production env (проект `hamlo-prod-web`, target **Production** только)
+
+Preview не трогать. Старые `POSTGRES_*` / `SUPABASE_*` / `NEXT_PUBLIC_SUPABASE_*`
+**не удалять** — нужны deployment'у `dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` для отката.
+Значения секретов — из локального gitignored `.env` в worktree (в Vercel они
+`sensitive` и назад не читаются).
+
+| Variable | Значение |
+|---|---|
+| `DATA_BACKEND` | `postgres` |
+| `STORAGE_BACKEND` | `contabo-s3` |
+| `DATABASE_URL` | `postgresql://hamloprod_app:<URL-ENCODED APP_DB_PASSWORD из .env>@db.hamloprod.org:6432/hamloprod?sslmode=verify-full&pgbouncer=true&connection_limit=3&pool_timeout=15&connect_timeout=10` |
+| `SESSION_SECRET` | **новый** прод-секрет: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
+| `S3_ENDPOINT` `S3_REGION` `S3_ACCESS_KEY` `S3_SECRET_KEY` `S3_BUCKET_PUBLIC` `S3_BUCKET_PRIVATE` `S3_FORCE_PATH_STYLE` `S3_PUBLIC_BASE_URL` | из `.env` worktree (`S3_PUBLIC_BASE_URL` = `https://usc1.contabostorage.com/<tenant>:hamloprod-public`) |
+| `NEXT_PUBLIC_SITE_URL` | `https://hamloprod.org` |
+| `PAID_CHECKOUT_ENABLED` | `false` (раздел 12) |
+| `TELEGRAM_BOT_TOKEN` `TELEGRAM_CHAT_ID` `NEXT_PUBLIC_LICENSE_REQUEST_URL` | оставить как есть |
+
+`LAVA_*` / `SELLER_*` — **НЕ задавать** (платежи отложены). `DIRECT_URL` для
+Vercel — **НЕ задавать**. `AUTH_EXTRA_ORIGINS` в Production — **НЕ задавать**
+(прод-origins в фиксированном allow-list кода). `NEXT_PUBLIC_` копий секретов —
+не создавать. Пароль в `DATABASE_URL` — URL-encoded.
+
+### Шаг 6 — Cutover (после шагов 1–5)
+
+- Preview E2E-гейт уже принят (раздел 3) — отдельный прогон не нужен.
+- Fast-forward `origin/main` → `ef25d0a` (или новый HEAD ветки, если шаг 4
+  добавил коммит с `pgbouncer.ini`): PR-merge или прямой fast-forward push,
+  **без force-push**.
+- Дождаться Production deployment на `hamlo-prod-web` → `READY`; проверить, что
+  deployment commit == HEAD ветки и alias `hamloprod.org` указывает на него
+  (Vercel меняет alias только после успешного build — старый production работает
+  во время сборки).
+
+### Шаг 7 — Немедленный prod smoke + 30 мин наблюдения
+
+`docs/claude-handoff-production-cutover.md` §10 **без платёжного сценария**
+(public RU/EN pages,
    media Range 206, buyer + legacy login, admin login/CRUD с cleanup, private
    beat upload/attach/publish, private anon-запрет + signed GET,
    profile/loyalty/social, отсутствие секретов в HTML, security headers + cookie
@@ -269,15 +317,20 @@ Previous production deployment ID для будущего отката — за�
    плеер не играет / ошибка private access / DB saturation / `/api/checkout`
    отдаёт 500 вместо 503.
 
-8. **Rollback (если trigger)** — `docs/claude-handoff-production-cutover.md` §11:
-   переназначить Vercel production alias на предыдущий READY deployment; **не**
-   откатывать миграции, **не** восстанавливать backup, **не** удалять новые
-   Contabo-объекты; зафиксировать mutation, попавшие в PostgreSQL после cutover,
-   для reconciliation.
+### Шаг 8 — Rollback (если trigger)
 
-9. **После стабильного периода (отдельное подтверждение)** — удаление legacy
-   archive / Supabase project / старых Supabase Production env / предыдущего
-   deployment / pre-cutover backup.
+`docs/claude-handoff-production-cutover.md` §11: переназначить Vercel production
+alias на `dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` (предыдущий READY deployment); **не**
+откатывать миграции, **не** восстанавливать backup, **не** удалять новые
+Contabo-объекты; зафиксировать mutation, попавшие в PostgreSQL после cutover, для
+reconciliation.
+
+### Шаг 9 — После стабильного периода (отдельное подтверждение)
+
+Удаление legacy archive / Supabase project / старых Supabase Production env /
+предыдущего deployment / pre-cutover backup. Также — остановить давно висящий
+контейнер `hamloprod-supabase-import-db` (leftover legacy-restore, `--network
+none`, безвреден): `docker rm -f hamloprod-supabase-import-db`.
 
 ---
 
@@ -338,9 +391,13 @@ payments/contracts проходят без изменений.
 - `974d6cb` — `ops/hamloprod/` backup + restore-test + systemd
 - `cb276bf` — `deploy/preview-db/{pg_hba.conf,gen-internal-pg-cert.sh}`,
   переписанный `postgres-tls.md`, `docs/production-cutover.md`, `docs/legacy-restore.md` §5
-- `<этот commit>` — `PAID_CHECKOUT_ENABLED` kill switch (`src/lib/checkout/*`,
+- `ef25d0a` — `PAID_CHECKOUT_ENABLED` kill switch (`src/lib/checkout/*`,
   `src/components/checkout/payments-disabled-notice.tsx`, guards в 5 API-роутах +
-  6 страницах), `.env.example`, разделы 3/4/5/7/12 этого документа
+  6 страницах), `.env.example`, разделы 3/4/5/7/12 этого документа + `legacy-restore.md`
+- `<этот commit>` — этот документ: ИТОГ + разделы 5/6/7/9 + переписанный
+  «Оставшиеся действия владельца» (свежий backup/restore-test 13/13, cert
+  сгенерирован, prod deployment для отката зафиксирован, перепроверенные
+  classifier-блоки)
 
-Бэкап `/home/deploy/backups/hamloprod/production-20260910T194248Z-manual`
-(+ off-box) оставлен на месте.
+Бэкапы (+ off-box) оставлены на месте:
+`production-20260910T194248Z-manual`, `production-20260910T203426Z-manual`.
