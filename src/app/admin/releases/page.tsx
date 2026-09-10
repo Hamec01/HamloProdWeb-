@@ -6,5 +6,5 @@ export default async function AdminReleasesPage() {
   await requireAdminSession();
   const releases = await getAdminReleases();
 
-  return <AdminReleaseCrudManager releases={releases} hasSupabase={false} />;
+  return <AdminReleaseCrudManager releases={releases} />;
 }

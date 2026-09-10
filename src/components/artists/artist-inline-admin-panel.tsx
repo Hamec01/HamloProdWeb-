@@ -12,11 +12,9 @@ import type { Artist } from "@/types";
 export function ArtistInlineAdminPanel({
   artist,
   locale,
-  hasSupabase,
 }: {
   artist: Artist;
   locale: Locale;
-  hasSupabase: boolean;
 }) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -51,10 +49,6 @@ export function ArtistInlineAdminPanel({
           <Button
             variant="alert"
             onClick={async () => {
-              if (!hasSupabase) {
-                setStatusMessage(locale === "ru" ? "Нужен Supabase." : "Supabase is required.");
-                return;
-              }
 
               if (!window.confirm(locale === "ru" ? `Удалить артиста ${artist.artistName}?` : `Delete ${artist.artistName}?`)) {
                 return;
@@ -81,10 +75,6 @@ export function ArtistInlineAdminPanel({
         <form
           className="grid gap-3 md:grid-cols-2"
           onSubmit={handleSubmit(async (values) => {
-            if (!hasSupabase) {
-              setStatusMessage(locale === "ru" ? "Нужен Supabase." : "Supabase is required.");
-              return;
-            }
 
             setStatusMessage(null);
             const response = await fetch(`/api/admin/artists/${artist.id}`, {

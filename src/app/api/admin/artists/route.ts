@@ -1,55 +1,45 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getAdminSessionState } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/client";
 import { requireAdminMutation } from "@/lib/auth/guard";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { artistFormSchema } from "@/lib/validations/artist";
+import { generateSlug } from "@/lib/slug";
 
-function unauthorizedResponse(message: string, status = 401) {
-  return NextResponse.json({ error: message }, { status });
+export const runtime = "nodejs";
+
+async function uniqueSlug(base: string): Promise<string> {
+  const root = generateSlug(base) || "artist";
+  for (let i = 0; i < 50; i += 1) {
+    const candidate = i === 0 ? root : `${root}-${i + 1}`;
+    if (!(await prisma.artist.findUnique({ where: { slug: candidate }, select: { id: true } }))) return candidate;
+  }
+  return `${root}-${Date.now()}`;
 }
 
 export async function POST(request: Request) {
   const guard = await requireAdminMutation(request);
-  if (!guard.ok) {
-    return guard.response;
-  }
+  if (!guard.ok) return guard.response;
 
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
-
-  const body = await request.json();
-  const parsed = artistFormSchema.safeParse(body);
-
+  const parsed = artistFormSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
   }
 
-  const values = parsed.data;
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("artists").insert({
-    artist_name: values.artistName,
-    track_title: values.trackTitle,
-    beat_title: values.beatTitle,
-    cover_palette: values.coverPalette,
-    spotify_url: values.spotifyUrl,
-    apple_music_url: values.appleMusicUrl,
-    youtube_url: values.youtubeUrl,
+  const v = parsed.data;
+  await prisma.artist.create({
+    data: {
+      slug: await uniqueSlug(v.artistName),
+      artistName: v.artistName,
+      trackTitle: v.trackTitle,
+      beatTitle: v.beatTitle,
+      coverPalette: v.coverPalette,
+      spotifyUrl: v.spotifyUrl,
+      appleMusicUrl: v.appleMusicUrl,
+      youtubeUrl: v.youtubeUrl,
+    },
   });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
 
   revalidatePath("/artists");
   revalidatePath("/admin/artists");
-
   return NextResponse.json({ ok: true });
 }

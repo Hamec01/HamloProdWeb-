@@ -7,8 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { PostRichContent } from "@/components/posts/post-rich-content";
 import { Button } from "@/components/ui/button";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { MEDIA_IMAGES_BUCKET, POST_FILES_BUCKET, buildStoragePath } from "@/lib/storage/media";
+import { uploadAdminAsset } from "@/lib/storage/client-upload";
 import { postFormSchema, type PostFormValues } from "@/lib/validations/post";
 import type { Post } from "@/types";
 
@@ -26,7 +25,7 @@ const defaultValues: PostFormValues = {
   featured: true,
 };
 
-export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; hasSupabase: boolean }) {
+export function AdminPostCrudManager({ posts }: { posts: Post[] }) {
   const router = useRouter();
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,38 +63,26 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
   };
 
   const uploadInlineAsset = async (file: File, kind: "image" | "file") => {
-    if (!hasSupabase) {
-      setStatusMessage("Сначала нужно подключить Supabase env.");
+    if (!editingId) {
+      setStatusMessage("Сначала сохрани пост, потом добавляй картинки и файлы в текст.");
       return;
     }
-
-    const slug = getValues("slug") || getValues("title") || "post";
-
     try {
-      const supabase = createSupabaseBrowserClient();
-      const bucket = kind === "image" ? MEDIA_IMAGES_BUCKET : POST_FILES_BUCKET;
-      const path = buildStoragePath(slug, kind === "image" ? "post-image" : "post-file", file.name);
-      const { error } = await supabase.storage.from(bucket).upload(path, file, {
-        upsert: true,
-        contentType: file.type || undefined,
-      });
-
-      if (error) {
-        setStatusMessage(error.message);
-        return;
-      }
-
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-
+      setStatusMessage("Загрузка…");
+      const { key, publicUrl } = await uploadAdminAsset("post-file", editingId, file);
+      const url = publicUrl ?? key;
       if (kind === "image") {
         const caption = window.prompt("Подпись для картинки", file.name.replace(/\.[^.]+$/, "")) || file.name;
-        insertAtCursor(`\n![${caption}](${data.publicUrl})\n`);
+        insertAtCursor(`
+![${caption}](${url})
+`);
         setStatusMessage("Картинка загружена и вставлена в текст.");
         return;
       }
-
       const label = window.prompt("Название ссылки для скачивания", file.name) || file.name;
-      insertAtCursor(`\n[file:${label}](${data.publicUrl})\n`);
+      insertAtCursor(`
+[file:${label}](${url})
+`);
       setStatusMessage("Файл загружен и добавлен как ссылка для скачивания.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
@@ -135,10 +122,6 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
           <Button
             variant="alert"
             onClick={async () => {
-              if (!hasSupabase) {
-                setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-                return;
-              }
 
               if (!window.confirm(`Удалить пост ${post.title}?`)) {
                 return;
@@ -164,7 +147,7 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
           </Button>
         </div>,
       ]),
-    [editingId, hasSupabase, posts, reset, router, setValue],
+    [editingId, posts, reset, router, setValue],
   );
 
   return (
@@ -181,11 +164,6 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
               Поддерживаются заголовки, списки, цитаты, ссылки, картинки внутри текста и кнопки скачивания файлов.
             </p>
           </div>
-          {!hasSupabase ? (
-            <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--color-paper-200)]">
-              Supabase env не настроены. Сейчас доступен только mock preview.
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -215,10 +193,6 @@ export function AdminPostCrudManager({ posts, hasSupabase }: { posts: Post[]; ha
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(async (values) => {
-            if (!hasSupabase) {
-              setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-              return;
-            }
 
             setStatusMessage(null);
 

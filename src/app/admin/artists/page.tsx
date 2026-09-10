@@ -6,5 +6,5 @@ export default async function AdminArtistsPage() {
   await requireAdminSession();
   const artists = await getAdminArtists();
 
-  return <AdminArtistCrudManager artists={artists} hasSupabase={false} />;
+  return <AdminArtistCrudManager artists={artists} />;
 }

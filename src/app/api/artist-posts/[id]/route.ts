@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
+import { isSameOriginRequest } from "@/lib/auth/origin";
+
+export const runtime = "nodejs";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  if (!hasSupabaseEnv()) {
-    return NextResponse.json({ error: "Supabase not configured." }, { status: 503 });
+  if (!isSameOriginRequest(request)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const session = await getPublicSessionState();
@@ -14,13 +15,16 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createSupabaseServerClient();
+  const { id } = await params;
+  const post = await prisma.artistPost.findUnique({ where: { id }, select: { artistId: true, authorId: true } });
+  if (!post) return NextResponse.json({ ok: true });
 
-  // RLS handles authorization (only admin or owning artist can delete)
-  const { error } = await supabase.from("artist_posts").delete().eq("id", id);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  const isAdmin = session.role === "ADMIN" || session.role === "EDITOR";
+  const isOwner = session.artistId === post.artistId || session.userId === post.authorId;
+  if (!isAdmin && !isOwner) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  await prisma.artistPost.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

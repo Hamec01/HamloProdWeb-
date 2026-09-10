@@ -25,7 +25,7 @@ export default async function SectorArtistsPage({ params }: { params: Promise<{ 
           <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">
             {locale === "ru" ? "Управление артистами (admin)" : "Artist Management (admin)"}
           </p>
-          <AdminArtistCrudManager artists={adminArtists} hasSupabase={false} />
+          <AdminArtistCrudManager artists={adminArtists} />
         </section>
       ) : null}
     </section>

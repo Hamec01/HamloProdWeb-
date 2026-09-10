@@ -63,3 +63,42 @@ export async function uploadBeatAsset(beatId: string, kind: BeatAssetKind, file:
     options.signal?.removeEventListener("abort", abort);
   }
 }
+
+export type AdminAssetKind = "track-cover" | "track-audio" | "artist-avatar" | "post-file";
+
+/**
+ * Generic admin media upload (track / release / post / artist). Returns the
+ * server-generated object key + its public URL (null for private audio). The key
+ * is then submitted in the entity's metadata payload. No UploadIntent — admin
+ * routes are trusted.
+ */
+export async function uploadAdminAsset(
+  kind: AdminAssetKind,
+  entityId: string,
+  file: File,
+  options: UploadOptions = {},
+): Promise<{ key: string; publicUrl: string | null }> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(options.signal?.reason);
+  options.signal?.addEventListener("abort", abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const timeout = setTimeout(() => controller.abort(new DOMException("Upload timed out", "TimeoutError")), options.timeoutMs ?? 30 * 60_000);
+  const signal = controller.signal;
+  try {
+    signal.throwIfAborted();
+    options.onProgress?.(0);
+    const contentType = file.type || MIME_BY_EXT[file.name.split(".").at(-1)?.toLowerCase() ?? ""] || "application/octet-stream";
+    const prepared = await post("/api/admin/storage/asset-url", { kind, entityId, originalFileName: file.name, contentType, size: file.size }, signal);
+    if (options.onProgress) {
+      await putWithProgress(prepared.upload.url, prepared.upload.headers, file, signal, options.onProgress);
+    } else {
+      const response = await fetch(prepared.upload.url, { method: "PUT", headers: prepared.upload.headers, body: file, signal, credentials: "omit" });
+      if (!response.ok) throw new Error(`File upload failed (${response.status}).`);
+    }
+    const confirmed = await post("/api/admin/storage/asset-confirm", { key: prepared.key, kind }, signal);
+    return { key: confirmed.key as string, publicUrl: (confirmed.publicUrl as string | null) ?? null };
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abort);
+  }
+}

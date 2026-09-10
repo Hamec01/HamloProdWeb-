@@ -1,98 +1,73 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getAdminSessionState } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/client";
 import { requireAdminMutation } from "@/lib/auth/guard";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { releaseFormSchema } from "@/lib/validations/release";
 
-function unauthorizedResponse(message: string, status = 401) {
-  return NextResponse.json({ error: message }, { status });
-}
+export const runtime = "nodejs";
+
+const asDate = (value: string) => new Date(value.length === 10 ? `${value}T00:00:00.000Z` : value);
 
 export async function POST(request: Request) {
   const guard = await requireAdminMutation(request);
-  if (!guard.ok) {
-    return guard.response;
-  }
+  if (!guard.ok) return guard.response;
 
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
-
-  const parsed = releaseFormSchema.safeParse(await request.json());
+  const parsed = releaseFormSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid payload." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
   }
 
-  const { tracks, ...releaseData } = parsed.data;
+  const { tracks, ...r } = parsed.data;
+  const releaseDate = asDate(r.releaseDate);
 
-  const supabase = await createSupabaseServerClient();
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const release = await tx.release.create({
+        data: {
+          title: r.title,
+          slug: r.slug,
+          artistName: r.artistName,
+          featArtistNames: r.featArtistNames ?? "",
+          releaseType: r.releaseType,
+          coverPalette: r.coverPalette,
+          coverKey: r.coverImagePath,
+          description: r.description,
+          spotifyUrl: r.spotifyUrl,
+          appleMusicUrl: r.appleMusicUrl,
+          youtubeUrl: r.youtubeUrl,
+          releaseDate,
+          published: r.published,
+          featured: r.featured,
+        },
+        select: { id: true },
+      });
 
-  // 1. Insert release
-  const { data: release, error: releaseError } = await supabase
-    .from("releases")
-    .insert({
-      title: releaseData.title,
-      slug: releaseData.slug,
-      artist_name: releaseData.artistName,
-      feat_artist_names: releaseData.featArtistNames ?? "",
-      release_type: releaseData.releaseType,
-      cover_palette: releaseData.coverPalette,
-      cover_image_url: releaseData.coverImageUrl,
-      cover_image_path: releaseData.coverImagePath,
-      description: releaseData.description,
-      spotify_url: releaseData.spotifyUrl,
-      apple_music_url: releaseData.appleMusicUrl,
-      youtube_url: releaseData.youtubeUrl,
-      release_date: releaseData.releaseDate,
-      published: releaseData.published,
-      featured: releaseData.featured,
-    })
-    .select("id")
-    .single();
+      if (tracks.length > 0) {
+        await tx.track.createMany({
+          data: tracks.map((t) => ({
+            title: t.title,
+            slug: t.slug,
+            artistName: r.artistName,
+            coverPalette: r.coverPalette,
+            coverKey: r.coverImagePath,
+            audioKey: t.mp3FilePath,
+            spotifyUrl: r.spotifyUrl,
+            appleMusicUrl: r.appleMusicUrl,
+            youtubeUrl: r.youtubeUrl,
+            releaseDate,
+            releaseId: release.id,
+            trackNumber: t.trackNumber,
+          })),
+        });
+      }
 
-  if (releaseError || !release) {
-    return NextResponse.json({ error: releaseError?.message ?? "Failed to create release." }, { status: 500 });
+      return release;
+    });
+
+    for (const p of ["/ru/ham", "/en/ham", "/admin/releases", "/tracks", "/ru/tracks", "/en/tracks"]) revalidatePath(p);
+    return NextResponse.json({ id: created.id }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error && /Unique constraint/.test(error.message) ? "A release or track slug is already in use." : "Failed to create release.";
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  // 2. Insert tracks linked to this release
-  if (tracks.length > 0) {
-    const trackRows = tracks.map((track) => ({
-      title: track.title,
-      slug: track.slug,
-      artist_name: releaseData.artistName,
-      cover_palette: releaseData.coverPalette,
-      cover_image_url: releaseData.coverImageUrl,
-      cover_image_path: releaseData.coverImagePath,
-      mp3_file_path: track.mp3FilePath,
-      spotify_url: releaseData.spotifyUrl,
-      apple_music_url: releaseData.appleMusicUrl,
-      youtube_url: releaseData.youtubeUrl,
-      release_date: releaseData.releaseDate,
-      release_id: release.id,
-      track_number: track.trackNumber,
-    }));
-
-    const { error: tracksError } = await supabase.from("tracks").insert(trackRows);
-
-    if (tracksError) {
-      // Roll back release on track insert failure
-      await supabase.from("releases").delete().eq("id", release.id);
-      return NextResponse.json({ error: tracksError.message ?? "Failed to create tracks." }, { status: 500 });
-    }
-  }
-
-  revalidatePath("/ru/ham");
-  revalidatePath("/en/ham");
-  revalidatePath("/admin/releases");
-
-  return NextResponse.json({ id: release.id }, { status: 201 });
 }

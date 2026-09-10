@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { MEDIA_IMAGES_BUCKET, TRACK_DOWNLOADS_BUCKET, buildStoragePath, getPendingUploadUrl } from "@/lib/storage/media";
+import { uploadAdminAsset } from "@/lib/storage/client-upload";
 import { trackFormSchema, type TrackFormValues } from "@/lib/validations/track";
 import type { Track, TrackDownloadLog } from "@/types";
 
@@ -29,11 +28,9 @@ const defaultValues: TrackFormValues = {
 export function AdminTrackCrudManager({
   tracks,
   downloadLogs,
-  hasSupabase,
 }: {
   tracks: Track[];
   downloadLogs: TrackDownloadLog[];
-  hasSupabase: boolean;
 }) {
   const router = useRouter();
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
@@ -87,11 +84,6 @@ export function AdminTrackCrudManager({
           <Button
             variant="alert"
             onClick={async () => {
-              if (!hasSupabase) {
-                setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-                return;
-              }
-
               if (!window.confirm(`Delete ${track.title}?`)) {
                 return;
               }
@@ -118,7 +110,7 @@ export function AdminTrackCrudManager({
           </Button>
         </div>,
       ]),
-    [tracks, hasSupabase, editingTrackId, reset, router, setValue],
+    [tracks, editingTrackId, reset, router, setValue],
   );
 
   return (
@@ -132,11 +124,6 @@ export function AdminTrackCrudManager({
               Управление релизами HaM и ссылками на платформы вынесено в Supabase-backed admin flow.
             </p>
           </div>
-          {!hasSupabase ? (
-            <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--color-paper-200)]">
-              Supabase env не настроены. Сейчас страница работает в режиме просмотра mock data.
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -167,68 +154,50 @@ export function AdminTrackCrudManager({
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(async (values) => {
-            if (!hasSupabase) {
-              setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-              return;
-            }
-
             setStatusMessage(null);
-
-            const nextValues: TrackFormValues = {
-              ...values,
-            };
+            const nextValues: TrackFormValues = { ...values };
 
             try {
-              const supabase = createSupabaseBrowserClient();
-
-              if (coverImageFile) {
-                const coverImagePath = buildStoragePath(values.slug, "cover", coverImageFile.name);
-                const { error: coverUploadError } = await supabase.storage.from(MEDIA_IMAGES_BUCKET).upload(coverImagePath, coverImageFile, {
-                  upsert: true,
-                  contentType: coverImageFile.type || undefined,
+              // Metadata first so uploads have a stable entity id for the object key.
+              let trackId = editingTrackId;
+              if (!trackId) {
+                const createRes = await fetch("/api/admin/tracks", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(nextValues),
                 });
-
-                if (coverUploadError) {
-                  setStatusMessage(coverUploadError.message);
+                const created = (await createRes.json().catch(() => null)) as { id?: string; error?: string } | null;
+                if (!createRes.ok || !created?.id) {
+                  setStatusMessage(created?.error ?? "Save failed.");
                   return;
                 }
-
-                const { data: publicCover } = supabase.storage.from(MEDIA_IMAGES_BUCKET).getPublicUrl(coverImagePath);
-                nextValues.coverImageUrl = publicCover.publicUrl;
-                nextValues.coverImagePath = coverImagePath;
+                trackId = created.id;
               }
 
+              if (coverImageFile) {
+                setStatusMessage("Uploading cover…");
+                const { key, publicUrl } = await uploadAdminAsset("track-cover", trackId, coverImageFile);
+                nextValues.coverImagePath = key;
+                nextValues.coverImageUrl = publicUrl;
+              }
               if (mp3File) {
-                const mp3Path = buildStoragePath(values.slug, "mp3", mp3File.name);
-                const { error: mp3UploadError } = await supabase.storage.from(TRACK_DOWNLOADS_BUCKET).upload(mp3Path, mp3File, {
-                  upsert: true,
-                  contentType: mp3File.type || undefined,
-                });
+                setStatusMessage("Uploading MP3…");
+                const { key } = await uploadAdminAsset("track-audio", trackId, mp3File);
+                nextValues.mp3FilePath = key;
+              }
 
-                if (mp3UploadError) {
-                  setStatusMessage(mp3UploadError.message);
-                  return;
-                }
-
-                nextValues.mp3FilePath = mp3Path;
+              const saveRes = await fetch(`/api/admin/tracks/${trackId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(nextValues),
+              });
+              const saved = (await saveRes.json().catch(() => null)) as { error?: string } | null;
+              if (!saveRes.ok) {
+                setStatusMessage(saved?.error ?? "Save failed.");
+                return;
               }
             } catch (error) {
               setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
-              return;
-            }
-
-            const endpoint = editingTrackId ? `/api/admin/tracks/${editingTrackId}` : "/api/admin/tracks";
-            const method = editingTrackId ? "PUT" : "POST";
-
-            const response = await fetch(endpoint, {
-              method,
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(nextValues),
-            });
-
-            const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-            if (!response.ok) {
-              setStatusMessage(payload?.error ?? "Save failed.");
               return;
             }
 
@@ -275,11 +244,7 @@ export function AdminTrackCrudManager({
               type="file"
               accept="image/*"
               onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setCoverImageFile(file);
-                if (file) {
-                  setValue("coverImageUrl", getPendingUploadUrl(file.name), { shouldValidate: true });
-                }
+                setCoverImageFile(event.target.files?.[0] ?? null);
               }}
               className="w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm"
             />

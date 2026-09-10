@@ -146,8 +146,28 @@ model Artist {
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   users User[]
+  posts ArtistPost[]
 
   @@map("artists")
+}
+
+/// A post on an artist's page. Empty in the legacy export; the table did not
+/// exist in Supabase. Media keys only, never URLs.
+model ArtistPost {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  artistId  String   @map("artist_id") @db.Uuid
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  authorId  String?  @map("author_id") @db.Uuid
+  title     String
+  body      String
+  imageKey  String?  @map("image_key")
+  audioKey  String?  @map("audio_key")
+  published Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([artistId, published, createdAt])
+  @@map("artist_posts")
 }
 
 model Session {

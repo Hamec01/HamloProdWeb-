@@ -46,7 +46,7 @@ export default async function ArtistPage({
         <ArtistPageHeader artist={artist} locale={locale} />
 
         {adminSession.isAuthenticated ? (
-          <ArtistInlineAdminPanel artist={artist} locale={locale} hasSupabase={false} />
+          <ArtistInlineAdminPanel artist={artist} locale={locale} />
         ) : null}
 
         {releases.length > 0 && (

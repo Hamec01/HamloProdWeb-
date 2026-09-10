@@ -19,7 +19,7 @@ const defaultValues: ArtistFormValues = {
   youtubeUrl: "https://youtube.com/",
 };
 
-export function AdminArtistCrudManager({ artists, hasSupabase }: { artists: Artist[]; hasSupabase: boolean }) {
+export function AdminArtistCrudManager({ artists }: { artists: Artist[] }) {
   const router = useRouter();
   const [editingArtistId, setEditingArtistId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -60,10 +60,6 @@ export function AdminArtistCrudManager({ artists, hasSupabase }: { artists: Arti
           <Button
             variant="alert"
             onClick={async () => {
-              if (!hasSupabase) {
-                setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-                return;
-              }
 
               if (!window.confirm(`Delete ${artist.artistName}?`)) {
                 return;
@@ -89,7 +85,7 @@ export function AdminArtistCrudManager({ artists, hasSupabase }: { artists: Arti
           </Button>
         </div>,
       ]),
-    [artists, hasSupabase, editingArtistId, reset, router, setValue],
+    [artists, editingArtistId, reset, router, setValue],
   );
 
   return (
@@ -103,11 +99,6 @@ export function AdminArtistCrudManager({ artists, hasSupabase }: { artists: Arti
               Каталог артистов и их стриминг-ссылки теперь можно вести через admin flow с Supabase-backed API.
             </p>
           </div>
-          {!hasSupabase ? (
-            <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--color-paper-200)]">
-              Supabase env не настроены. Сейчас страница работает в режиме просмотра mock data.
-            </div>
-          ) : null}
         </div>
       </section>
 
@@ -136,10 +127,6 @@ export function AdminArtistCrudManager({ artists, hasSupabase }: { artists: Arti
         <form
           className="grid gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(async (values) => {
-            if (!hasSupabase) {
-              setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-              return;
-            }
 
             setStatusMessage(null);
 

@@ -6,5 +6,5 @@ export default async function AdminTracksPage() {
   await requireAdminSession();
   const [tracks, downloadLogs] = await Promise.all([getAdminTracks(), getAdminTrackDownloads()]);
 
-  return <AdminTrackCrudManager tracks={tracks} downloadLogs={downloadLogs} hasSupabase={false} />;
+  return <AdminTrackCrudManager tracks={tracks} downloadLogs={downloadLogs} />;
 }

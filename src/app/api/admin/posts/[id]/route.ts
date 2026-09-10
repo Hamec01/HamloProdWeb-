@@ -1,96 +1,58 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getAdminSessionState } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/client";
 import { requireAdminMutation } from "@/lib/auth/guard";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { postFormSchema } from "@/lib/validations/post";
 
-function unauthorizedResponse(message: string, status = 401) {
-  return NextResponse.json({ error: message }, { status });
+export const runtime = "nodejs";
+
+function revalidatePostPages() {
+  for (const p of ["/", "/ru/vst", "/en/vst", "/admin/posts"]) revalidatePath(p);
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireAdminMutation(request);
-  if (!guard.ok) {
-    return guard.response;
-  }
+  if (!guard.ok) return guard.response;
 
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
-
-  const parsed = postFormSchema.safeParse(await request.json());
-
+  const parsed = postFormSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid payload." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
   }
 
   const { id } = await params;
-  const values = parsed.data;
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("posts")
-    .update({
-      title: values.title,
-      slug: values.slug,
-      excerpt: values.excerpt,
-      content: values.content,
-      category: values.category,
-      section: values.section,
-      cover_palette: values.coverPalette,
-      cta_label: values.ctaLabel,
-      cta_url: values.ctaUrl,
-      published: values.published,
-      featured: values.featured,
-    })
-    .eq("id", id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  const v = parsed.data;
+  try {
+    await prisma.post.update({
+      where: { id },
+      data: {
+        title: v.title,
+        slug: v.slug,
+        excerpt: v.excerpt,
+        content: v.content,
+        category: v.category,
+        section: v.section,
+        coverPalette: v.coverPalette,
+        ctaLabel: v.ctaLabel,
+        ctaUrl: v.ctaUrl,
+        published: v.published,
+        featured: v.featured,
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "Post not found." }, { status: 404 });
   }
 
-  revalidatePath("/");
-  revalidatePath("/ru/vst");
-  revalidatePath("/en/vst");
-  revalidatePath("/admin/posts");
+  revalidatePostPages();
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireAdminMutation(request);
-  if (!guard.ok) {
-    return guard.response;
-  }
-
-  if (!hasSupabaseEnv()) {
-    return unauthorizedResponse("Supabase env is not configured.", 503);
-  }
-
-  const session = await getAdminSessionState();
-  if (!session.isAuthenticated) {
-    return unauthorizedResponse("Unauthorized");
-  }
+  if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  await prisma.post.deleteMany({ where: { id } });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
-
-  revalidatePath("/");
-  revalidatePath("/ru/vst");
-  revalidatePath("/en/vst");
-  revalidatePath("/admin/posts");
+  revalidatePostPages();
   return NextResponse.json({ ok: true });
 }

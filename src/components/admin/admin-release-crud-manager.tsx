@@ -6,8 +6,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminCollectionTable } from "@/components/admin/admin-collection-table";
 import { Button } from "@/components/ui/button";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { MEDIA_IMAGES_BUCKET, TRACK_DOWNLOADS_BUCKET, buildStoragePath } from "@/lib/storage/media";
+import { uploadAdminAsset } from "@/lib/storage/client-upload";
 import { releaseFormSchema, type ReleaseFormValues } from "@/lib/validations/release";
 import type { Release } from "@/types";
 
@@ -62,13 +61,7 @@ function nameFromFile(filename: string): string {
     .trim();
 }
 
-export function AdminReleaseCrudManager({
-  releases,
-  hasSupabase,
-}: {
-  releases: Release[];
-  hasSupabase: boolean;
-}) {
+export function AdminReleaseCrudManager({ releases }: { releases: Release[] }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -195,60 +188,46 @@ export function AdminReleaseCrudManager({
   );
 
   const onSubmit = async (data: ReleaseFormValues) => {
-    if (!hasSupabase) {
-      setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-      return;
+    setStatusMessage(null);
+
+    // 1. Save metadata first so an upload has a stable entity id for the object key.
+    let releaseId = editingId;
+    const firstPayload = { ...data, tracks: data.tracks };
+    if (!releaseId) {
+      const createRes = await fetch("/api/admin/releases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(firstPayload),
+      });
+      const created = (await createRes.json().catch(() => null)) as { id?: string; error?: string } | null;
+      if (!createRes.ok || !created?.id) {
+        setStatusMessage(created?.error ?? "Ошибка сохранения.");
+        return;
+      }
+      releaseId = created.id;
     }
 
-    setStatusMessage(null);
-    const supabase = createSupabaseBrowserClient();
-
-    // 1. Upload cover image if provided
-    let coverImageUrl = data.coverImageUrl;
+    // 2. Upload the cover (shared by the release and its tracks) if a new file was picked.
     let coverImagePath = data.coverImagePath;
+    let coverImageUrl = data.coverImageUrl;
     if (coverFile) {
-      const path = buildStoragePath(data.slug, "cover", coverFile.name);
-      const { error: coverError, data: coverData } = await supabase.storage
-        .from(MEDIA_IMAGES_BUCKET)
-        .upload(path, coverFile, { upsert: true });
-      if (!coverError && coverData) {
-        const { data: urlData } = supabase.storage.from(MEDIA_IMAGES_BUCKET).getPublicUrl(path);
-        coverImageUrl = urlData.publicUrl;
-        coverImagePath = path;
-        setValue("coverImageUrl", coverImageUrl);
-        setValue("coverImagePath", coverImagePath);
+      try {
+        setStatusMessage("Загрузка обложки…");
+        const { key, publicUrl } = await uploadAdminAsset("track-cover", releaseId, coverFile);
+        coverImagePath = key;
+        coverImageUrl = publicUrl;
+        setValue("coverImagePath", key);
+        if (publicUrl) setValue("coverImageUrl", publicUrl);
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "Не удалось загрузить обложку.");
+        return;
       }
     }
 
-    // 2. Upload MP3s per track
-    const updatedTracks = await Promise.all(
-      data.tracks.map(async (track, i) => {
-        const mp3File = trackMp3s[i];
-        if (!mp3File) return track;
-        const path = buildStoragePath(track.slug || data.slug, "track", mp3File.name);
-        const { error: mp3Error } = await supabase.storage
-          .from(TRACK_DOWNLOADS_BUCKET)
-          .upload(path, mp3File, { upsert: true });
-        if (!mp3Error) {
-          setValue(`tracks.${i}.mp3FilePath`, path);
-          return { ...track, mp3FilePath: path };
-        }
-        return track;
-      }),
-    );
+    const payload = { ...data, coverImageUrl, coverImagePath, tracks: data.tracks };
 
-    const payload = {
-      ...data,
-      coverImageUrl,
-      coverImagePath,
-      tracks: updatedTracks,
-    };
-
-    const url = editingId ? `/api/admin/releases/${editingId}` : "/api/admin/releases";
-    const method = editingId ? "PUT" : "POST";
-
-    const response = await fetch(url, {
-      method,
+    const response = await fetch(`/api/admin/releases/${releaseId}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -319,10 +298,6 @@ export function AdminReleaseCrudManager({
           <Button
             variant="alert"
             onClick={async () => {
-              if (!hasSupabase) {
-                setStatusMessage("CRUD активируется после настройки Supabase env и логина.");
-                return;
-              }
               if (!window.confirm(`Удалить релиз "${release.title}"?`)) return;
               const response = await fetch(`/api/admin/releases/${release.id}`, { method: "DELETE" });
               const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -344,7 +319,7 @@ export function AdminReleaseCrudManager({
         </div>,
       ]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [releases, hasSupabase, editingId],
+    [releases, editingId],
   );
 
   return (
@@ -359,11 +334,6 @@ export function AdminReleaseCrudManager({
               Управление альбомами, EP и mixtape — добавляй несколько треков за раз, прикрепляй обложку.
             </p>
           </div>
-          {!hasSupabase ? (
-            <div className="border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[var(--color-paper-200)]">
-              Supabase env не настроены. Страница работает в режиме просмотра mock data.
-            </div>
-          ) : null}
         </div>
       </section>
 
