@@ -570,6 +570,12 @@ Preview с доступом к PostgreSQL. Подключение Preview → VP
 (`docs/preview-db-connection.md`), но не активировано. **Выходной гейт M7.2b
 остаётся открыт**, пока этот сценарий не пройден на реальном Preview.
 
+**Обновление (M11-partial):** M1.3 активирован владельцем (`db.hamloprod.org:6432`
+открыт), storage smoke **5/5** (public bucket policy применена). Весь runtime
+переведён на PostgreSQL/Contabo, Supabase из runtime удалён — см.
+`docs/legacy-restore.md`. Preview `dpl_715gbNQ6…` (commit `8a0a98a`) READY.
+Остаётся только браузерный E2E на защищённом Preview (доступ владельца).
+
 ### Live activation and legacy import (2026-09-10)
 
 Состояние выше сохранено как история проверки от 2026-09-08. Блокеры владельца
