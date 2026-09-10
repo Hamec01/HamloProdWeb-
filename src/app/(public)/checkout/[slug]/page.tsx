@@ -3,16 +3,13 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import type { Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { getDiscountPercent } from "@/lib/loyalty";
 import { getMarketContext } from "@/lib/market";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getBeatBySlug } from "@/services/content";
-
-type LoyaltyRow = { points: number };
 
 export default async function CheckoutPage({
   params,
@@ -33,31 +30,9 @@ export default async function CheckoutPage({
     redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}`)}`);
   }
 
-  if (!hasSupabaseEnv()) {
-    return (
-      <section className="space-y-8">
-        <SectionHeading eyebrow="Checkout" title="Оформление заказа" />
-        <p className="text-sm text-[var(--color-paper-300)]">Supabase не подключён.</p>
-      </section>
-    );
-  }
-
-  const [supabase, beat] = await Promise.all([createSupabaseServerClient(), getBeatBySlug(slug)]);
-
-  console.info("[checkout] beat lookup result", {
-    slug,
-    query: "getBeatBySlug -> getBeats -> beats where status != private",
-    found: Boolean(beat),
-    beatId: beat?.id ?? null,
-    beatSlug: beat?.slug ?? null,
-    beatStatus: beat?.status ?? null,
-  });
+  const beat = await getBeatBySlug(slug);
 
   if (!beat) {
-    console.warn("[checkout] notFound triggered", {
-      slug,
-      branch: "beat_not_found_after_shared_lookup",
-    });
     notFound();
   }
 
@@ -68,11 +43,10 @@ export default async function CheckoutPage({
   const market = getMarketContext(locale as Locale);
   const basePrice = locale === "ru" ? (beat.priceRub ?? 2500) : beat.priceUsd;
 
-  const { data: loyalty } = await supabase
-    .from("user_loyalty_points")
-    .select("points")
-    .eq("user_id", session.userId)
-    .maybeSingle<LoyaltyRow>();
+  const loyalty = await prisma.loyaltyPoint.findUnique({
+    where: { userId: session.userId },
+    select: { points: true },
+  });
 
   const points = loyalty?.points ?? 0;
   const discountPercent = getDiscountPercent(points);

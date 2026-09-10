@@ -6,7 +6,6 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 export default async function CheckoutRightsPage({
   params,
@@ -16,14 +15,6 @@ export default async function CheckoutRightsPage({
   const { orderId } = await params;
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
 
-  if (!hasSupabaseEnv()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Rights" title={locale === "ru" ? "Форма передачи прав" : "Rights Form"} />
-        <p className="text-sm text-[var(--color-paper-300)]">Supabase не подключен.</p>
-      </section>
-    );
-  }
 
   if (!session.isAuthenticated) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/rights/${orderId}`)}`);

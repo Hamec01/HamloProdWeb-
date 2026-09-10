@@ -8,7 +8,6 @@ import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 import { formatMarketMoney } from "@/lib/market";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 export default async function CheckoutPaymentPage({
   params,
@@ -21,14 +20,6 @@ export default async function CheckoutPaymentPage({
   const { start } = await searchParams;
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
 
-  if (!hasSupabaseEnv()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Payment" title={locale === "ru" ? "Оплата" : "Payment"} />
-        <p className="text-sm text-[var(--color-paper-300)]">Supabase не подключен.</p>
-      </section>
-    );
-  }
 
   if (!session.isAuthenticated) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/payment/${orderId}`)}`);

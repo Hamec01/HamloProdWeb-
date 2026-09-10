@@ -11,7 +11,6 @@ import {
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";
 import { resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
 
 export default async function ContractPreviewPage({
   params,
@@ -21,16 +20,6 @@ export default async function ContractPreviewPage({
   const { orderId } = await params;
   const locale = (await getLocale()) as "ru" | "en";
 
-  if (!hasSupabaseEnv()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Contract" title={locale === "ru" ? "Превью договора" : "Contract Preview"} />
-        <p className="text-sm text-[var(--color-paper-300)]">
-          Supabase не подключен.
-        </p>
-      </section>
-    );
-  }
 
   const session = await getPublicSessionState();
   if (!session.isAuthenticated || !session.userId) {

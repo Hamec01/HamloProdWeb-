@@ -1,46 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { toOrderRow } from "@/lib/orders/order-row";
 
-type PointsRow = { points: number };
-
-type OrderRow = {
-  id: string;
-  beat_id: string;
-  buyer_email: string;
-  base_price: number | null;
-  final_price: number | null;
-  base_price_usd: number | null;
-  discount_percent: number;
-  final_price_usd: number | null;
-  currency: string | null;
-  market: string | null;
-  provider: string | null;
-  license_type: string;
-  status: string;
-  rights_form_status: "not_started" | "deferred" | "completed_partial" | null;
-  created_at: string;
-};
-
-type RatingRow = {
-  content_id: string;
-  rating: number;
-  created_at: string;
-};
-
-type BeatLookupRow = {
-  id: string;
-  title: string;
-  slug: string;
-  case_number: string;
-};
+type BeatLookupRow = { id: string; title: string; slug: string; case_number: string };
 
 function getDiscountPercent(points: number) {
   if (points >= 4) {
@@ -81,74 +50,36 @@ export default async function ProfilePage() {
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
   const t = dictionary[locale];
 
-  if (!hasSupabaseEnv()) {
-    return (
-      <section className="space-y-8">
-        <SectionHeading title={t.profileTitle} description={t.profileNoSupabase} />
-      </section>
-    );
-  }
-
   if (!session.isAuthenticated || !session.userId) {
     redirect(`/auth?next=${encodeURIComponent("/profile")}`);
   }
 
-  const supabase = await createSupabaseServerClient();
-
-  const [pointsResult, purchasesResult, reactionsResult] = await Promise.all([
-    supabase
-      .from("user_loyalty_points")
-      .select("points")
-      .eq("user_id", session.userId)
-      .maybeSingle<PointsRow>(),
-    supabase
-      .from("orders")
-      .select("id, beat_id, buyer_email, base_price, final_price, base_price_usd, discount_percent, final_price_usd, currency, market, provider, license_type, status, rights_form_status, created_at")
-      .eq("buyer_user_id", session.userId)
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .returns<OrderRow[]>(),
-    supabase
-      .from("content_ratings")
-      .select("content_id, rating, created_at")
-      .eq("user_id", session.userId)
-      .eq("content_type", "beat")
-      .order("created_at", { ascending: false })
-      .limit(50)
-      .returns<RatingRow[]>(),
+  const [loyaltyRow, orderRows, ratingRows] = await Promise.all([
+    prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
+    prisma.order.findMany({ where: { buyerUserId: session.userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.contentRating.findMany({
+      where: { userId: session.userId, contentType: "beat" },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { contentId: true, rating: true, createdAt: true },
+    }),
   ]);
 
-  const points = pointsResult.data?.points ?? 0;
+  const points = loyaltyRow?.points ?? 0;
   const discountPercent = getDiscountPercent(points);
   const nextThreshold = getNextThreshold(points);
 
-  const orders = purchasesResult.data ?? [];
-  const ratingRows = reactionsResult.data ?? [];
+  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId }));
 
-  // Lookup beats for orders
-  const orderBeatIds = [...new Set(orders.map((o) => o.beat_id))];
-  let orderBeatMap = new Map<string, BeatLookupRow>();
-  if (orderBeatIds.length > 0) {
-    const { data: beatsData } = await supabase
-      .from("beats")
-      .select("id, title, slug, case_number")
-      .in("id", orderBeatIds)
-      .returns<BeatLookupRow[]>();
-    orderBeatMap = new Map((beatsData ?? []).map((b) => [b.id, b]));
-  }
-
-  const ratedBeatIds = [...new Set(ratingRows.map((item) => item.content_id))];
-
-  let ratedBeatMap = new Map<string, BeatLookupRow>();
-  if (ratedBeatIds.length > 0) {
-    const { data: beatsData } = await supabase
-      .from("beats")
-      .select("id, title, slug, case_number")
-      .in("id", ratedBeatIds)
-      .returns<BeatLookupRow[]>();
-
-    ratedBeatMap = new Map((beatsData ?? []).map((beat) => [beat.id, beat]));
-  }
+  const beatIds = [...new Set([...orders.map((o) => o.beat_id), ...ratingRows.map((r) => r.contentId)])];
+  const beatRows = beatIds.length
+    ? await prisma.beat.findMany({ where: { id: { in: beatIds } }, select: { id: true, title: true, slug: true, caseNumber: true } })
+    : [];
+  const beatMap = new Map<string, BeatLookupRow>(
+    beatRows.map((b) => [b.id, { id: b.id, title: b.title, slug: b.slug, case_number: b.caseNumber }]),
+  );
+  const orderBeatMap = beatMap;
+  const ratedBeatMap = beatMap;
 
   return (
     <section className="space-y-10">
@@ -232,7 +163,7 @@ export default async function ProfilePage() {
         <div className="mt-4 space-y-3">
           {ratingRows.length === 0 ? <p className="text-sm text-[var(--color-paper-300)]">{t.profileNoRatings}</p> : null}
           {ratingRows.map((row) => {
-            const beat = ratedBeatMap.get(row.content_id);
+            const beat = ratedBeatMap.get(row.contentId);
 
             if (!beat) {
               return null;
@@ -241,13 +172,13 @@ export default async function ProfilePage() {
             const stars = "★".repeat(row.rating) + "☆".repeat(5 - row.rating);
 
             return (
-              <div key={`${row.content_id}-${row.created_at}`} className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
+              <div key={`${row.contentId}-${row.createdAt.toISOString()}`} className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm uppercase tracking-[0.08em] text-[var(--color-paper-100)]">
                     CASE #{beat.case_number} — {beat.title}
                   </p>
                   <p className="text-xs text-[var(--color-paper-300)]">
-                    {t.profileRatedAt}: {formatDate(row.created_at, locale)}
+                    {t.profileRatedAt}: {formatDate(row.createdAt.toISOString(), locale)}
                   </p>
                 </div>
                 <div className="mt-2 flex items-center gap-3">
