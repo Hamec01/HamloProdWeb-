@@ -4,7 +4,28 @@
 `origin/migration/self-hosted-backend` @ `b2d78aa`). ТЗ:
 `docs/claude-handoff-production-cutover.md`.
 
-## ИТОГ: **STOPPED — production НЕ переключён** (не из-за Lava)
+## Продолжение cutover — 2026-09-11
+
+Владелец подтвердил: после snapshot 2026-09-09 в старом Supabase не было
+регистраций, заказов, комментариев, реакций или изменений через админку. Финальная
+дельта равна нулю.
+
+Перед переключением создан backup
+`production-20260910T220215Z-pre-migration`: 287 строк, 9 миграций, off-box копия
+проверена; restore-test — **13/13 PASS**. Backend TLS включён: PostgreSQL
+`ssl=on`, PgBouncer проверяет внутренний CA с `verify-full`, приложение видит
+TLSv1.3; plaintext backend-соединение отклоняется. Все 14 переменных нового
+runtime добавлены только в Vercel Production; `PAID_CHECKOUT_ENABLED=false`.
+Старые Supabase/Postgres env сохранены для rollback.
+
+Остаётся переключить `origin/main`, проверить новый deployment и production
+smoke. Старый deployment для rollback:
+`dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK`.
+
+Ежедневный systemd timer ещё требует одной команды с `sudo`; наличие последнего
+проверенного backup позволяет выполнить это сразу после запуска сайта.
+
+## Предыдущая остановка — production тогда не переключался
 
 `hamloprod.org` продолжает работать на прежнем runtime — deployment
 `dpl_DFU2yMJKSBHvFS4A4EmQoyy8W1eK` (commit `405b3870f` = `origin/main`), **READY**.
