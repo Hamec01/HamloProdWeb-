@@ -1,8 +1,8 @@
 // HamloProd — clean PostgreSQL foundation (migration phase M1.2 / M1.2a).
 //
-// Fresh database. No data or files are imported from Supabase; content is
-// re-uploaded through the new admin flow. New code uses this schema only — it
-// must not read or write Supabase.
+// Self-hosted target database. Legacy content is imported through reviewed,
+// idempotence-guarded scripts; new code uses this schema only and must not read
+// or write Supabase for entities already migrated.
 //
 // Roles:
 //   DATABASE_URL       runtime, hamloprod_app (LOGIN NOSUPERUSER NOCREATEDB
@@ -48,6 +48,12 @@ enum BeatGenre {
   trap
   drill
   another
+}
+
+enum ReleaseType {
+  album
+  ep
+  mixtape
 }
 
 enum StorageVisibility {
@@ -97,6 +103,7 @@ model User {
   /// Set for ARTIST accounts — the artist profile they manage (FK added with the
   /// Artist model in a later phase).
   artistId        String?   @map("artist_id") @db.Uuid
+  artist          Artist?   @relation(fields: [artistId], references: [id], onDelete: SetNull)
   displayName     String?   @map("display_name")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -106,6 +113,31 @@ model User {
 
   @@index([artistId])
   @@map("users")
+}
+
+model Artist {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug           String   @unique
+  artistName     String   @map("artist_name")
+  trackTitle     String   @default("") @map("track_title")
+  beatTitle      String   @default("") @map("beat_title")
+  bio            String   @default("")
+  photoKey       String?  @map("photo_key")
+  coverPalette   String   @default("from-zinc-900 via-stone-900 to-black") @map("cover_palette")
+  spotifyUrl     String   @default("") @map("spotify_url")
+  appleMusicUrl  String   @default("") @map("apple_music_url")
+  youtubeUrl     String   @default("") @map("youtube_url")
+  vkUrl          String   @default("") @map("vk_url")
+  telegramUrl    String   @default("") @map("telegram_url")
+  yandexMusicUrl String   @default("") @map("yandex_music_url")
+  tidalUrl       String   @default("") @map("tidal_url")
+  soundcloudUrl  String   @default("") @map("soundcloud_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("artists")
 }
 
 model Session {
@@ -146,22 +178,70 @@ model Beat {
   /// Object-storage keys only — never a URL, and never a URL for a private file.
   /// Public keys resolve via the public base URL; private keys are only ever
   /// handed out as short-lived signed URLs.
-  coverKey             String?    @map("cover_key")
-  previewKey           String?    @map("preview_key")
-  masterKey            String?    @map("master_key")
-  archiveKey           String?    @map("archive_key")
+  coverKey   String? @map("cover_key")
+  previewKey String? @map("preview_key")
+  masterKey  String? @map("master_key")
+  archiveKey String? @map("archive_key")
 
-  previewFileName      String?    @map("preview_file_name")
-  previewMimeType      String?    @map("preview_mime_type")
-  previewSizeBytes     Int?       @map("preview_size_bytes")
+  previewFileName  String? @map("preview_file_name")
+  previewMimeType  String? @map("preview_mime_type")
+  previewSizeBytes Int?    @map("preview_size_bytes")
 
-  publishedAt          DateTime?  @map("published_at") @db.Timestamptz(6)
-  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([featured])
   @@map("beats")
+}
+
+model Release {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title           String
+  slug            String      @unique
+  artistName      String      @default("HaM") @map("artist_name")
+  featArtistNames String      @default("") @map("feat_artist_names")
+  releaseType     ReleaseType @map("release_type")
+  coverPalette    String      @default("from-zinc-900 via-stone-900 to-black") @map("cover_palette")
+  coverKey        String?     @map("cover_key")
+  description     String      @default("")
+  spotifyUrl      String      @default("") @map("spotify_url")
+  appleMusicUrl   String      @default("") @map("apple_music_url")
+  youtubeUrl      String      @default("") @map("youtube_url")
+  releaseDate     DateTime    @map("release_date") @db.Date
+  published       Boolean     @default(true)
+  featured        Boolean     @default(false)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tracks Track[]
+
+  @@index([releaseType, published, createdAt])
+  @@map("releases")
+}
+
+model Track {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String
+  slug          String   @unique
+  artistName    String   @map("artist_name")
+  coverPalette  String   @default("from-zinc-900 via-stone-900 to-black") @map("cover_palette")
+  coverKey      String?  @map("cover_key")
+  audioKey      String?  @map("audio_key")
+  spotifyUrl    String   @default("") @map("spotify_url")
+  appleMusicUrl String   @default("") @map("apple_music_url")
+  youtubeUrl    String   @default("") @map("youtube_url")
+  releaseDate   DateTime @map("release_date") @db.Date
+  releaseId     String?  @map("release_id") @db.Uuid
+  release       Release? @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  trackNumber   Int?     @map("track_number")
+  isDemo        Boolean  @default(false) @map("is_demo")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([releaseId, trackNumber])
+  @@map("tracks")
 }
 
 /// Login rate-limiting. One row per HMAC(normalised email + IP). No email or IP
@@ -185,7 +265,6 @@ model AuthThrottle {
 ///                  actualSize + finalizedAt and move to FINALIZED
 ///   attach      -> bind to its entity, write attachedAt, move to ATTACHED
 ///
-/// The storage API is NOT wired to Prisma yet (M7.2) — this is the target schema.
 model UploadIntent {
   id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ownerId      String            @map("owner_id") @db.Uuid

@@ -278,3 +278,15 @@ Loopback, без публикации портов, self-signed CA для `db.ha
 `pg_hba` (`postgres-tls.md`); `DIRECT_URL` через SSH-туннель/Tailscale;
 пересчёт бюджета соединений под конкуренцию Vercel; ежедневный `pg_dump`
 (аудит §10). **M7.2b не считается завершённым, пока браузерный гейт 5.8 не пройден.**
+
+### Live activation update (2026-09-10)
+
+DNS, Let's Encrypt, PgBouncer, внешний `6432`, `DOCKER-USER` rate limit,
+fail2ban jail и Vercel Preview активированы. Внешний TCP test прошёл, TLS
+`verify_hostname db.hamloprod.org` вернул `Verify return code: 0`, порт 5432
+остаётся закрыт. Preview подключается через PgBouncer и отдаёт PostgreSQL-каталог.
+
+Файл `restore-firewall-block.sh` теперь восстанавливает rate limit после
+перезапуска Docker и удаляет прежний временный deny-all. После обновления checkout
+его нужно повторно установить в `/usr/local/sbin/hamloprod-db-firewall` и
+перезапустить `hamloprod-db-firewall.service`.

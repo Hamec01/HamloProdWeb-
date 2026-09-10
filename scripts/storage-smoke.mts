@@ -23,7 +23,9 @@ const cfg = getS3Config();
 const storage = new ContaboS3Storage(cfg);
 
 const marker = randomUUID();
-const publicKey = `smoke/${randomUUID()}.txt`;
+// Contabo public sharing is configured per top-level folder in the customer
+// panel. Exercise the same public prefix used by real beat cover/preview uploads.
+const publicKey = `beats/smoke/${randomUUID()}.txt`;
 const privateKey = `smoke/${randomUUID()}.bin`;
 const publicBody = `public-${marker}`;
 const publicBytes = Buffer.from(publicBody);

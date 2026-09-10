@@ -1,49 +1,34 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { TRACK_DOWNLOADS_BUCKET } from "@/lib/storage/media";
+import { prisma } from "@/lib/db/client";
+import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
+import { getS3Config } from "@/lib/storage/config";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
 }
 
-// Returns a short-lived signed URL for in-browser streaming (no download log).
-// Auth not required — published tracks are meant to be heard.
+// Published track audio is stored privately. The route resolves metadata from
+// PostgreSQL and returns a short-lived signed Contabo URL for browser playback.
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasSupabaseEnv()) {
-    return errorResponse("Supabase env is not configured.", 503);
-  }
-
   const { id } = await params;
-  let supabase;
+  const track = await prisma.track.findUnique({ where: { id }, select: { audioKey: true } });
 
-  try {
-    supabase = createSupabaseAdminClient();
-  } catch (error) {
-    if (error instanceof Error && error.message === "SUPABASE_ADMIN_NOT_CONFIGURED") {
-      return errorResponse("Supabase admin env is not configured.", 503);
-    }
-
-    throw error;
-  }
-
-  const { data: track, error: trackError } = await supabase
-    .from("tracks")
-    .select("mp3_file_path")
-    .eq("id", id)
-    .maybeSingle<{ mp3_file_path: string | null }>();
-
-  if (trackError || !track?.mp3_file_path) {
+  if (!track?.audioKey) {
     return errorResponse("Audio is not available for this track.", 404);
   }
 
-  const { data: signed, error: signedError } = await supabase.storage
-    .from(TRACK_DOWNLOADS_BUCKET)
-    .createSignedUrl(track.mp3_file_path, 3600);
-
-  if (signedError || !signed?.signedUrl) {
-    return errorResponse(signedError?.message ?? "Failed to generate stream URL.", 500);
+  try {
+    const storage = new ContaboS3Storage(getS3Config());
+    const signed = await storage.createSignedDownloadUrl(
+      { visibility: "private", key: track.audioKey },
+      { expiresInSeconds: 900 },
+    );
+    return NextResponse.json({ url: signed.url });
+  } catch (error) {
+    console.error("[track-stream] failed to sign audio", {
+      trackId: id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return errorResponse("Audio is temporarily unavailable.", 503);
   }
-
-  return NextResponse.json({ url: signed.signedUrl });
 }

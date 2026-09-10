@@ -1,29 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { mockArtistPosts, mockArtists, mockComments, mockPosts, mockReleases, mockTracks, siteSettings } from "@/services/mock-data";
+import { mockArtistPosts, mockArtists, mockComments, mockPosts, mockReleases, siteSettings } from "@/services/mock-data";
 import type { Artist, ArtistPost, Beat, Comment, Post, Release, ReleaseTrack, SiteSettings, Track, TrackDownloadLog } from "@/types";
 import { BeatService } from "@/lib/beats/service";
+import { prisma } from "@/lib/db/client";
+import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
 
 const beatService = new BeatService();
-
-type TrackRow = {
-  id: string;
-  title: string;
-  slug: string;
-  artist_name: string;
-  cover_palette: string;
-  cover_image_url: string | null;
-  cover_image_path: string | null;
-  mp3_file_path: string | null;
-  spotify_url: string;
-  apple_music_url: string;
-  youtube_url: string;
-  release_date: string;
-  release_id: string | null;
-  track_number: number | null;
-  is_demo: boolean;
-  created_at: string;
-};
 
 type ReleaseTrackRow = {
   id: string;
@@ -136,27 +119,6 @@ type SiteSettingsRow = {
   archive_description: string;
 };
 
-function mapTrack(row: TrackRow): Track {
-  return {
-    id: row.id,
-    title: row.title,
-    slug: row.slug,
-    artistName: row.artist_name,
-    coverPalette: row.cover_palette,
-    coverImageUrl: row.cover_image_url,
-    coverImagePath: row.cover_image_path,
-    mp3FilePath: row.mp3_file_path,
-    spotifyUrl: row.spotify_url,
-    appleMusicUrl: row.apple_music_url,
-    youtubeUrl: row.youtube_url,
-    releaseDate: row.release_date,
-    releaseId: row.release_id,
-    trackNumber: row.track_number,
-    isDemo: row.is_demo ?? false,
-    createdAt: row.created_at,
-  };
-}
-
 function mapReleaseTrack(row: ReleaseTrackRow): ReleaseTrack {
   return {
     id: row.id,
@@ -189,6 +151,68 @@ function mapRelease(row: ReleaseRow): Release {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tracks: (row.tracks ?? []).map(mapReleaseTrack).sort((a, b) => a.trackNumber - b.trackNumber),
+  };
+}
+
+type PostgresTrackRow = Awaited<ReturnType<typeof prisma.track.findFirst>>;
+
+function dateOnly(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function mapPostgresTrack(row: NonNullable<PostgresTrackRow>): Track {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    artistName: row.artistName,
+    coverPalette: row.coverPalette,
+    coverImageUrl: resolvePublicObjectUrl(row.coverKey),
+    coverImagePath: row.coverKey,
+    mp3FilePath: row.audioKey,
+    spotifyUrl: row.spotifyUrl,
+    appleMusicUrl: row.appleMusicUrl,
+    youtubeUrl: row.youtubeUrl,
+    releaseDate: dateOnly(row.releaseDate),
+    releaseId: row.releaseId,
+    trackNumber: row.trackNumber,
+    isDemo: row.isDemo,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+type PostgresReleaseRow = Awaited<ReturnType<typeof prisma.release.findFirst>> & {
+  tracks: Array<NonNullable<PostgresTrackRow>>;
+};
+
+function mapPostgresRelease(row: PostgresReleaseRow): Release {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    artistName: row.artistName,
+    releaseType: row.releaseType,
+    coverPalette: row.coverPalette,
+    coverImageUrl: resolvePublicObjectUrl(row.coverKey),
+    coverImagePath: row.coverKey,
+    description: row.description,
+    spotifyUrl: row.spotifyUrl,
+    appleMusicUrl: row.appleMusicUrl,
+    youtubeUrl: row.youtubeUrl,
+    featArtistNames: row.featArtistNames,
+    releaseDate: dateOnly(row.releaseDate),
+    published: row.published,
+    featured: row.featured,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    tracks: row.tracks.map((track) => ({
+      id: track.id,
+      title: track.title,
+      slug: track.slug,
+      trackNumber: track.trackNumber ?? 0,
+      mp3FilePath: track.audioKey,
+      createdAt: track.createdAt.toISOString(),
+    })),
   };
 }
 
@@ -361,23 +385,8 @@ export async function getBeatBySlug(slug: string): Promise<Beat | null> {
 }
 
 export async function getTracks() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("tracks")
-      .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, is_demo, created_at",
-      )
-      .order("release_date", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .returns<TrackRow[]>();
-
-    if (error || !data) {
-      return mockTracks;
-    }
-
-    return data.map(mapTrack);
-  }, mockTracks);
+  const rows = await prisma.track.findMany({ orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }] });
+  return rows.map(mapPostgresTrack);
 }
 
 export async function getSingleTracks() {
@@ -391,44 +400,20 @@ export async function getDemoTracks() {
 }
 
 export async function getReleases() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("releases")
-      .select(
-        "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
-      )
-      .eq("published", true)
-      .order("release_date", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: false })
-      .returns<ReleaseRow[]>();
-
-    if (error || !data) {
-      return mockReleases;
-    }
-
-    return data.map(mapRelease);
-  }, mockReleases);
+  const rows = await prisma.release.findMany({
+    where: { published: true },
+    include: { tracks: { orderBy: [{ trackNumber: "asc" }, { createdAt: "asc" }] } },
+    orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+  });
+  return rows.map(mapPostgresRelease);
 }
 
 export async function getAdminReleases() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("releases")
-      .select(
-        "id, title, slug, artist_name, feat_artist_names, release_type, cover_palette, cover_image_url, cover_image_path, description, spotify_url, apple_music_url, youtube_url, release_date, published, featured, created_at, updated_at, tracks:tracks(id, title, slug, track_number, mp3_file_path, created_at)",
-      )
-      .order("featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .returns<ReleaseRow[]>();
-
-    if (error || !data) {
-      return mockReleases;
-    }
-
-    return data.map(mapRelease);
-  }, mockReleases);
+  const rows = await prisma.release.findMany({
+    include: { tracks: { orderBy: [{ trackNumber: "asc" }, { createdAt: "asc" }] } },
+    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+  });
+  return rows.map(mapPostgresRelease);
 }
 
 const ARTIST_SELECT = "id, slug, artist_name, track_title, beat_title, bio, photo_url, photo_path, cover_palette, spotify_url, apple_music_url, youtube_url, vk_url, telegram_url, yandex_music_url, tidal_url, soundcloud_url, created_at";
@@ -541,23 +526,8 @@ export async function getAdminBeats() {
 }
 
 export async function getAdminTracks() {
-  return withSupabaseFallback(async () => {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("tracks")
-      .select(
-        "id, title, slug, artist_name, cover_palette, cover_image_url, cover_image_path, mp3_file_path, spotify_url, apple_music_url, youtube_url, release_date, release_id, track_number, is_demo, created_at",
-      )
-      .order("is_demo", { ascending: true })
-      .order("release_date", { ascending: false })
-      .returns<TrackRow[]>();
-
-    if (error || !data) {
-      return mockTracks;
-    }
-
-    return data.map(mapTrack);
-  }, mockTracks);
+  const rows = await prisma.track.findMany({ orderBy: [{ isDemo: "asc" }, { releaseDate: "desc" }] });
+  return rows.map(mapPostgresTrack);
 }
 
 export async function getAdminArtists() {

@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore HamloProd Preview database connection-rate firewall guard
+Requires=docker.service
+After=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hamloprod-db-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=docker.service

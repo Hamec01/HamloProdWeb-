@@ -569,3 +569,33 @@ Production `STORAGE_BACKEND` is unchanged; no production deployment was made.
 Preview с доступом к PostgreSQL. Подключение Preview → VPS подготовлено в M1.3
 (`docs/preview-db-connection.md`), но не активировано. **Выходной гейт M7.2b
 остаётся открыт**, пока этот сценарий не пройден на реальном Preview.
+
+### Live activation and legacy import (2026-09-10)
+
+Состояние выше сохранено как история проверки от 2026-09-08. Блокеры владельца
+после неё устранены:
+
+- `hamloprod-public`: policy содержит только anonymous `s3:GetObject` на
+  `arn:aws:s3:::hamloprod-public/*`; `hamloprod-private` не имеет public policy;
+- CORS применён S3 API к обоим бакетам: production origins, localhost и точный
+  Preview origin, методы `PUT/GET/HEAD`, `ETag` exposed;
+- публичный URL Contabo требует tenant prefix, поэтому в Preview и локальном
+  окружении задан `S3_PUBLIC_BASE_URL=https://usc1.contabostorage.com/<tenant>:hamloprod-public`;
+- `scripts/storage-smoke.mts`: **5/5**;
+- импортировано и независимо пересчитано 404/404 объекта: public 145 объектов
+  (395723897 bytes), private 259 объектов (1307435979 bytes);
+- импортированы 41/41 beat, 11/11 releases и 198/198 tracks. Сопоставлены 41
+  beat cover, 40 preview, 11 release cover, 198 track cover и 197 private track
+  audio objects;
+- Vercel Preview ветки отвечает `200` на `/beats`; реальные cover и MP3 range
+  requests отвечают `206` с `image/png` и `audio/mpeg`; после проверки runtime
+  errors отсутствовали.
+
+Особенность Contabo: хотя сохранённый `GetBucketCors` возвращает точный список
+origins и методов, внешний gateway отвечает на OPTIONS собственным
+`Access-Control-Allow-Origin: *` и расширенным списком методов. Это поведение
+провайдера, не сохранённая bucket CORS. Реальное разрешение операций остаётся у
+bucket policy и SigV4/presigned URL; private anonymous GET проверен как `401`.
+
+Исходный ZIP и SQL dump остаются в `/home/deploy/secure-imports/` до проверки
+всех импортированных сущностей. Их пока не удалять.
