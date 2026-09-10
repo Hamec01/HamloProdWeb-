@@ -1,12 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  assertBuyerPasswordPolicy,
   assertPasswordPolicy,
   DUMMY_PASSWORD_HASH,
   hashPassword,
+  isCurrentHash,
+  isLegacyBcryptHash,
   MAX_PASSWORD_LENGTH,
+  MIN_BUYER_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   verifyPassword,
+  verifyPasswordAnyFormat,
   WeakPasswordError,
 } from "./password";
 
@@ -44,4 +49,35 @@ test("verifyPassword rejects empty / over-long candidate passwords", async () =>
 test("the dummy hash is a real argon2id hash (constant-time fallback)", async () => {
   assert.match(DUMMY_PASSWORD_HASH, /^\$argon2id\$v=19\$m=19456/);
   assert.equal(await verifyPassword(DUMMY_PASSWORD_HASH, "anything at all here"), false);
+});
+
+test("buyer policy: min 8, max 128", () => {
+  assert.throws(() => assertBuyerPasswordPolicy("x".repeat(MIN_BUYER_PASSWORD_LENGTH - 1)), WeakPasswordError);
+  assert.doesNotThrow(() => assertBuyerPasswordPolicy("x".repeat(MIN_BUYER_PASSWORD_LENGTH)));
+  assert.throws(() => assertBuyerPasswordPolicy("x".repeat(MAX_PASSWORD_LENGTH + 1)), WeakPasswordError);
+});
+
+test("hash-format predicates", async () => {
+  const argon = await hashPassword("a valid admin password");
+  assert.equal(isCurrentHash(argon), true);
+  assert.equal(isLegacyBcryptHash(argon), false);
+  assert.equal(isLegacyBcryptHash("$2a$10$0123456789012345678901"), true);
+  assert.equal(isLegacyBcryptHash("$2b$12$0123456789012345678901"), true);
+  assert.equal(isLegacyBcryptHash("$2y$10$0123456789012345678901"), true);
+  assert.equal(isLegacyBcryptHash(null), false);
+  assert.equal(isCurrentHash("$2a$10$x"), false);
+});
+
+test("verifyPasswordAnyFormat verifies BOTH a bcrypt hash and an argon2id hash", async () => {
+  const { hashSync } = await import("bcryptjs");
+  const bcryptHash = hashSync("legacy-secret-123", 10);
+  assert.equal(await verifyPasswordAnyFormat(bcryptHash, "legacy-secret-123"), true);
+  assert.equal(await verifyPasswordAnyFormat(bcryptHash, "wrong-secret"), false);
+
+  const argon = await hashPassword("a valid admin password");
+  assert.equal(await verifyPasswordAnyFormat(argon, "a valid admin password"), true);
+  assert.equal(await verifyPasswordAnyFormat(argon, "another password entirely"), false);
+
+  assert.equal(await verifyPasswordAnyFormat(bcryptHash, ""), false);
+  assert.equal(await verifyPasswordAnyFormat("garbage", "whatever"), false);
 });

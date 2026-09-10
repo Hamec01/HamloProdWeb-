@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { dictionary, type Locale } from "@/lib/i18n";
 
 export function PublicAuthStatus({ email, locale }: { email: string; locale: Locale }) {
@@ -15,8 +14,7 @@ export function PublicAuthStatus({ email, locale }: { email: string; locale: Loc
       <Button
         variant="ghost"
         onClick={async () => {
-          const supabase = createSupabaseBrowserClient();
-          await supabase.auth.signOut();
+          await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => {});
           router.refresh();
         }}
       >

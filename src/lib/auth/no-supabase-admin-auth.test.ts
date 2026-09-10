@@ -28,6 +28,18 @@ const ADMIN_AUTH_PATH = [
   "src/app/api/admin/auth/me/route.ts",
 ];
 
+const PUBLIC_AUTH_PATH = [
+  "src/lib/auth/public-session.ts",
+  "src/lib/auth/public-session-store.ts",
+  "src/lib/auth/public-cookies.ts",
+  "src/lib/auth/public-auth-service.ts",
+  "src/lib/auth/public-ports.ts",
+  "src/app/api/auth/login/route.ts",
+  "src/app/api/auth/signup/route.ts",
+  "src/app/api/auth/logout/route.ts",
+  "src/app/api/auth/me/route.ts",
+];
+
 const STORAGE_ROUTES = [
   "src/app/api/admin/storage/upload-url/route.ts",
   "src/app/api/admin/storage/finalize/route.ts",
@@ -37,6 +49,12 @@ const SUPABASE = /@supabase\/|@\/lib\/supabase\/|supabase\.auth/;
 
 test("no file in the admin auth path imports Supabase", () => {
   for (const file of ADMIN_AUTH_PATH) {
+    assert.doesNotMatch(read(file), SUPABASE, `${file} imports Supabase`);
+  }
+});
+
+test("no file in the buyer (public) auth path imports Supabase", () => {
+  for (const file of PUBLIC_AUTH_PATH) {
     assert.doesNotMatch(read(file), SUPABASE, `${file} imports Supabase`);
   }
 });

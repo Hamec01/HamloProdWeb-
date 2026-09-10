@@ -71,6 +71,7 @@ export async function createAdminSession(
     data: {
       userId,
       tokenHash: hashSessionToken(token),
+      scope: "admin",
       expiresAt,
       ip: inetOrNull(meta.ip),
       userAgent: meta.userAgent?.slice(0, 512) ?? null,
@@ -94,13 +95,14 @@ export async function validateAdminSession(token: string | undefined | null): Pr
     select: {
       id: true,
       tokenHash: true,
+      scope: true,
       revokedAt: true,
       expiresAt: true,
       user: { select: { id: true, email: true, role: true } },
     },
   });
 
-  if (!session || !hashesEqual(session.tokenHash, tokenHash)) {
+  if (!session || !hashesEqual(session.tokenHash, tokenHash) || session.scope !== "admin") {
     return UNAUTHENTICATED;
   }
 
@@ -164,7 +166,7 @@ export async function rotateAdminSession(
     const now = new Date();
 
     const revoked = await tx.session.updateMany({
-      where: { tokenHash: oldHash, revokedAt: null, expiresAt: { gt: now } },
+      where: { tokenHash: oldHash, scope: "admin", revokedAt: null, expiresAt: { gt: now } },
       data: { revokedAt: now },
     });
 
@@ -185,6 +187,7 @@ export async function rotateAdminSession(
       data: {
         userId: current.userId,
         tokenHash: hashSessionToken(newToken),
+        scope: "admin",
         expiresAt,
         ip: inetOrNull(meta.ip),
         userAgent: meta.userAgent?.slice(0, 512) ?? null,

@@ -1,58 +1,47 @@
 /**
- * LEGACY public (buyer) session — still backed by Supabase Auth.
+ * Buyer (public) session state — PostgreSQL-backed own auth. Server-only.
  *
- * Kept unchanged in M6.1; migrated to own auth in M6.2. Admin auth
- * (`src/lib/auth/session.ts`) no longer imports Supabase.
+ * Read-only: reads the `hp_session` cookie and validates it. Never writes a
+ * cookie. Cookie writes happen only in the `/api/auth/*` Route Handlers.
  */
 
-import { hasSupabaseEnv } from "@/lib/supabase/env";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { publicCookieName } from "@/lib/auth/public-cookies";
+import { validatePublicSessionToken } from "@/lib/auth/public-session-store";
 
 export type PublicSessionState = {
-  hasSupabase: boolean;
   isAuthenticated: boolean;
   userId: string | null;
   email: string | null;
+  role: string | null;
   artistId: string | null;
+  sessionId: string | null;
+};
+
+const UNAUTHENTICATED: PublicSessionState = {
+  isAuthenticated: false,
+  userId: null,
+  email: null,
+  role: null,
+  artistId: null,
+  sessionId: null,
 };
 
 export async function getPublicSessionState(): Promise<PublicSessionState> {
-  if (!hasSupabaseEnv()) {
-    return {
-      hasSupabase: false,
-      isAuthenticated: false,
-      userId: null,
-      email: null,
-      artistId: null,
-    };
+  const store = await cookies();
+  const token = store.get(publicCookieName())?.value;
+  const session = await validatePublicSessionToken(token);
+
+  if (!session) {
+    return UNAUTHENTICATED;
   }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return {
-      hasSupabase: true,
-      isAuthenticated: false,
-      userId: null,
-      email: null,
-      artistId: null,
-    };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("artist_id")
-    .eq("id", user.id)
-    .maybeSingle<{ artist_id: string | null }>();
 
   return {
-    hasSupabase: true,
     isAuthenticated: true,
-    userId: user.id,
-    email: user.email ?? null,
-    artistId: profile?.artist_id ?? null,
+    userId: session.userId,
+    email: session.email,
+    role: session.role,
+    artistId: session.artistId,
+    sessionId: session.sessionId,
   };
 }
