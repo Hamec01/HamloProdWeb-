@@ -33,12 +33,12 @@ export default async function AdminDashboardPage() {
 
       <AdminCollectionTable
         title="Pipeline"
-        description="Supabase auth, CRUD, storage and orders will attach here in the next phase."
+        description="Own auth, PostgreSQL CRUD, Contabo storage and orders."
         columns={["Collection", "Source", "Rule"]}
         rows={[
-          ["Beats", "Supabase table beats", "Admin/editor only CRUD"],
-          ["Tracks", "Supabase table tracks", "Admin/editor only CRUD"],
-          ["Artists", "Supabase table artists", "Admin/editor only CRUD"],
+          ["Beats", "PostgreSQL", "Admin/editor only CRUD"],
+          ["Tracks", "PostgreSQL", "Admin/editor only CRUD"],
+          ["Artists", "PostgreSQL", "Admin/editor only CRUD"],
         ]}
       />
     </div>

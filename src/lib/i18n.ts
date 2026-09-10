@@ -52,7 +52,6 @@ type Dictionary = {
   profileTitle: string;
   profileDesc: string;
   profileAuthRequired: string;
-  profileNoSupabase: string;
   profilePointsTitle: string;
   profileCurrentPoints: string;
   profileCurrentDiscount: string;
@@ -99,10 +98,10 @@ export const dictionary: Record<Locale, Dictionary> = {
     randomAllFromSection: "Все треки раздела",
     archiveEyebrow: "Архив",
     beatsTitle: "Кейсы битов",
-    beatsDesc: "Материалы из архива. Основной контент загружается из Supabase.",
+    beatsDesc: "Материалы из архива. Основной контент — из собственной базы.",
     tracksEyebrow: "Треки",
     tracksTitle: "Релизы HaM",
-    tracksDesc: "Карточки релизов. Данные берутся из Supabase.",
+    tracksDesc: "Карточки релизов. Данные — из собственной базы.",
     artistsEyebrow: "Артисты",
     artistsTitle: "Кейсы артистов",
     artistsDesc: "Публичные карточки артистов в режиме просмотра.",
@@ -132,8 +131,7 @@ export const dictionary: Record<Locale, Dictionary> = {
     profileTitle: "Профиль пользователя",
     profileDesc: "Ваши поинты, история покупок и оценённые биты.",
     profileAuthRequired: "Войдите в аккаунт, чтобы открыть профиль.",
-    profileNoSupabase: "Профиль доступен только при подключенном Supabase.",
-    profilePointsTitle: "Лояльность",
+      profilePointsTitle: "Лояльность",
     profileCurrentPoints: "Текущие поинты",
     profileCurrentDiscount: "Текущая скидка",
     profileNextDiscount: "Следующий порог",
@@ -177,10 +175,10 @@ export const dictionary: Record<Locale, Dictionary> = {
     randomAllFromSection: "All Section Tracks",
     archiveEyebrow: "Archive",
     beatsTitle: "Beat Files",
-    beatsDesc: "Archive records. Main content is loaded from Supabase.",
+    beatsDesc: "Archive records. Main content is served from our own database.",
     tracksEyebrow: "Tracks",
     tracksTitle: "HaM Releases",
-    tracksDesc: "Release cards powered by Supabase content.",
+    tracksDesc: "Release cards served from our own database.",
     artistsEyebrow: "Artists",
     artistsTitle: "Artist Files",
     artistsDesc: "Public artist cards are read-only.",
@@ -210,8 +208,7 @@ export const dictionary: Record<Locale, Dictionary> = {
     profileTitle: "User Profile",
     profileDesc: "Your points, purchase history, and rated beats.",
     profileAuthRequired: "Sign in to open your profile.",
-    profileNoSupabase: "Profile is available only with Supabase configured.",
-    profilePointsTitle: "Loyalty",
+      profilePointsTitle: "Loyalty",
     profileCurrentPoints: "Current Points",
     profileCurrentDiscount: "Current Discount",
     profileNextDiscount: "Next Threshold",

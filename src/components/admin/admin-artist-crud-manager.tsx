@@ -93,10 +93,10 @@ export function AdminArtistCrudManager({ artists }: { artists: Artist[] }) {
       <section className="case-panel p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Supabase CRUD</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">PostgreSQL CRUD</p>
             <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Artists Admin</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-paper-200)]">
-              Каталог артистов и их стриминг-ссылки теперь можно вести через admin flow с Supabase-backed API.
+              Каталог артистов и их стриминг-ссылки.
             </p>
           </div>
         </div>
@@ -197,7 +197,7 @@ export function AdminArtistCrudManager({ artists }: { artists: Artist[] }) {
 
       <AdminCollectionTable
         title="Existing Artists"
-        description="Artist entries подгружаются из Supabase с fallback на mock data, если env ещё не настроены."
+        description="Артисты из PostgreSQL."
         columns={["Artist", "Track", "Beat", "Actions"]}
         rows={rows}
       />

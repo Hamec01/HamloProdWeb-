@@ -328,7 +328,7 @@ export function AdminReleaseCrudManager({ releases }: { releases: Release[] }) {
       <section className="case-panel p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Supabase CRUD</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">PostgreSQL CRUD</p>
             <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Releases Admin</h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--color-paper-200)]">
               Управление альбомами, EP и mixtape — добавляй несколько треков за раз, прикрепляй обложку.

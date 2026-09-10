@@ -44,12 +44,12 @@ test("describeDatabaseConfig exposes host + database name only, no credentials",
   assert.doesNotMatch(JSON.stringify(described), /secret/);
 });
 
-test("getDataBackend: unset / postgres → postgres; legacy supabase recognised; typo fails closed", () => {
+test("getDataBackend: unset / postgres → postgres; anything else fails closed", () => {
   assert.equal(getDataBackend({}), "postgres");
   assert.equal(getDataBackend({ DATA_BACKEND: "" }), "postgres");
   assert.equal(getDataBackend({ DATA_BACKEND: "postgres" }), "postgres");
   assert.equal(getDataBackend({ DATA_BACKEND: "POSTGRES" }), "postgres");
-  assert.equal(getDataBackend({ DATA_BACKEND: "supabase" }), "supabase");
+  assert.throws(() => getDataBackend({ DATA_BACKEND: "supabase" }), DatabaseConfigError);
   assert.throws(() => getDataBackend({ DATA_BACKEND: "mysql" }), DatabaseConfigError);
   assert.throws(() => getDataBackend({ DATA_BACKEND: "pg" }), DatabaseConfigError);
 });

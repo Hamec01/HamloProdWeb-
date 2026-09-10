@@ -25,7 +25,7 @@ export type S3Config = {
   publicBaseUrl: string;
 };
 
-export type StorageBackend = "supabase" | "contabo-s3";
+export type StorageBackend = "contabo-s3";
 
 const REQUIRED_ENV = [
   "S3_ENDPOINT",
@@ -167,10 +167,9 @@ export function isStorageConfigured(env: EnvSource = process.env): boolean {
 }
 
 /**
- * Active storage backend. Contabo is the target: an unset (or `contabo-s3`) value
- * resolves to `contabo-s3`. The legacy `supabase` value is still accepted while
- * routes are migrated. Any other value fails closed so a typo never silently
- * points the app at an unconfigured backend.
+ * Active storage backend. Contabo Object Storage is the only backend: an unset
+ * (or `contabo-s3`) value resolves to `contabo-s3`; any other value fails closed
+ * so a typo never silently points the app at an unconfigured backend.
  */
 export function getStorageBackend(env: EnvSource = process.env): StorageBackend {
   const value = (env.STORAGE_BACKEND ?? "").trim().toLowerCase();
@@ -179,11 +178,7 @@ export function getStorageBackend(env: EnvSource = process.env): StorageBackend 
     return "contabo-s3";
   }
 
-  if (value === "supabase") {
-    return "supabase";
-  }
-
-  throw new StorageConfigError('STORAGE_BACKEND must be "contabo-s3" (default) or the legacy "supabase".');
+  throw new StorageConfigError('STORAGE_BACKEND must be "contabo-s3" (the default).');
 }
 
 /**

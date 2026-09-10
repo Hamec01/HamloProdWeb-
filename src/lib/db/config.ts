@@ -54,13 +54,12 @@ export function isDatabaseConfigured(env: EnvSource = process.env): boolean {
   }
 }
 
-export type DataBackend = "postgres" | "supabase";
+export type DataBackend = "postgres";
 
 /**
- * Active data backend. PostgreSQL is the target: unset (or `postgres`) resolves
- * to `postgres`. The legacy `supabase` value is still recognised while entities
- * are migrated, but Supabase is never used as a fallback and any other value
- * fails closed. The error never contains `DATABASE_URL`.
+ * Active data backend. PostgreSQL is the only backend: an unset (or `postgres`)
+ * value resolves to `postgres`; any other value fails closed. The error never
+ * contains `DATABASE_URL`.
  */
 export function getDataBackend(env: EnvSource = process.env): DataBackend {
   const value = (env.DATA_BACKEND ?? "").trim().toLowerCase();
@@ -69,11 +68,7 @@ export function getDataBackend(env: EnvSource = process.env): DataBackend {
     return "postgres";
   }
 
-  if (value === "supabase") {
-    return "supabase";
-  }
-
-  throw new DatabaseConfigError('DATA_BACKEND must be "postgres" (default) or the legacy "supabase".');
+  throw new DatabaseConfigError('DATA_BACKEND must be "postgres" (the default).');
 }
 
 /** Non-secret snapshot for docs / health checks — host and database name only. */

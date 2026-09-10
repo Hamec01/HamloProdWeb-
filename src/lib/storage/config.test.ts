@@ -104,8 +104,7 @@ test("getStorageBackend defaults to contabo-s3 and fails closed on a typo", () =
   assert.equal(getStorageBackend({ STORAGE_BACKEND: "" }), "contabo-s3");
   assert.equal(getStorageBackend({ STORAGE_BACKEND: "contabo-s3" }), "contabo-s3");
   assert.equal(getStorageBackend({ STORAGE_BACKEND: "CONTABO-S3" }), "contabo-s3");
-  // legacy value still accepted while routes migrate
-  assert.equal(getStorageBackend({ STORAGE_BACKEND: "supabase" }), "supabase");
+  assert.throws(() => getStorageBackend({ STORAGE_BACKEND: "supabase" }), StorageConfigError);
   assert.throws(() => getStorageBackend({ STORAGE_BACKEND: "contabo" }), StorageConfigError);
   assert.throws(() => getStorageBackend({ STORAGE_BACKEND: "s3" }), StorageConfigError);
 });
