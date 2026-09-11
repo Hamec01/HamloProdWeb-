@@ -135,23 +135,33 @@ export function AdminTrackCrudManager({
             </p>
             <h2 className="mt-2 font-sans text-4xl uppercase tracking-[0.05em]">Track Record</h2>
           </div>
-          {editingTrackId ? (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setEditingTrackId(null);
-                reset(defaultValues);
-                setCoverImageFile(null);
-                setMp3File(null);
-                setStatusMessage(null);
-              }}
-            >
-              Cancel Edit
+          <div className="flex items-center gap-3">
+            {editingTrackId ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setEditingTrackId(null);
+                  reset(defaultValues);
+                  setCoverImageFile(null);
+                  setMp3File(null);
+                  setStatusMessage(null);
+                }}
+              >
+                Cancel Edit
+              </Button>
+            ) : null}
+            <Button type="submit" form="admin-track-form" disabled={isSubmitting}>
+              {isSubmitting ? "Saving" : editingTrackId ? "Save Changes" : "Создать трек"}
             </Button>
-          ) : null}
+          </div>
         </div>
 
+        <p className="mb-5 text-sm text-[var(--color-paper-300)]">
+          Заполните данные, при необходимости выберите обложку и MP3, затем нажмите кнопку создания сверху или снизу формы.
+        </p>
+
         <form
+          id="admin-track-form"
           className="grid gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(async (values) => {
             setStatusMessage(null);

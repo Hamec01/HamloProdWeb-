@@ -276,11 +276,23 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
       <section className="case-panel p-6">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="font-sans text-4xl uppercase tracking-[0.05em]">{editingId ? "Edit Beat" : "Create Beat"}</h2>
-          {editingId ? <Button variant="ghost" onClick={resetForm} disabled={Boolean(uploading)}>Cancel edit</Button> : null}
+          <div>
+            <h2 className="font-sans text-4xl uppercase tracking-[0.05em]">{editingId ? "Edit Beat" : "Create Beat"}</h2>
+            <p className="mt-2 text-sm text-[var(--color-paper-300)]">
+              {editingId
+                ? "Загрузите или замените файлы, затем опубликуйте бит в списке ниже."
+                : "Шаг 1: заполните название. Шаг 2: создайте бит. Шаг 3: загрузите файлы."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {editingId ? <Button variant="ghost" onClick={resetForm} disabled={Boolean(uploading)}>Cancel edit</Button> : null}
+            <Button type="submit" form="admin-beat-form" disabled={isSubmitting || Boolean(uploading)}>
+              {isSubmitting ? "Saving" : editingId ? "Save changes" : "Создать бит"}
+            </Button>
+          </div>
         </div>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
+        <form id="admin-beat-form" className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
           <label className={label}>
             <span>Title</span>
             <input {...register("title")} className={field} />
