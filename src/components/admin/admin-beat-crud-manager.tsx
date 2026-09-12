@@ -91,9 +91,29 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   const [assetBeat, setAssetBeat] = useState<AdminBeat | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Partial<Record<BeatAssetKind, File>>>({});
   const [uploading, setUploading] = useState<BeatAssetKind | null>(null);
+  const [postingTelegramId, setPostingTelegramId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const uploadController = useRef<AbortController | null>(null);
   useEffect(() => () => uploadController.current?.abort(), []);
+
+  const sendToTelegram = async (beatId: string): Promise<string | null> => {
+    setPostingTelegramId(beatId);
+    try {
+      const response = await fetch(`/api/admin/beats/${beatId}/telegram`, { method: "POST" });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      return response.ok ? null : body?.error ?? `Telegram failed (${response.status}).`;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Failed to publish beat to Telegram.";
+    } finally {
+      setPostingTelegramId(null);
+    }
+  };
+
+  const postToTelegram = async (beatId: string) => {
+    setMessage("Posting to Telegram…");
+    const error = await sendToTelegram(beatId);
+    setMessage(error ? `Telegram: ${error}` : "Beat posted to Telegram.");
+  };
 
   const uploadFile = async (kind: BeatAssetKind, file: File) => {
     if (!editingId || uploadController.current) return;
@@ -249,7 +269,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
                 setAssetBeat(published.beat);
                 setValue("status", published.beat.status, { shouldDirty: false });
               }
-              setMessage("Beat created, files attached and published.");
+              setMessage("Beat created, files attached and published. Use the Telegram button below to post it.");
             } else {
               setMessage("Beat created and selected files attached. Add any remaining files, then publish.");
             }
@@ -281,8 +301,12 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
       body: JSON.stringify({ status }),
     });
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    setMessage(response.ok ? `Status → ${status}.` : body?.error ?? "Status update failed.");
-    if (response.ok) router.refresh();
+    if (!response.ok) {
+      setMessage(body?.error ?? "Status update failed.");
+      return;
+    }
+    setMessage(status === "available" ? "Published. Use the Telegram button to post it." : `Status → ${status}.`);
+    router.refresh();
   };
 
   const removeBeat = async (beat: AdminBeat) => {
@@ -320,12 +344,22 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
           ) : beat.status === "private" ? (
             <Button variant="primary" className="px-2.5 py-1 text-xs" onClick={() => quickStatus(beat.id, "available")}>Publish</Button>
           ) : null}
+          {beat.status === "available" ? (
+            <Button
+              variant="ghost"
+              className="px-2.5 py-1 text-xs"
+              disabled={postingTelegramId === beat.id}
+              onClick={() => postToTelegram(beat.id)}
+            >
+              {postingTelegramId === beat.id ? "Posting…" : "Telegram"}
+            </Button>
+          ) : null}
           <Button variant="ghost" className="px-2.5 py-1 text-xs" onClick={() => startEdit(beat)}>Edit</Button>
           <Button variant="alert" className="px-2.5 py-1 text-xs" onClick={() => removeBeat(beat)}>Delete</Button>
         </div>,
       ]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [beats, editingId],
+    [beats, editingId, postingTelegramId],
   );
 
   const field = "w-full border border-[var(--color-line)] bg-[rgba(255,255,255,0.03)] px-4 py-3";
