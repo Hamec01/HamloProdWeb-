@@ -89,6 +89,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   const [message, setMessage] = useState<string | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
   const [assetBeat, setAssetBeat] = useState<AdminBeat | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<Partial<Record<BeatAssetKind, File>>>({});
   const [uploading, setUploading] = useState<BeatAssetKind | null>(null);
   const [progress, setProgress] = useState(0);
   const uploadController = useRef<AbortController | null>(null);
@@ -142,14 +143,16 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   const resetForm = () => {
     if (uploadController.current) return;
     setAssetBeat(null);
+    setPendingFiles({});
     setEditingId(null);
     setSlugTouched(false);
     reset({ ...DEFAULTS, caseNumber: getNextCaseNumber(beats) });
   };
 
-  const startEdit = (beat: AdminBeat) => {
+  const startEdit = (beat: AdminBeat, preservePendingFiles = false) => {
     if (uploadController.current) return;
     setAssetBeat(beat);
+    if (!preservePendingFiles) setPendingFiles({});
     setEditingId(beat.id);
     setSlugTouched(true);
     setMessage(null);
@@ -175,23 +178,30 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
   const onSubmit = handleSubmit(async (values) => {
     setMessage(null);
     const payload = buildPayload(values);
+    const creating = !editingId;
+    const publishAfterCreate = creating && payload.status === "available";
 
     if (payload.title.length < 2 || payload.slug.length < 2 || payload.caseNumber.length < 2) {
-      setMessage("Title, slug and case number are required.");
+      setMessage("Введите название бита сверху. Slug создастся автоматически, номер уже заполнен.");
       return;
     }
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(payload.slug)) {
       setMessage("Slug must be lowercase latin words separated by single hyphens.");
       return;
     }
+    if (publishAfterCreate && (!pendingFiles["beat-cover"] || !pendingFiles["beat-preview"])) {
+      setMessage("Для статуса available сначала выберите Cover и Preview. WAV и ZIP необязательны.");
+      return;
+    }
 
     const endpoint = editingId ? `/api/admin/beats/${editingId}` : "/api/admin/beats";
     const method = editingId ? "PATCH" : "POST";
+    const savePayload = publishAfterCreate ? { ...payload, status: "private" as const } : payload;
 
     const response = await fetch(endpoint, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(savePayload),
     });
 
     const body = (await response.json().catch(() => null)) as { error?: string; beat?: AdminBeat } | null;
@@ -201,8 +211,65 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
       return;
     }
 
-    if (body?.beat) startEdit(body.beat);
-    setMessage(editingId ? "Beat updated." : "Beat created. Upload cover and preview, then publish.");
+    if (body?.beat) {
+      const wasCreated = !editingId;
+      startEdit(body.beat, wasCreated);
+
+      if (wasCreated) {
+        const files = Object.entries(pendingFiles) as Array<[BeatAssetKind, File]>;
+        if (files.length > 0) {
+          const controller = new AbortController();
+          uploadController.current = controller;
+          try {
+            let latestBeat = body.beat;
+            for (const [kind, file] of files) {
+              setUploading(kind);
+              setProgress(0);
+              latestBeat = await uploadBeatAsset(body.beat.id, kind, file, {
+                signal: controller.signal,
+                onProgress: setProgress,
+              });
+              setAssetBeat(latestBeat);
+            }
+            setPendingFiles({});
+            if (publishAfterCreate) {
+              setMessage("Files attached. Publishing…");
+              const publishResponse = await fetch(`/api/admin/beats/${body.beat.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "available" }),
+              });
+              const published = (await publishResponse.json().catch(() => null)) as { error?: string; beat?: AdminBeat } | null;
+              if (!publishResponse.ok) {
+                setMessage(published?.error ?? "Beat and files saved, but publishing failed.");
+                return;
+              }
+              if (published?.beat) {
+                latestBeat = published.beat;
+                setAssetBeat(published.beat);
+                setValue("status", published.beat.status, { shouldDirty: false });
+              }
+              setMessage("Beat created, files attached and published.");
+            } else {
+              setMessage("Beat created and selected files attached. Add any remaining files, then publish.");
+            }
+          } catch (error) {
+            setMessage(
+              controller.signal.aborted
+                ? "Beat created. Upload cancelled; you can select the file again."
+                : `Beat created, but a file failed to upload: ${error instanceof Error ? error.message : "Upload failed."}`,
+            );
+          } finally {
+            uploadController.current = null;
+            setUploading(null);
+          }
+        } else {
+          setMessage("Beat created. Upload cover and preview, then publish.");
+        }
+      } else {
+        setMessage("Beat updated.");
+      }
+    }
     router.refresh();
   });
 
@@ -281,7 +348,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
             <p className="mt-2 text-sm text-[var(--color-paper-300)]">
               {editingId
                 ? "Загрузите или замените файлы, затем опубликуйте бит в списке ниже."
-                : "Шаг 1: заполните название. Шаг 2: создайте бит. Шаг 3: загрузите файлы."}
+                : "Заполните данные, выберите файлы и нажмите «Создать бит». Для публикации сразу выберите available."}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -295,16 +362,16 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
         <form id="admin-beat-form" className="grid gap-4 md:grid-cols-2" onSubmit={onSubmit}>
           <label className={label}>
             <span>Title</span>
-            <input {...register("title")} className={field} />
+            <input {...register("title")} required className={field} />
             {errors.title ? <span className="text-xs text-[var(--color-alert)]">{errors.title.message}</span> : null}
           </label>
           <label className={label}>
             <span>Slug</span>
-            <input {...register("slug")} onChange={(e) => { setSlugTouched(true); register("slug").onChange(e); }} className={field} />
+            <input {...register("slug")} required onChange={(e) => { setSlugTouched(true); register("slug").onChange(e); }} className={field} />
           </label>
           <label className={label}>
             <span>Case number</span>
-            <input {...register("caseNumber")} className={field} />
+            <input {...register("caseNumber")} required className={field} />
           </label>
           <label className={label}>
             <span>Cover palette (Tailwind gradient)</span>
@@ -319,7 +386,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
           <label className={label}>
             <span>Substyle</span>
             <select {...register("substyle")} className={field}>
-              {substyleOptions.map((s) => <option key={s} value={s} disabled={!editingId && s === "available"}>{s}</option>)}
+              {substyleOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
           <label className={label}>
@@ -347,7 +414,9 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
           <label className={label}>
             <span>Status</span>
             <select {...register("status")} className={field}>
-              {BEAT_STATUS_VALUES.map((s) => <option key={s} value={s} disabled={!editingId && s === "available"}>{s}</option>)}
+              {BEAT_STATUS_VALUES.map((s) => (
+                <option key={s} value={s} disabled={!editingId && (s === "reserved" || s === "sold")}>{s}</option>
+              ))}
             </select>
             {watchedStatus === "private" ? (
               <span className="block text-xs normal-case tracking-normal text-[var(--color-paper-400)]">Hidden from the public catalogue.</span>
@@ -368,7 +437,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
           <div className="md:col-span-2 border border-[var(--color-line)] bg-[rgba(255,255,255,0.02)] p-4 text-sm text-[var(--color-paper-300)]">
             <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-paper-400)]">Files</p>
-            <p className="mt-2">{editingId ? "Choose a file to upload or replace an asset. WAV and ZIP remain private." : "Save the beat first to enable file uploads."}</p>
+            <p className="mt-2">{editingId ? "Choose a file to upload or replace an asset. WAV and ZIP remain private." : "Выберите файлы сейчас — они загрузятся автоматически после создания бита."}</p>
             <div className="mt-3 grid gap-3 md:grid-cols-4">
               {([
                 ["beat-cover", "Cover", ".jpg,.jpeg,.png,.webp", assetBeat?.hasCover],
@@ -377,9 +446,18 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
                 ["beat-archive", "ZIP", ".zip", assetBeat?.hasArchive],
               ] as const).map(([kind, name, accept, attached]) => (
                 <label key={kind} className="space-y-2">
-                  <span>{name}: {attached ? "Attached" : "Missing"}</span>
-                  <input type="file" accept={accept} disabled={!editingId || Boolean(uploading) || isSubmitting}
-                    onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadFile(kind, file); }}
+                  <span>{name}: {attached ? "Attached" : pendingFiles[kind] ? `Selected: ${pendingFiles[kind]?.name}` : "Missing"}</span>
+                  <input type="file" accept={accept} disabled={Boolean(uploading) || isSubmitting}
+                    onChange={event => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      if (editingId) {
+                        event.target.value = "";
+                        void uploadFile(kind, file);
+                      } else {
+                        setPendingFiles(current => ({ ...current, [kind]: file }));
+                      }
+                    }}
                     className="w-full border border-[var(--color-line)] px-3 py-2 text-xs disabled:opacity-50" />
                 </label>
               ))}
