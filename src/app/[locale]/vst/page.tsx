@@ -283,6 +283,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <img
           src={LOGO_URL}
           alt=""
+          width={430}
+          height={518}
           aria-hidden="true"
           className="absolute -right-10 top-8 h-[610px] w-auto rotate-6 object-contain opacity-[0.055] invert"
         />
@@ -375,13 +377,27 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
             </div>
           </div>
           <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <img src={CONTROLS_IMAGE} alt="HPDG transport and pattern controls" className="h-auto w-full" loading="lazy" />
+            <img
+              src={CONTROLS_IMAGE}
+              alt="HPDG transport and pattern controls"
+              width={1476}
+              height={150}
+              className="h-auto w-full"
+              loading="lazy"
+            />
           </figure>
         </div>
 
         <div className="grid gap-7 lg:grid-cols-[0.68fr_0.32fr] lg:items-center">
           <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <img src={RACK_IMAGE} alt="HPDG instrument rack and editable pattern grid" className="h-auto w-full" loading="lazy" />
+            <img
+              src={RACK_IMAGE}
+              alt="HPDG instrument rack and editable pattern grid"
+              width={1476}
+              height={379}
+              className="h-auto w-full"
+              loading="lazy"
+            />
           </figure>
           <div className="lg:pl-5">
             <p className="text-[10px] uppercase tracking-[0.3em] text-[#c7954d]">02 · Instrument Rack & Grid</p>
