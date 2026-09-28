@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -16,7 +17,6 @@ import {
   PackageCheck,
   RefreshCw,
   SlidersHorizontal,
-  Sparkles,
   WandSparkles,
   Waves,
 } from "lucide-react";
@@ -280,7 +280,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
       <section className="hpdg-hero relative isolate min-h-[720px] overflow-hidden border border-[#dfb66f]/20 bg-[#070604]">
         <div className="hpdg-grid absolute inset-0 opacity-45" />
         <div className="absolute -right-40 top-20 h-[520px] w-[520px] rounded-full bg-[#d3a456]/[0.08] blur-[120px]" />
-        <img
+        <Image
           src={LOGO_URL}
           alt=""
           width={430}
@@ -377,7 +377,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
             </div>
           </div>
           <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <img
+            <Image
               src={CONTROLS_IMAGE}
               alt="HPDG transport and pattern controls"
               width={1476}
@@ -390,7 +390,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
 
         <div className="grid gap-7 lg:grid-cols-[0.68fr_0.32fr] lg:items-center">
           <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <img
+            <Image
               src={RACK_IMAGE}
               alt="HPDG instrument rack and editable pattern grid"
               width={1476}
