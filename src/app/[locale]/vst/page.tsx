@@ -31,7 +31,9 @@ const LOGO_URL = `${RELEASE_BASE}/Logo_black.png`;
 const CONTROLS_IMAGE = `${RELEASE_BASE}/HPDG_controls.png`;
 const RACK_IMAGE = `${RELEASE_BASE}/HPDG_rack_grid.png`;
 const RELEASE_SHA256 = "f47ee27f7421198000fb3b1a15a33fe95160fadcfb1b67e83c03bcda22295cfe";
-const TIP_URL = process.env.DRUM_GENERATOR_TIP_URL?.trim();
+const TIP_URL =
+  process.env.DRUM_GENERATOR_TIP_URL?.trim() ||
+  "https://donate.stripe.com/8x29AVffaaKFavQ7QicjS00";
 
 const copy = {
   ru: {
@@ -110,7 +112,7 @@ const copy = {
     finalText:
       "Скачивание всегда бесплатное. Если HPDG помог быстрее дойти до музыки, можешь поддержать дальнейшую разработку добровольными чаевыми.",
     supportTitle: "Поддержать HPDG",
-    supportText: "Чаевые не открывают функции и не влияют на загрузку — это просто способ сказать спасибо BoomBap Labs.",
+    supportText: "Понравился HPDG? Оставь чаевые, чтобы поддержать разработку и будущие бесплатные обновления. Скачать VST можно бесплатно в любом случае.",
     supportPending: "Платёжная ссылка пока не подключена",
     back: "Вернуться на главную",
   },
@@ -190,7 +192,7 @@ const copy = {
     finalText:
       "The download is always free. If HPDG gets you to the music faster, you can support continued development with an optional tip.",
     supportTitle: "Support HPDG",
-    supportText: "Tips do not unlock features or affect the download — they are simply a way to thank BoomBap Labs.",
+    supportText: "Like HPDG? Leave a tip to support its development and future free updates. The VST stays free to download for everyone.",
     supportPending: "The payment link is not connected yet",
     back: "Back to home",
   },
