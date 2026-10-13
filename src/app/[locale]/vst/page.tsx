@@ -1,519 +1,425 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import {
-  ArrowDown,
-  Check,
-  Coffee,
-  Download,
-  ExternalLink,
-  FileText,
-  Gauge,
-  Grid3X3,
-  Headphones,
-  Layers3,
-  Music2,
-  PackageCheck,
-  RefreshCw,
-  SlidersHorizontal,
-  WandSparkles,
-  Waves,
-} from "lucide-react";
+import { AdminPostCrudManager } from "@/components/admin/admin-post-crud-manager";
+import { PostRichContent } from "@/components/posts/post-rich-content";
+import { getAdminSessionState } from "@/lib/auth/session";
+import { localizePosts } from "@/lib/localize-content";
 import { normalizeLocale } from "@/lib/market";
+import { getAdminPosts, getPosts } from "@/services/content";
+import styles from "./page.module.css";
 
-const RELEASE_BASE =
-  "https://usc1.contabostorage.com/e83fedb37f3543d0bc6c23caf78439e5:hamloprod-public/hpdg/releases/f47ee27f7421198000";
-const RELEASE_URL = `${RELEASE_BASE}/HPDGRelease.zip`;
-const GUIDE_URL = `${RELEASE_BASE}/HPDG_Field_Guide.html`;
-const FAQ_URL = `${RELEASE_BASE}/FAQ.md`;
-const LOGO_URL = `${RELEASE_BASE}/Logo_black.png`;
-const CONTROLS_IMAGE = `${RELEASE_BASE}/HPDG_controls.png`;
-const RACK_IMAGE = `${RELEASE_BASE}/HPDG_rack_grid.png`;
-const RELEASE_SHA256 = "f47ee27f7421198000fb3b1a15a33fe95160fadcfb1b67e83c03bcda22295cfe";
-const TIP_URL =
+const installerHref = "/hpdg/downloads/HPDG_VST3_Setup_0.1.0-beta.2.exe";
+const checksum = "110e98fb188b35022f78e311ec2df935b167601b82f2e4126f8c7acfbd71af98";
+const tipHref =
   process.env.DRUM_GENERATOR_TIP_URL?.trim() ||
   "https://donate.stripe.com/8x29AVffaaKFavQ7QicjS00";
 
-const copy = {
-  ru: {
-    eyebrow: "HamloProd Drum Generator · VST3 / Standalone",
-    status: "Актуальный Windows-релиз",
-    title: "Собери groove.",
-    titleAccent: "Не считай клетки.",
-    intro:
-      "HPDG создаёт полноценные барабанные паттерны из жанра и характера ритма. Это настоящий MIDI — его можно редактировать, мутировать и перетащить прямо в DAW.",
-    download: "Скачать бесплатно",
-    tip: "На чай!",
-    free: "Бесплатно · без подписки",
-    release: "HPDGRelease.zip · 58 MB",
-    platform: "Windows 10+ · 64-bit",
-    included: "VST3 + Standalone + Factory Kits",
-    scroll: "Посмотреть возможности",
-    manifestoTitle: "Идея сначала. Детали потом.",
-    manifestoText:
-      "Выбери жанр и подстиль, задай Swing, Density и длину — HPDG построит kick, snare, hats, ghost-слои и текстуры как связный рисунок, а не случайный набор ударов.",
-    genresLabel: "Доступно в этом релизе",
-    genres: ["Boom Bap", "Trap"],
-    future: "Rap и Drill уже есть в движке и вернутся после дополнительной настройки.",
-    featuresTitle: "От первой идеи до трека",
-    featuresIntro:
-      "Генератор ускоряет черновик, но не забирает контроль: каждый слой можно пересобрать, отредактировать и вывести отдельно.",
-    features: [
-      ["Жанровые движки", "Boom Bap и Trap с собственными substyle-профилями, pocket, swing и density.", "wand"],
-      ["Generate + Mutate", "Generate пишет новый паттерн, Mutate меняет fills и accents, сохраняя найденную форму.", "refresh"],
-      ["Редактируемый Grid", "Добавляй, удаляй и перемещай hits вручную. Snap меняет разрешение сетки.", "grid"],
-      ["Instrument Rack", "Kick, snare, hats, ghost lanes, texture и Sub808 — с Solo, Mute, Clear и per-lane RG.", "layers"],
-      ["MIDI и WAV", "Drag Full или отдельный Drag для lane; Export Full и Export Loop WAV сохраняют файлы на диск.", "music"],
-      ["Свои сэмплы", "Factory kits уже внутри, но каждый lane можно направить на собственные one-shots.", "sliders"],
-      ["Style Lab", "Загрузи референс, чтобы перенести placement, density и feel kick/hi-hat в будущие генерации.", "waves"],
-      ["Точный Seed", "Одинаковые Genre, Substyle, Swing, Density и Seed всегда дают тот же самый паттерн.", "gauge"],
-    ],
-    guideEyebrow: "Field Guide · интерфейс",
-    guideTitle: "Весь ритм в одном окне",
-    guideText:
-      "Верхняя панель отвечает за генерацию, tempo, transport и export. Ниже — instrument rack и step grid, где каждый lane остаётся доступен отдельно.",
-    guideButton: "Открыть полный Field Guide",
-    rackTitle: "Lane за lane",
-    rackText:
-      "Regenerate, Solo, Mute, Clear, выбор сэмпла, level/pitch и отдельный MIDI drag повторяются на каждой дорожке. + Lane добавляет новый инструмент.",
-    workflowTitle: "Пять движений — и паттерн в DAW",
-    workflow: [
-      ["01", "Выбери Genre и Substyle", "Boom Bap / Classic — стартовая точка; каждый substyle уже несёт собственный feel."],
-      ["02", "Настрой Bars и Tempo", "Выбери длину секции. Sync следует темпу DAW, Lock фиксирует BPM HPDG."],
-      ["03", "Нажми Generate", "Swing и Density применяются сразу. Seed позволяет точно повторить результат."],
-      ["04", "Прослушай и уточни", "Play — превью, Mutate — вариация, per-lane RG — новый рисунок одного инструмента."],
-      ["05", "Перетащи MIDI", "Drag Full отправляет весь паттерн на track; lane Drag — только выбранный инструмент."],
-    ],
-    installTitle: "Что устанавливается",
-    installItems: [
-      "VST3 в общей папке Common Files\\VST3",
-      "Standalone-приложение в Program Files\\HPDG",
-      "Factory kits — отдельные sample packs не нужны",
-      "Пользовательские patterns, exports и Style Lab captures остаются в Documents",
-    ],
-    requirements: "Нужны Windows 10 или новее и 64-bit система. Для VST3 — совместимая DAW; Standalone работает без host.",
-    compatibilityTitle: "Работает там, где ты работаешь",
-    compatibilityText:
-      "FL Studio, Ableton Live, Reaper, Cubase, Studio One и другие VST3-hosts. В FL Studio HPDG использует компактный header-only layout, чтобы обходить известную проблему сканирования — все функции генерации остаются доступны.",
-    faqTitle: "Частые вопросы",
-    faqs: [
-      ["Это sample player или MIDI generator?", "И то и другое. HPDG назначает сэмплы для preview и audio print, но сам паттерн — MIDI. Built-in sounds можно отключить и использовать свой drum rack."],
-      ["Можно редактировать паттерн вручную?", "Да. Grid — обычный step editor: кликай hits, перемещай их и меняй Snap. Per-lane RG не затрагивает ручные правки на других lanes."],
-      ["Почему первая генерация иногда дольше?", "При первом Generate для нового substyle HPDG читает сохранённые reference data. После этого данные кэшируются, и следующие генерации становятся быстрыми."],
-      ["Почему тот же набор настроек дал другой рисунок?", "Без фиксированного Seed генерация намеренно создаёт новую вариацию. Укажи Seed, если нужен точно воспроизводимый результат."],
-      ["DAW не видит плагин — что делать?", "Закрой и снова открой DAW, затем запусти rescan в plugin manager. Убедись, что используется 64-bit host. Standalone поможет проверить саму установку."],
-    ],
-    fullFaq: "Открыть полный FAQ",
-    integrityTitle: "Проверенный релиз",
-    integrityText: "Архив загружен напрямую из предоставленного Release.zip и проверен после загрузки.",
-    sha: "SHA-256",
-    finalTitle: "Поймай ритм. Дальше — твой ход.",
-    finalText:
-      "Скачивание всегда бесплатное. Если HPDG помог быстрее дойти до музыки, можешь поддержать дальнейшую разработку добровольными чаевыми.",
-    supportTitle: "Поддержать HPDG",
-    supportText: "Понравился HPDG? Оставь чаевые, чтобы поддержать разработку и будущие бесплатные обновления. Скачать VST можно бесплатно в любом случае.",
-    supportPending: "Платёжная ссылка пока не подключена",
-    back: "Вернуться на главную",
-  },
-  en: {
-    eyebrow: "HamloProd Drum Generator · VST3 / Standalone",
-    status: "Current Windows release",
-    title: "Build the groove.",
-    titleAccent: "Skip the grid counting.",
-    intro:
-      "HPDG creates complete drum patterns from a genre and a feel. The result is real MIDI you can edit, mutate, and drag straight into your DAW.",
-    download: "Download free",
-    tip: "Leave a tip!",
-    free: "Free · no subscription",
-    release: "HPDGRelease.zip · 58 MB",
-    platform: "Windows 10+ · 64-bit",
-    included: "VST3 + Standalone + Factory Kits",
-    scroll: "Explore the release",
-    manifestoTitle: "Idea first. Details second.",
-    manifestoText:
-      "Pick a genre and substyle, set Swing, Density, and length — HPDG builds kick, snare, hats, ghost layers, and textures as one coherent rhythm instead of random hits.",
-    genresLabel: "Available in this release",
-    genres: ["Boom Bap", "Trap"],
-    future: "Rap and Drill already exist in the engine and will return after more tuning.",
-    featuresTitle: "From first idea to the track",
-    featuresIntro:
-      "The generator speeds up the first draft without taking away control: every layer can be rebuilt, edited, and exported separately.",
-    features: [
-      ["Genre engines", "Boom Bap and Trap with their own substyle profiles, pocket, swing, and density.", "wand"],
-      ["Generate + Mutate", "Generate writes a new pattern; Mutate changes fills and accents while preserving its shape.", "refresh"],
-      ["Editable Grid", "Add, remove, and move hits by hand. Snap changes the editing resolution.", "grid"],
-      ["Instrument Rack", "Kick, snare, hats, ghost lanes, texture, and Sub808 — with Solo, Mute, Clear, and per-lane RG.", "layers"],
-      ["MIDI and WAV", "Drag Full or drag one lane; Export Full and Export Loop WAV write files to disk.", "music"],
-      ["Your own samples", "Factory kits are included, but every lane can point at your own one-shots.", "sliders"],
-      ["Style Lab", "Feed it a reference to carry placement, density, and kick/hi-hat feel into future generations.", "waves"],
-      ["Exact Seed", "The same Genre, Substyle, Swing, Density, and Seed always reproduce the same pattern.", "gauge"],
-    ],
-    guideEyebrow: "Field Guide · interface",
-    guideTitle: "The whole rhythm in one window",
-    guideText:
-      "The top bar handles generation, tempo, transport, and export. Below it, the instrument rack and step grid keep every lane within reach.",
-    guideButton: "Open the full Field Guide",
-    rackTitle: "Lane by lane",
-    rackText:
-      "Regenerate, Solo, Mute, Clear, sample selection, level/pitch, and individual MIDI drag repeat on every track. + Lane adds another instrument.",
-    workflowTitle: "Five moves from blank session to MIDI",
-    workflow: [
-      ["01", "Choose Genre and Substyle", "Boom Bap / Classic is the starting point; every substyle carries its own feel."],
-      ["02", "Set Bars and Tempo", "Choose the section length. Sync follows the DAW; Lock keeps HPDG at a fixed BPM."],
-      ["03", "Hit Generate", "Swing and Density apply immediately. A fixed Seed makes the result reproducible."],
-      ["04", "Audition and refine", "Play previews, Mutate varies the idea, and per-lane RG rebuilds one instrument."],
-      ["05", "Drag the MIDI", "Drag Full sends the pattern to a track; lane Drag exports only the chosen instrument."],
-    ],
-    installTitle: "What gets installed",
-    installItems: [
-      "VST3 in the shared Common Files\\VST3 folder",
-      "Standalone app in Program Files\\HPDG",
-      "Factory kits — no separate sample packs required",
-      "Your patterns, exports, and Style Lab captures stay in Documents",
-    ],
-    requirements: "Requires Windows 10 or later and a 64-bit system. VST3 needs a compatible DAW; Standalone works without a host.",
-    compatibilityTitle: "Works where you work",
-    compatibilityText:
-      "FL Studio, Ableton Live, Reaper, Cubase, Studio One, and other VST3 hosts. In FL Studio, HPDG uses a compact header-only layout to avoid a known scan issue — every generation feature remains available.",
-    faqTitle: "Frequently asked",
-    faqs: [
-      ["Is this a sample player or a MIDI generator?", "Both. HPDG assigns sounds for preview and audio printing, but the pattern itself is MIDI. Mute the built-in sounds and use your own drum rack whenever you want."],
-      ["Can I edit a pattern by hand?", "Yes. The Grid is a regular step editor: click hits, move them, and change Snap. Per-lane RG leaves edits on every other lane untouched."],
-      ["Why is the first generation sometimes slower?", "The first Generate on a new substyle reads its saved reference data. HPDG caches it immediately, so the following generations are fast."],
-      ["Why did the same settings create a different rhythm?", "Without a fixed Seed, Generate intentionally creates a fresh variation. Set a Seed when you need exact repeatability."],
-      ["My DAW cannot see the plugin — what now?", "Close and reopen the DAW, then run a rescan in its plugin manager. Confirm the host is 64-bit. The Standalone app can verify the installation itself."],
-    ],
-    fullFaq: "Open the full FAQ",
-    integrityTitle: "Verified release",
-    integrityText: "The archive came directly from the supplied Release.zip and was verified after upload.",
-    sha: "SHA-256",
-    finalTitle: "Catch the rhythm. Take it from here.",
-    finalText:
-      "The download is always free. If HPDG gets you to the music faster, you can support continued development with an optional tip.",
-    supportTitle: "Support HPDG",
-    supportText: "Like HPDG? Leave a tip to support its development and future free updates. The VST stays free to download for everyone.",
-    supportPending: "The payment link is not connected yet",
-    back: "Back to home",
-  },
-} as const;
-
-const icons = {
-  wand: WandSparkles,
-  refresh: RefreshCw,
-  grid: Grid3X3,
-  layers: Layers3,
-  music: Music2,
-  sliders: SlidersHorizontal,
-  waves: Waves,
-  gauge: Gauge,
-} as const;
-
-export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
+  const isRu = locale === "ru";
 
   return {
-    title: locale === "ru" ? "HPDG — бесплатный Drum Generator VST3" : "HPDG — Free Drum Generator VST3",
-    description:
-      locale === "ru"
-        ? "Бесплатный VST3 и Standalone генератор барабанных MIDI-паттернов для Windows."
-        : "A free VST3 and Standalone MIDI drum pattern generator for Windows.",
+    title: isRu
+      ? "HPDG Beta 2 — генератор барабанов и баса VST3"
+      : "HPDG Beta 2 — Drum & Bass Generator VST3",
+    description: isRu
+      ? "HPDG генерирует барабаны и бас в стилях Boom Bap, Trap, DnB и Techno, анализирует семплы и экспортирует MIDI и WAV. Beta 2 для Windows 10/11."
+      : "HPDG generates drums and bass for Boom Bap, Trap, DnB and Techno, analyzes samples, and exports MIDI and WAV. Beta 2 for Windows 10/11.",
+    alternates: {
+      canonical: `https://hamloprod.org/${locale}/vst`,
+      languages: {
+        en: "https://hamloprod.org/en/vst",
+        ru: "https://hamloprod.org/ru/vst",
+      },
+    },
     openGraph: {
-      title: "HPDG · HamloProd Drum Generator",
-      description:
-        locale === "ru"
-          ? "Создавай groove и перетаскивай готовый MIDI прямо в DAW."
-          : "Build a groove and drag the finished MIDI straight into your DAW.",
-      images: [RACK_IMAGE],
       type: "website",
+      siteName: "HamloProd",
+      title: "HPDG — Drum & Bass Generator VST3",
+      description: isRu
+        ? "Один клик — и готовы барабаны с басом. Beta 2 для Windows."
+        : "One click writes drums and bass. Beta 2 for Windows.",
+      images: [
+        {
+          url: "https://hamloprod.org/hpdg/img/og_cover.jpg",
+          width: 1920,
+          height: 1080,
+          alt: "HPDG Drum & Bass Generator VST3",
+        },
+      ],
     },
   };
 }
 
-function ActionLink({
-  href,
-  children,
-  kind = "primary",
-  newTab = false,
-}: {
-  href: string;
-  children: ReactNode;
-  kind?: "primary" | "tip" | "quiet";
-  newTab?: boolean;
-}) {
-  const classes = {
-    primary: "border-[#d9ae68] bg-[#e7c07f] text-[#17120b] hover:bg-[#f2d49f]",
-    tip: "border-[#d9ae68]/50 bg-[#d9ae68]/10 text-[#ead0a1] hover:bg-[#d9ae68]/20",
-    quiet: "border-white/15 bg-white/[0.025] text-[var(--color-paper-200)] hover:bg-white/[0.07]",
-  }[kind];
+function Sequencer() {
+  const rows = [
+    { label: "HI-HAT", hits: [0, 2, 4, 6, 8, 10, 12, 14] },
+    { label: "SNARE", hits: [4, 12] },
+    { label: "KICK", hits: [0, 7, 10] },
+    { label: "SUB 808", hits: [0, 3, 7, 10, 11] },
+  ];
 
   return (
-    <a
-      href={href}
-      target={newTab ? "_blank" : undefined}
-      rel={newTab ? "noreferrer" : undefined}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 border px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] transition-colors ${classes}`}
-    >
-      {children}
-    </a>
+    <div className={styles.sequencer} aria-hidden="true">
+      <div className={styles.seqHeader}>
+        <span>BOOM BAP / CLASSIC</span>
+        <span className={styles.bpm}>90 BPM</span>
+      </div>
+      <div className={styles.seqRows}>
+        {rows.map((row) => (
+          <div className={styles.seqRow} key={row.label}>
+            <span className={styles.seqLabel}>{row.label}</span>
+            <span className={styles.seqCells}>
+              {Array.from({ length: 16 }, (_, index) => (
+                <i className={row.hits.includes(index) ? styles.hit : ""} key={index} />
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className={styles.generateButton}>GENERATE PATTERN</div>
+    </div>
+  );
+}
+
+type Feature = {
+  index: string;
+  title: string;
+  text: string;
+  image: string;
+  imageWidth: number;
+  imageHeight: number;
+  alt: string;
+  note?: string;
+};
+
+function FeatureBlock({ feature, flip = false }: { feature: Feature; flip?: boolean }) {
+  return (
+    <article className={`${styles.feature} ${flip ? styles.featureFlip : ""}`}>
+      <div className={styles.featureCopy}>
+        <span className={styles.index}>{feature.index}</span>
+        <h3>{feature.title}</h3>
+        <p>{feature.text}</p>
+        {feature.note ? <p className={styles.featureNote}>{feature.note}</p> : null}
+      </div>
+      <figure className={styles.screenshot}>
+        <Image
+          src={feature.image}
+          width={feature.imageWidth}
+          height={feature.imageHeight}
+          sizes="(max-width: 900px) 100vw, 58vw"
+          alt={feature.alt}
+        />
+      </figure>
+    </article>
   );
 }
 
 export default async function SectorVstPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
-  const t = copy[locale];
+  const isRu = locale === "ru";
+  const [vstPosts, adminSession] = await Promise.all([getPosts("vst"), getAdminSessionState()]);
+  const posts = await localizePosts(vstPosts, locale);
+  const adminPosts = adminSession.isAuthenticated
+    ? (await getAdminPosts()).filter((post) => post.section === "vst")
+    : [];
 
-  const softwareJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "HPDG — HamloProd Drum Generator",
-    applicationCategory: "MultimediaApplication",
-    operatingSystem: "Windows 10 or later, 64-bit",
-    description: t.intro,
-    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  };
+  const features: Feature[] = isRu
+    ? [
+        {
+          index: "01",
+          title: "Четыре жанра. Не случайные ноты.",
+          text: "Выбери Boom Bap, Trap, Drum & Bass или Techno и нажми Generate Pattern. У каждого подстиля свои правила грува, свинга и плотности, поэтому каждый результат звучит как новый бит в выбранной эстетике.",
+          note: "Boom Bap · Trap · DnB · Techno",
+          image: "/hpdg/img/boombap-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "HPDG генерирует паттерн Boom Bap",
+        },
+        {
+          index: "02",
+          title: "Стартуй от своего семпла",
+          text: "Брось луп в Sample Analysis. HPDG определит темп, свинг, тональность и басовые ноты, а затем соберёт бит под этот материал. Луп и результат можно слушать вместе прямо в плагине.",
+          image: "/hpdg/img/guide-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "Анализ семпла и Guide generation в HPDG",
+        },
+        {
+          index: "03",
+          title: "Разбери брейк на дорожки",
+          text: "Copy Break распознаёт удары брейка и переносит их в Kick, Snare и Hi-Hat с исходным таймингом и свингом. После этого можно сменить звуки, квантизировать, добавить бас или мутировать паттерн.",
+          image: "/hpdg/img/copybreak-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "Режим Copy Break в HPDG",
+        },
+        {
+          index: "04",
+          title: "Перетащи результат в DAW",
+          text: "Экспортируй весь паттерн или отдельные дорожки как MIDI. Перетаскивай WAV уже со звуком и эффектами или сохраняй полный микс через Export Loop WAV.",
+          image: "/hpdg/img/daw_drag-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 900,
+          alt: "Перетаскивание MIDI-паттерна из HPDG в DAW",
+        },
+      ]
+    : [
+        {
+          index: "01",
+          title: "Four genres. Not random notes.",
+          text: "Choose Boom Bap, Trap, Drum & Bass or Techno and press Generate Pattern. Every substyle follows its own groove, swing and density rules, so each result sounds like a fresh beat in the chosen aesthetic.",
+          note: "Boom Bap · Trap · DnB · Techno",
+          image: "/hpdg/img/boombap-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "HPDG generating a Boom Bap pattern",
+        },
+        {
+          index: "02",
+          title: "Start from your sample",
+          text: "Drop a loop into Sample Analysis. HPDG detects its tempo, swing, key and bass notes, then builds a beat around that material. Preview the loop and the generated beat together inside the plugin.",
+          image: "/hpdg/img/guide-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "Sample Analysis and Guide generation in HPDG",
+        },
+        {
+          index: "03",
+          title: "Turn a break into lanes",
+          text: "Copy Break detects the hits and moves them into Kick, Snare and Hi-Hat lanes with the original timing and swing. Swap sounds, quantize, add bass or mutate the pattern from there.",
+          image: "/hpdg/img/copybreak-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 833,
+          alt: "Copy Break mode in HPDG",
+        },
+        {
+          index: "04",
+          title: "Drag the result into your DAW",
+          text: "Export the full pattern or individual lanes as MIDI. Drag rendered WAV lanes with their sound and effects, or save the complete mix with Export Loop WAV.",
+          image: "/hpdg/img/daw_drag-1600.webp",
+          imageWidth: 1600,
+          imageHeight: 900,
+          alt: "Dragging a MIDI pattern from HPDG into a DAW",
+        },
+      ];
+
+  const newItems = isRu
+    ? [
+        "Trim Sample: Loop / Play / Stop и курсор воспроизведения по клику на волну",
+        "Selection = N bars: темп считается по точному количеству тактов",
+        "Sub808 следует MIDI-нотам; − / + меняет октаву, Shift — полутон",
+        "Скины Dark и Steel переключаются прямо из меню Skin",
+        "Второй Techno-кит в эстетике tech house и 100 новых семплов",
+      ]
+    : [
+        "Trim Sample: Loop / Play / Stop plus click-to-position playback",
+        "Selection = N bars calculates tempo from an exact bar count",
+        "Sub808 follows written MIDI notes; − / + changes octave, Shift changes semitone",
+        "Dark and Steel skins switch directly from the Skin menu",
+        "A second Techno kit focused on tech house, plus 100 new samples",
+      ];
 
   return (
-    <section className="hpdg-page -mx-2 space-y-24 overflow-hidden pb-8 sm:-mx-4 lg:space-y-32">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
+    <div className={styles.page}>
+      <nav className={styles.localNav} aria-label={isRu ? "Разделы страницы" : "Page sections"}>
+        <a href="#features">{isRu ? "Возможности" : "Features"}</a>
+        <a href="#video">{isRu ? "Видео" : "Video"}</a>
+        <a href="#beta2">Beta 2</a>
+        <a href="#download">{isRu ? "Скачать" : "Download"}</a>
+      </nav>
 
-      <section className="hpdg-hero relative isolate min-h-[720px] overflow-hidden border border-[#dfb66f]/20 bg-[#070604]">
-        <div className="hpdg-grid absolute inset-0 opacity-45" />
-        <div className="absolute -right-40 top-20 h-[520px] w-[520px] rounded-full bg-[#d3a456]/[0.08] blur-[120px]" />
-        <Image
-          src={LOGO_URL}
-          alt=""
-          width={430}
-          height={518}
-          aria-hidden="true"
-          className="absolute -right-10 top-8 h-[610px] w-auto rotate-6 object-contain opacity-[0.055] invert"
-        />
-
-        <div className="relative z-10 flex min-h-[720px] flex-col justify-center px-6 py-16 sm:px-10 lg:px-16">
-          <div className="mb-8 inline-flex w-fit items-center gap-2 border border-[#d9ae68]/35 bg-black/50 px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-[#e0bd82]">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#e6bb74]" />
-            {t.status}
-          </div>
-          <p className="text-xs uppercase tracking-[0.34em] text-[var(--color-paper-400)]">{t.eyebrow}</p>
-          <h1 className="mt-5 max-w-5xl font-sans text-[clamp(4.8rem,12vw,9.8rem)] uppercase leading-[0.78] tracking-[0.01em] text-[var(--color-paper-100)]">
-            {t.title}
-            <span className="mt-3 block text-[#dfb36c]">{t.titleAccent}</span>
-          </h1>
-          <p className="mt-8 max-w-2xl text-sm leading-7 text-[var(--color-paper-200)] sm:text-base sm:leading-8">{t.intro}</p>
-
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <ActionLink href={RELEASE_URL}>
-              <Download className="h-4 w-4" />
-              {t.download}
-            </ActionLink>
-            <ActionLink href={TIP_URL || "#support"} kind="tip" newTab={Boolean(TIP_URL)}>
-              <Coffee className="h-4 w-4" />
-              {t.tip}
-            </ActionLink>
-          </div>
-          <p className="mt-4 text-[10px] uppercase tracking-[0.2em] text-[var(--color-paper-400)]">{t.free}</p>
-
-          <div className="mt-12 grid max-w-4xl gap-px border border-white/10 bg-white/10 sm:grid-cols-3">
-            {[t.release, t.platform, t.included].map((item) => (
-              <div key={item} className="bg-black/65 px-4 py-4 text-[10px] uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
-                <Check className="mr-2 inline h-3.5 w-3.5 text-[#d9ae68]" />
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <a href="#features" className="absolute bottom-7 right-7 z-20 hidden items-center gap-3 text-[10px] uppercase tracking-[0.24em] text-[var(--color-paper-400)] hover:text-white sm:flex">
-          {t.scroll} <ArrowDown className="h-4 w-4" />
-        </a>
-      </section>
-
-      <section className="mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
-        <h2 className="font-sans text-6xl uppercase leading-[0.9] tracking-[0.03em] text-[var(--color-paper-100)] sm:text-7xl">{t.manifestoTitle}</h2>
-        <div className="border-l border-[#d9ae68]/40 pl-6">
-          <p className="text-sm leading-7 text-[var(--color-paper-200)]">{t.manifestoText}</p>
-          <p className="mt-7 text-[10px] uppercase tracking-[0.24em] text-[var(--color-paper-400)]">{t.genresLabel}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {t.genres.map((genre) => (
-              <span key={genre} className="border border-[#d9ae68]/30 bg-[#d9ae68]/[0.07] px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#e6c994]">{genre}</span>
-            ))}
-          </div>
-          <p className="mt-4 text-xs leading-6 text-[var(--color-paper-400)]">{t.future}</p>
-        </div>
-      </section>
-
-      <section id="features" className="scroll-mt-12 px-4">
-        <div className="mb-10 grid gap-5 lg:grid-cols-2 lg:items-end">
-          <h2 className="font-sans text-5xl uppercase tracking-[0.04em] text-[var(--color-paper-100)] sm:text-6xl">{t.featuresTitle}</h2>
-          <p className="max-w-xl text-sm leading-7 text-[var(--color-paper-200)] lg:justify-self-end">{t.featuresIntro}</p>
-        </div>
-        <div className="grid border-l border-t border-white/10 md:grid-cols-2 lg:grid-cols-4">
-          {t.features.map(([title, text, icon], index) => {
-            const Icon = icons[icon];
-            return (
-              <article key={title} className="group min-h-64 border-b border-r border-white/10 bg-black/55 p-6 transition-colors hover:bg-[#d9ae68]/[0.055]">
-                <div className="flex items-start justify-between">
-                  <Icon className="h-6 w-6 text-[#d0a15a]" strokeWidth={1.4} />
-                  <span className="font-sans text-4xl text-white/[0.08]">0{index + 1}</span>
-                </div>
-                <h3 className="mt-9 font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{title}</h3>
-                <p className="mt-3 text-sm leading-7 text-[var(--color-paper-400)] group-hover:text-[var(--color-paper-200)]">{text}</p>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="space-y-16 px-4">
-        <div className="grid gap-7 lg:grid-cols-[0.34fr_0.66fr] lg:items-center">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[#c7954d]">{t.guideEyebrow}</p>
-            <h2 className="mt-4 font-sans text-5xl uppercase leading-none tracking-[0.04em] text-[var(--color-paper-100)]">{t.guideTitle}</h2>
-            <p className="mt-5 text-sm leading-7 text-[var(--color-paper-400)]">{t.guideText}</p>
-            <div className="mt-7">
-              <ActionLink href={GUIDE_URL} kind="quiet" newTab>
-                <FileText className="h-4 w-4" /> {t.guideButton} <ExternalLink className="h-3.5 w-3.5" />
-              </ActionLink>
+      <section className={styles.hero}>
+        <Image className={styles.heroMark} src="/hpdg/img/logo_white.webp" width={850} height={1024} alt="" priority />
+        <div className={styles.heroGrid}>
+          <div className={styles.heroCopy}>
+            <p className={styles.eyebrow}>BETA 2 · WINDOWS 10/11 · VST3</p>
+            <Image className={styles.heroLogo} src="/hpdg/img/logo_white.webp" width={106} height={128} alt="HPDG" priority />
+            <h1>HPDG</h1>
+            <p className={styles.heroSubtitle}>DRUM &amp; BASS GENERATOR VST3</p>
+            <p className={styles.heroLead}>
+              {isRu
+                ? "Один клик — и готовы барабаны с басом. Начни с жанра или брось свой луп: HPDG соберёт бит в его темпе и тональности."
+                : "One click writes drums and bass. Start with a genre or drop in your own loop: HPDG builds a beat in its tempo and key."}
+            </p>
+            <ul className={styles.heroBullets}>
+              <li>Boom Bap · Trap · DnB · Techno</li>
+              <li>{isRu ? "849 аудиосемплов внутри" : "849 included audio samples"}</li>
+              <li>{isRu ? "MIDI и WAV — прямо в DAW" : "MIDI and WAV — straight into your DAW"}</li>
+            </ul>
+            <div className={styles.heroActions}>
+              <a className={styles.primaryButton} href={installerHref} download>
+                {isRu ? "Скачать Beta 2" : "Download Beta 2"}<span>↓</span>
+              </a>
+              <a className={styles.secondaryButton} href="#video">
+                <span aria-hidden="true">▶</span>{isRu ? "Смотреть видео" : "Watch the demo"}
+              </a>
+              <a className={styles.tipButton} href={tipHref} target="_blank" rel="noreferrer">
+                {isRu ? "На чай!" : "Leave a tip!"}
+                <span aria-hidden="true">↗</span>
+              </a>
             </div>
+            <p className={styles.heroMeta}>
+              {isRu ? "Версия 0.1.0-beta.2 · x64 · установщик 94 МБ" : "Version 0.1.0-beta.2 · x64 · 94 MB installer"}
+            </p>
           </div>
-          <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <Image
-              src={CONTROLS_IMAGE}
-              alt="HPDG transport and pattern controls"
-              width={1476}
-              height={150}
-              className="h-auto w-full"
-              loading="lazy"
-            />
-          </figure>
-        </div>
-
-        <div className="grid gap-7 lg:grid-cols-[0.68fr_0.32fr] lg:items-center">
-          <figure className="hpdg-screen overflow-hidden bg-[#eae4d7] p-2">
-            <Image
-              src={RACK_IMAGE}
-              alt="HPDG instrument rack and editable pattern grid"
-              width={1476}
-              height={379}
-              className="h-auto w-full"
-              loading="lazy"
-            />
-          </figure>
-          <div className="lg:pl-5">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[#c7954d]">02 · Instrument Rack & Grid</p>
-            <h2 className="mt-4 font-sans text-5xl uppercase leading-none tracking-[0.04em] text-[var(--color-paper-100)]">{t.rackTitle}</h2>
-            <p className="mt-5 text-sm leading-7 text-[var(--color-paper-400)]">{t.rackText}</p>
-          </div>
+          <Sequencer />
         </div>
       </section>
 
-      <section className="px-4">
-        <h2 className="max-w-4xl font-sans text-5xl uppercase tracking-[0.04em] text-[var(--color-paper-100)] sm:text-6xl">{t.workflowTitle}</h2>
-        <div className="mt-10 grid gap-px bg-white/10 md:grid-cols-2 lg:grid-cols-5">
-          {t.workflow.map(([number, title, text]) => (
-            <article key={number} className="min-h-72 bg-[#050505] p-6">
-              <span className="font-sans text-6xl text-[#d6a45b]">{number}</span>
-              <h3 className="mt-7 font-sans text-2xl uppercase tracking-[0.07em] text-[var(--color-paper-100)]">{title}</h3>
-              <p className="mt-3 text-xs leading-6 text-[var(--color-paper-400)]">{text}</p>
-            </article>
+      <section className={styles.trustStrip} aria-label={isRu ? "Основные факты" : "Key facts"}>
+        <div><strong>4</strong><span>{isRu ? "жанра" : "genres"}</span></div>
+        <div><strong>849</strong><span>{isRu ? "семплов" : "samples"}</span></div>
+        <div><strong>MIDI + WAV</strong><span>{isRu ? "экспорт" : "export"}</span></div>
+        <div><strong>NO KEY</strong><span>{isRu ? "без активации" : "no activation"}</span></div>
+      </section>
+
+      <section className={styles.videoSection} id="video">
+        <header className={styles.sectionHeader}>
+          <span>LIVE / 03:41</span>
+          <h2>{isRu ? "Посмотри, как это звучит" : "See and hear it in action"}</h2>
+          <p>{isRu ? "Каждый экран и каждый звук в этом видео — настоящий плагин." : "Every screen and every sound in this video comes from the real plugin."}</p>
+        </header>
+        <div className={styles.videoFrame}>
+          <video controls preload="none" playsInline poster="/hpdg/img/poster.jpg">
+            <source src="/hpdg/video/hpdg_demo_720p.mp4" type="video/mp4" media="(max-width: 900px)" />
+            <source src="/hpdg/video/hpdg_demo_1080p.mp4" type="video/mp4" />
+            <a href="/hpdg/video/hpdg_demo_720p.mp4">HPDG demo MP4</a>
+          </video>
+        </div>
+      </section>
+
+      <section className={styles.features} id="features">
+        <header className={styles.sectionHeader}>
+          <span>WORKFLOW</span>
+          <h2>{isRu ? "От идеи до дорожки" : "From idea to track"}</h2>
+          <p>{isRu ? "Генерируй основу, направляй грув своим семплом и забирай результат в привычный проект." : "Generate the foundation, guide the groove with your sample, and move the result into your project."}</p>
+        </header>
+        {features.map((feature, index) => <FeatureBlock feature={feature} flip={index % 2 === 1} key={feature.index} />)}
+      </section>
+
+      <section className={styles.lanes}>
+        <div className={styles.lanesCopy}>
+          <span className={styles.index}>05</span>
+          <h2>{isRu ? "Каждая дорожка под контролем" : "Every lane under control"}</h2>
+          <ul>
+            <li>{isRu ? "RG перегенерирует только выбранную дорожку" : "RG regenerates only the selected lane"}</li>
+            <li>{isRu ? "Lock, Solo, Mute и Clear на каждой дорожке" : "Lock, Solo, Mute and Clear on every lane"}</li>
+            <li>{isRu ? "Отдельная громкость, звук, MIDI и WAV" : "Independent volume, sound, MIDI and WAV"}</li>
+            <li>{isRu ? "Mutate делает небольшую вариацию всего бита" : "Mutate creates a subtle variation of the full beat"}</li>
+          </ul>
+        </div>
+        <figure className={styles.lanesImage}>
+          <Image src="/hpdg/img/tut_2_lanes-1160.webp" width={1160} height={548} sizes="(max-width: 900px) 100vw, 62vw" alt={isRu ? "Органы управления дорожками Kick и Sub808" : "Kick and Sub808 lane controls"} />
+        </figure>
+      </section>
+
+      <section className={styles.betaSection} id="beta2">
+        <div className={styles.betaIntro}>
+          <p className={styles.eyebrow}>0.1.0 / BETA 2</p>
+          <h2>{isRu ? "Что нового" : "What’s new"}</h2>
+          <p>{isRu ? "Beta 2 углубляет работу с семплами и басом, добавляет ещё один характер Techno и делает интерфейс гибче." : "Beta 2 deepens sample and bass control, adds another Techno character, and makes the interface more flexible."}</p>
+        </div>
+        <ol className={styles.updateList}>
+          {newItems.map((item, index) => <li key={item}><span>{String(index + 1).padStart(2, "0")}</span>{item}</li>)}
+        </ol>
+        <div className={styles.skinGrid}>
+          {[
+            ["Dark", "/hpdg/img/skin_dark-1600.webp"],
+            ["Steel", "/hpdg/img/skin_steel-1600.webp"],
+            ["Sketch", "/hpdg/img/skin_sketch-1600.webp"],
+          ].map(([name, src]) => (
+            <figure key={name}>
+              <Image src={src} width={1600} height={833} sizes="(max-width: 800px) 100vw, 33vw" alt={`HPDG ${name} skin`} />
+              <figcaption>{name}</figcaption>
+            </figure>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-6 px-4 lg:grid-cols-[1.05fr_0.95fr]">
-        <article className="case-panel p-7 sm:p-9">
-          <PackageCheck className="h-6 w-6 text-[#d2a35b]" />
-          <h2 className="mt-5 font-sans text-5xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{t.installTitle}</h2>
-          <ul className="mt-8 space-y-4">
-            {t.installItems.map((item) => (
-              <li key={item} className="flex gap-3 text-sm leading-7 text-[var(--color-paper-200)]">
-                <Check className="mt-1.5 h-4 w-4 shrink-0 text-[#d2a35b]" /> {item}
-              </li>
+      <section className={styles.downloadSection} id="download">
+        <div className={styles.downloadGlow} />
+        <div className={styles.downloadCopy}>
+          <p className={styles.eyebrow}>{isRu ? "ПУБЛИЧНАЯ BETA 2" : "PUBLIC BETA 2"}</p>
+          <h2>{isRu ? "Скачай. Установи. Делай биты." : "Download. Install. Make beats."}</h2>
+          <p>{isRu ? "В установщик входят VST3, полная библиотека из 849 аудиосемплов, руководство и уведомления о правах. Ключ активации и интернет для работы не нужны." : "The installer includes the VST3, the complete 849-sample audio library, the manual, and rights notices. No activation key or internet connection is required."}</p>
+          <div className={styles.downloadActions}>
+            <a className={styles.primaryButton} href={installerHref} download>{isRu ? "Скачать для Windows" : "Download for Windows"}<span>↓</span></a>
+            <span>v0.1.0-beta.2 · 94 MB</span>
+          </div>
+        </div>
+        <div className={styles.requirements}>
+          <h3>{isRu ? "Перед установкой" : "Before installing"}</h3>
+          <ol>
+            <li>{isRu ? "Закрой DAW." : "Close your DAW."}</li>
+            <li>{isRu ? "Запусти установщик Windows." : "Run the Windows installer."}</li>
+            <li>{isRu ? "Пересканируй VST3-плагины в DAW." : "Rescan VST3 plugins in your DAW."}</li>
+          </ol>
+          <dl>
+            <div><dt>OS</dt><dd>Windows 10 / 11 x64</dd></div>
+            <div><dt>FORMAT</dt><dd>VST3</dd></div>
+            <div><dt>PATH</dt><dd>C:\Program Files\Common Files\VST3</dd></div>
+          </dl>
+        </div>
+        <div className={styles.checksum}>
+          <span>SHA-256</span><code>{checksum}</code>
+          <a href={`${installerHref}.sha256`} download>{isRu ? "Скачать файл проверки" : "Download checksum file"}</a>
+        </div>
+      </section>
+
+      <section className={styles.faq}>
+        <header className={styles.sectionHeader}>
+          <span>FAQ / STATUS</span>
+          <h2>{isRu ? "Честно о бете" : "An honest beta"}</h2>
+        </header>
+        <div className={styles.faqGrid}>
+          <details open>
+            <summary>{isRu ? "Это уже рабочий плагин?" : "Is this a working plugin?"}</summary>
+            <p>{isRu ? "Да. Все четыре движка генерации работают, установщик и библиотека входят в релиз. Это всё ещё бета: сохраняй проекты и сообщай об ошибках с версией DAW, Windows, жанром и шагами воспроизведения." : "Yes. All four generation engines work, and the release includes an installer and factory library. It is still a beta: save your projects and report issues with your DAW version, Windows version, genre and reproduction steps."}</p>
+          </details>
+          <details>
+            <summary>{isRu ? "Нужен ли интернет или ключ?" : "Do I need internet or a license key?"}</summary>
+            <p>{isRu ? "Нет. Для работы плагина не нужны ни подключение к интернету, ни ключ активации." : "No. The plugin does not require an internet connection or activation key to run."}</p>
+          </details>
+          <details>
+            <summary>{isRu ? "Есть версия для macOS или AU?" : "Is there a macOS or AU version?"}</summary>
+            <p>{isRu ? "Нет. Текущая Beta 2 — только VST3 для Windows 10/11 x64. macOS и AU пока не обещаются." : "No. The current Beta 2 is VST3 only for Windows 10/11 x64. macOS and AU are not currently promised."}</p>
+          </details>
+          <details>
+            <summary>{isRu ? "Что входит в библиотеку?" : "What is included in the library?"}</summary>
+            <p>{isRu ? "Полная фабричная библиотека содержит 849 аудиосемплов. Beta 2 добавляет 100 новых семплов и второй набор Techno в эстетике tech house." : "The complete factory library contains 849 audio samples. Beta 2 adds 100 new samples and a second Techno kit focused on tech house."}</p>
+          </details>
+        </div>
+      </section>
+
+      {posts.length ? (
+        <section className={styles.news}>
+          <header className={styles.sectionHeader}><span>DEV LOG</span><h2>{isRu ? "Новости HPDG" : "HPDG updates"}</h2></header>
+          <div className={styles.newsGrid}>
+            {posts.map((post) => (
+              <article key={post.id}>
+                <p>{post.category}</p><h3>{post.title}</h3><p>{post.excerpt}</p>
+                <PostRichContent content={post.content} />
+                {post.ctaLabel && post.ctaUrl ? <Link href={post.ctaUrl}>{post.ctaLabel} →</Link> : null}
+              </article>
             ))}
-          </ul>
-          <p className="mt-8 border-t border-white/10 pt-5 text-xs leading-6 text-[var(--color-paper-400)]">{t.requirements}</p>
-        </article>
-        <article className="border border-[#d9ae68]/20 bg-[linear-gradient(145deg,rgba(217,174,104,0.08),rgba(5,5,5,0.98)_58%)] p-7 sm:p-9">
-          <Headphones className="h-6 w-6 text-[#d2a35b]" />
-          <h2 className="mt-5 font-sans text-5xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{t.compatibilityTitle}</h2>
-          <p className="mt-6 text-sm leading-7 text-[var(--color-paper-200)]">{t.compatibilityText}</p>
-        </article>
-      </section>
+          </div>
+        </section>
+      ) : null}
 
-      <section className="px-4">
-        <div className="grid gap-8 lg:grid-cols-[0.36fr_0.64fr]">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[#c7954d]">FAQ / Support</p>
-            <h2 className="mt-4 font-sans text-6xl uppercase tracking-[0.04em] text-[var(--color-paper-100)]">{t.faqTitle}</h2>
-            <div className="mt-7">
-              <ActionLink href={FAQ_URL} kind="quiet" newTab>
-                <FileText className="h-4 w-4" /> {t.fullFaq} <ExternalLink className="h-3.5 w-3.5" />
-              </ActionLink>
-            </div>
-          </div>
-          <div className="border-t border-white/10">
-            {t.faqs.map(([question, answer]) => (
-              <details key={question} className="group border-b border-white/10 py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-5 text-sm font-medium text-[var(--color-paper-100)]">
-                  {question}
-                  <span className="text-2xl font-light text-[#d2a35b] transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p className="max-w-3xl pt-4 text-sm leading-7 text-[var(--color-paper-400)]">{answer}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4">
-        <div className="case-panel grid gap-6 p-7 sm:p-9 lg:grid-cols-[0.4fr_0.6fr] lg:items-center">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[#c7954d]">Release integrity</p>
-            <h2 className="mt-4 font-sans text-4xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{t.integrityTitle}</h2>
-            <p className="mt-4 text-sm leading-7 text-[var(--color-paper-400)]">{t.integrityText}</p>
-          </div>
-          <div className="min-w-0 border border-white/10 bg-black/50 p-4">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-[var(--color-paper-400)]">{t.sha}</p>
-            <code className="mt-2 block overflow-x-auto text-xs text-[#e0bd82]">{RELEASE_SHA256}</code>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden border-y border-[#d9ae68]/25 bg-[linear-gradient(110deg,#100b05,#030303_60%)] px-6 py-16 sm:px-12 sm:py-20">
-        <div className="hpdg-grid absolute inset-0 opacity-25" />
-        <Music2 className="absolute -bottom-14 -right-8 h-72 w-72 text-white/[0.025]" strokeWidth={0.6} />
-        <div className="relative z-10 mx-auto max-w-4xl text-center">
-          <p className="text-[10px] uppercase tracking-[0.34em] text-[#c7954d]">HPDG · BoomBap Labs</p>
-          <h2 className="mt-5 font-sans text-6xl uppercase leading-[0.9] tracking-[0.03em] text-[var(--color-paper-100)] sm:text-8xl">{t.finalTitle}</h2>
-          <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-[var(--color-paper-200)]">{t.finalText}</p>
-          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <ActionLink href={RELEASE_URL}><Download className="h-4 w-4" /> {t.download}</ActionLink>
-            <ActionLink href={TIP_URL || "#support"} kind="tip" newTab={Boolean(TIP_URL)}><Coffee className="h-4 w-4" /> {t.tip}</ActionLink>
-          </div>
-          <p className="mt-4 text-[10px] uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.free}</p>
-        </div>
-      </section>
-
-      <section id="support" className="scroll-mt-12 px-4">
-        <div className="case-panel mx-auto max-w-3xl p-7 text-center sm:p-10">
-          <Coffee className="mx-auto h-7 w-7 text-[#d2a35b]" />
-          <h2 className="mt-5 font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{t.supportTitle}</h2>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[var(--color-paper-200)]">{t.supportText}</p>
-          <div className="mt-7 flex justify-center">
-            {TIP_URL ? (
-              <ActionLink href={TIP_URL} kind="tip" newTab><Coffee className="h-4 w-4" /> {t.tip} <ExternalLink className="h-3.5 w-3.5" /></ActionLink>
-            ) : (
-              <span className="border border-white/10 px-5 py-3 text-[10px] uppercase tracking-[0.2em] text-[var(--color-paper-400)]">{t.supportPending}</span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <div className="px-4 text-center">
-        <Link href={`/${locale}`} className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-paper-400)] transition-colors hover:text-white">{t.back}</Link>
-      </div>
-    </section>
+      {adminSession.isAuthenticated ? (
+        <section className={styles.adminSection}>
+          <p>{isRu ? "Управление VST-постами" : "VST post management"}</p>
+          <AdminPostCrudManager posts={adminPosts} />
+        </section>
+      ) : null}
+    </div>
   );
 }
