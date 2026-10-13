@@ -9,8 +9,6 @@ import { normalizeLocale } from "@/lib/market";
 import { getAdminPosts, getPosts } from "@/services/content";
 import styles from "./page.module.css";
 
-const installerHref = "/hpdg/downloads/HPDG_VST3_Setup_0.1.0-beta.2.exe";
-const checksum = "110e98fb188b35022f78e311ec2df935b167601b82f2e4126f8c7acfbd71af98";
 const tipHref =
   process.env.DRUM_GENERATOR_TIP_URL?.trim() ||
   "https://donate.stripe.com/8x29AVffaaKFavQ7QicjS00";
@@ -97,6 +95,16 @@ type Feature = {
   imageHeight: number;
   alt: string;
   note?: string;
+};
+
+type SupportTier = {
+  price: string;
+  name: string;
+  description: string;
+  includes: string[];
+  image: string;
+  featured?: boolean;
+  limited?: string;
 };
 
 function FeatureBlock({ feature, flip = false }: { feature: Feature; flip?: boolean }) {
@@ -227,13 +235,137 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         "A second Techno kit focused on tech house, plus 100 new samples",
       ];
 
+  const supportTiers: SupportTier[] = isRu
+    ? [
+        {
+          price: "$5",
+          name: "Доступ к Beta 2",
+          description: "Минимальный уровень для получения текущей закрытой беты HPDG на Windows.",
+          includes: ["HPDG 0.1.0 Beta 2", "VST3 и библиотека из 849 семплов"],
+          image: "/hpdg/rewards/item_01.webp",
+        },
+        {
+          price: "$9",
+          name: "Beta Supporter",
+          description: "Beta 2 плюс все следующие бета-сборки вплоть до выхода версии 1.0.",
+          includes: ["Все будущие beta-обновления", "Имя в списке поддержавших"],
+          image: "/hpdg/rewards/item_02.webp",
+        },
+        {
+          price: "$19.99",
+          name: "HPDG 1.0",
+          description: "Всё из предыдущих уровней и бесплатная релизная версия HPDG 1.0 после её выхода.",
+          includes: ["Лицензия HPDG 1.0", "Доставка релиза на email"],
+          image: "/hpdg/rewards/item_03.webp",
+          featured: true,
+        },
+        {
+          price: "$29",
+          name: "Все обновления 1.x",
+          description: "Версия 1.0 и все обновления линейки HPDG 1.x: новые стили, звуки и исправления.",
+          includes: ["Все обновления HPDG 1.x"],
+          image: "/hpdg/rewards/item_04.webp",
+        },
+        {
+          price: "$45",
+          name: "Beta Insider",
+          description: "Ранние тестовые сборки, закрытый канал и возможность предлагать функции.",
+          includes: ["Ранние сборки", "Закрытая группа инсайдеров"],
+          image: "/hpdg/rewards/item_05.webp",
+        },
+        {
+          price: "$100",
+          name: "Голос за жанр + титры",
+          description: "Голос за следующий жанр и имя в разделе Thank You внутри HPDG.",
+          includes: ["Голос за следующий жанр", "Имя в титрах"],
+          image: "/hpdg/rewards/item_06.webp",
+        },
+        {
+          price: "$250",
+          name: "Бери свою команду",
+          description: "Всё выше плюс три дополнительные лицензии HPDG 1.0 для друзей.",
+          includes: ["3 дополнительные лицензии HPDG 1.0"],
+          image: "/hpdg/rewards/item_08.webp",
+          limited: "20 мест",
+        },
+        {
+          price: "$500",
+          name: "Ты — семья",
+          description: "Статус Founding Supporter и персональный набор звуков, созданный вместе с тобой.",
+          includes: ["Founding Supporter", "Персональный sound kit"],
+          image: "/hpdg/rewards/item_10.webp",
+          limited: "5 мест",
+        },
+      ]
+    : [
+        {
+          price: "$5",
+          name: "Beta 2 Access",
+          description: "The minimum tier that unlocks the current closed HPDG beta for Windows.",
+          includes: ["HPDG 0.1.0 Beta 2", "VST3 and the 849-sample library"],
+          image: "/hpdg/rewards/item_01.webp",
+        },
+        {
+          price: "$9",
+          name: "Beta Supporter",
+          description: "Beta 2 plus every following beta build through the version 1.0 launch.",
+          includes: ["All future beta updates", "Name on the supporter list"],
+          image: "/hpdg/rewards/item_02.webp",
+        },
+        {
+          price: "$19.99",
+          name: "HPDG 1.0",
+          description: "Everything above plus the release version of HPDG 1.0 at no extra charge when it launches.",
+          includes: ["HPDG 1.0 license", "Release delivered by email"],
+          image: "/hpdg/rewards/item_03.webp",
+          featured: true,
+        },
+        {
+          price: "$29",
+          name: "All 1.x Updates",
+          description: "Version 1.0 and every HPDG 1.x update: new styles, sounds, fixes and improvements.",
+          includes: ["All HPDG 1.x updates"],
+          image: "/hpdg/rewards/item_04.webp",
+        },
+        {
+          price: "$45",
+          name: "Beta Insider",
+          description: "Early test builds, a private channel and a place to suggest upcoming features.",
+          includes: ["Early test builds", "Private insider group"],
+          image: "/hpdg/rewards/item_05.webp",
+        },
+        {
+          price: "$100",
+          name: "Genre Vote + Credits",
+          description: "Vote on the next genre and get your name in the in-plugin Thank You credits.",
+          includes: ["Next-genre vote", "Name in the credits"],
+          image: "/hpdg/rewards/item_06.webp",
+        },
+        {
+          price: "$250",
+          name: "Bring Your Crew",
+          description: "Everything above plus three extra HPDG 1.0 licenses for friends.",
+          includes: ["3 extra HPDG 1.0 licenses"],
+          image: "/hpdg/rewards/item_08.webp",
+          limited: "20 available",
+        },
+        {
+          price: "$500",
+          name: "You’re Family",
+          description: "Founding Supporter status and a custom sound kit developed with you.",
+          includes: ["Founding Supporter credit", "Custom sound kit"],
+          image: "/hpdg/rewards/item_10.webp",
+          limited: "5 available",
+        },
+      ];
+
   return (
     <div className={styles.page}>
       <nav className={styles.localNav} aria-label={isRu ? "Разделы страницы" : "Page sections"}>
         <a href="#features">{isRu ? "Возможности" : "Features"}</a>
         <a href="#video">{isRu ? "Видео" : "Video"}</a>
         <a href="#beta2">Beta 2</a>
-        <a href="#download">{isRu ? "Скачать" : "Download"}</a>
+        <a href="#support">{isRu ? "Получить бету" : "Get the beta"}</a>
       </nav>
 
       <section className={styles.hero}>
@@ -255,19 +387,15 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
               <li>{isRu ? "MIDI и WAV — прямо в DAW" : "MIDI and WAV — straight into your DAW"}</li>
             </ul>
             <div className={styles.heroActions}>
-              <a className={styles.primaryButton} href={installerHref} download>
-                {isRu ? "Скачать Beta 2" : "Download Beta 2"}<span>↓</span>
+              <a className={styles.primaryButton} href="#support">
+                {isRu ? "Получить Beta 2 от $5" : "Get Beta 2 from $5"}<span>↓</span>
               </a>
               <a className={styles.secondaryButton} href="#video">
                 <span aria-hidden="true">▶</span>{isRu ? "Смотреть видео" : "Watch the demo"}
               </a>
-              <a className={styles.tipButton} href={tipHref} target="_blank" rel="noreferrer">
-                {isRu ? "На чай!" : "Leave a tip!"}
-                <span aria-hidden="true">↗</span>
-              </a>
             </div>
             <p className={styles.heroMeta}>
-              {isRu ? "Версия 0.1.0-beta.2 · x64 · установщик 94 МБ" : "Version 0.1.0-beta.2 · x64 · 94 MB installer"}
+              {isRu ? "Версия 0.1.0-beta.2 · Windows x64 · цифровая доставка" : "Version 0.1.0-beta.2 · Windows x64 · digital delivery"}
             </p>
           </div>
           <Sequencer />
@@ -278,7 +406,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <div><strong>4</strong><span>{isRu ? "жанра" : "genres"}</span></div>
         <div><strong>849</strong><span>{isRu ? "семплов" : "samples"}</span></div>
         <div><strong>MIDI + WAV</strong><span>{isRu ? "экспорт" : "export"}</span></div>
-        <div><strong>NO KEY</strong><span>{isRu ? "без активации" : "no activation"}</span></div>
+        <div><strong>FROM $5</strong><span>{isRu ? "доступ к бете" : "beta access"}</span></div>
       </section>
 
       <section className={styles.videoSection} id="video">
@@ -344,33 +472,44 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         </div>
       </section>
 
-      <section className={styles.downloadSection} id="download">
-        <div className={styles.downloadGlow} />
-        <div className={styles.downloadCopy}>
-          <p className={styles.eyebrow}>{isRu ? "ПУБЛИЧНАЯ BETA 2" : "PUBLIC BETA 2"}</p>
-          <h2>{isRu ? "Скачай. Установи. Делай биты." : "Download. Install. Make beats."}</h2>
-          <p>{isRu ? "В установщик входят VST3, полная библиотека из 849 аудиосемплов, руководство и уведомления о правах. Ключ активации и интернет для работы не нужны." : "The installer includes the VST3, the complete 849-sample audio library, the manual, and rights notices. No activation key or internet connection is required."}</p>
-          <div className={styles.downloadActions}>
-            <a className={styles.primaryButton} href={installerHref} download>{isRu ? "Скачать для Windows" : "Download for Windows"}<span>↓</span></a>
-            <span>v0.1.0-beta.2 · 94 MB</span>
-          </div>
+      <section className={styles.supportSection} id="support">
+        <div className={styles.supportIntro}>
+          <p className={styles.eyebrow}>{isRu ? "ПОДДЕРЖКА / РАННИЙ ДОСТУП" : "SUPPORT / EARLY ACCESS"}</p>
+          <h2>{isRu ? "Выбери свой уровень" : "Choose your tier"}</h2>
+          <p>
+            {isRu
+              ? "Доступ к HPDG Beta 2 начинается с $5. Каждый следующий уровень включает всё из предыдущих. Награды цифровые и отправляются на email, указанный при оплате."
+              : "HPDG Beta 2 access starts at $5. Every higher tier includes everything below it. Rewards are digital and delivered to the email used at checkout."}
+          </p>
         </div>
-        <div className={styles.requirements}>
-          <h3>{isRu ? "Перед установкой" : "Before installing"}</h3>
-          <ol>
-            <li>{isRu ? "Закрой DAW." : "Close your DAW."}</li>
-            <li>{isRu ? "Запусти установщик Windows." : "Run the Windows installer."}</li>
-            <li>{isRu ? "Пересканируй VST3-плагины в DAW." : "Rescan VST3 plugins in your DAW."}</li>
-          </ol>
-          <dl>
-            <div><dt>OS</dt><dd>Windows 10 / 11 x64</dd></div>
-            <div><dt>FORMAT</dt><dd>VST3</dd></div>
-            <div><dt>PATH</dt><dd>C:\Program Files\Common Files\VST3</dd></div>
-          </dl>
+        <div className={styles.tierGrid}>
+          {supportTiers.map((tier) => (
+            <article className={`${styles.tierCard} ${tier.featured ? styles.tierFeatured : ""}`} key={tier.price}>
+              {tier.featured ? <span className={styles.tierFlag}>{isRu ? "С РЕЛИЗОМ 1.0" : "INCLUDES 1.0"}</span> : null}
+              <Image src={tier.image} width={696} height={464} sizes="(max-width: 700px) 100vw, 33vw" alt="" />
+              <div className={styles.tierBody}>
+                <p className={styles.tierPrice}>{tier.price}</p>
+                <h3>{tier.name}</h3>
+                <p className={styles.tierDescription}>{tier.description}</p>
+                <ul>
+                  {tier.includes.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+                {tier.limited ? <p className={styles.tierLimited}>{tier.limited}</p> : null}
+                <a className={styles.tierButton} href={tipHref} target="_blank" rel="noreferrer">
+                  {isRu ? `Выбрать ${tier.price}` : `Choose ${tier.price}`}<span aria-hidden="true">↗</span>
+                </a>
+              </div>
+            </article>
+          ))}
         </div>
-        <div className={styles.checksum}>
-          <span>SHA-256</span><code>{checksum}</code>
-          <a href={`${installerHref}.sha256`} download>{isRu ? "Скачать файл проверки" : "Download checksum file"}</a>
+        <div className={styles.supportNote}>
+          <strong>{isRu ? "Как это работает" : "How it works"}</strong>
+          <p>
+            {isRu
+              ? "На странице Stripe укажи сумму не ниже выбранного уровня и email для доставки. Beta 2 и остальные цифровые награды отправляются на этот адрес. Даты будущих релизов не фиксированы; при задержке участники продолжают получать beta-обновления."
+              : "On Stripe, enter at least the amount of the selected tier and an email for delivery. Beta 2 and the other digital rewards are sent to that address. Future release dates are not fixed; supporters continue receiving beta updates if development takes longer."}
+          </p>
+          <span>Windows 10/11 x64 · VST3 · {isRu ? "без macOS / AU" : "no macOS / AU"}</span>
         </div>
       </section>
 
@@ -395,6 +534,10 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <details>
             <summary>{isRu ? "Что входит в библиотеку?" : "What is included in the library?"}</summary>
             <p>{isRu ? "Полная фабричная библиотека содержит 849 аудиосемплов. Beta 2 добавляет 100 новых семплов и второй набор Techno в эстетике tech house." : "The complete factory library contains 849 audio samples. Beta 2 adds 100 new samples and a second Techno kit focused on tech house."}</p>
+          </details>
+          <details>
+            <summary>{isRu ? "Как я получу Beta 2 после оплаты?" : "How will I receive Beta 2 after payment?"}</summary>
+            <p>{isRu ? "Доступ отправляется в цифровом виде на email, указанный в Stripe. Минимальный уровень для Beta 2 — $5." : "Access is delivered digitally to the email used in Stripe. The minimum tier for Beta 2 is $5."}</p>
           </details>
         </div>
       </section>
