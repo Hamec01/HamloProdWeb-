@@ -103,8 +103,6 @@ type SupportTier = {
   description: string;
   includes: string[];
   image: string;
-  featured?: boolean;
-  limited?: string;
 };
 
 function FeatureBlock({ feature, flip = false }: { feature: Feature; flip?: boolean }) {
@@ -238,124 +236,20 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
   const supportTiers: SupportTier[] = isRu
     ? [
         {
-          price: "$5",
-          name: "Доступ к Beta 2",
-          description: "Минимальный уровень для получения текущей закрытой беты HPDG на Windows.",
+          price: "$9.99",
+          name: "HPDG Beta 2",
+          description: "Получи текущую закрытую бету HPDG для Windows по единой цене.",
           includes: ["HPDG 0.1.0 Beta 2", "VST3 и библиотека из 849 семплов"],
           image: "/hpdg/rewards/item_01.webp",
-        },
-        {
-          price: "$9",
-          name: "Beta Supporter",
-          description: "Beta 2 плюс все следующие бета-сборки вплоть до выхода версии 1.0.",
-          includes: ["Все будущие beta-обновления", "Имя в списке поддержавших"],
-          image: "/hpdg/rewards/item_02.webp",
-        },
-        {
-          price: "$19.99",
-          name: "HPDG 1.0",
-          description: "Всё из предыдущих уровней и бесплатная релизная версия HPDG 1.0 после её выхода.",
-          includes: ["Лицензия HPDG 1.0", "Доставка релиза на email"],
-          image: "/hpdg/rewards/item_03.webp",
-          featured: true,
-        },
-        {
-          price: "$29",
-          name: "Все обновления 1.x",
-          description: "Версия 1.0 и все обновления линейки HPDG 1.x: новые стили, звуки и исправления.",
-          includes: ["Все обновления HPDG 1.x"],
-          image: "/hpdg/rewards/item_04.webp",
-        },
-        {
-          price: "$45",
-          name: "Beta Insider",
-          description: "Ранние тестовые сборки, закрытый канал и возможность предлагать функции.",
-          includes: ["Ранние сборки", "Закрытая группа инсайдеров"],
-          image: "/hpdg/rewards/item_05.webp",
-        },
-        {
-          price: "$100",
-          name: "Голос за жанр + титры",
-          description: "Голос за следующий жанр и имя в разделе Thank You внутри HPDG.",
-          includes: ["Голос за следующий жанр", "Имя в титрах"],
-          image: "/hpdg/rewards/item_06.webp",
-        },
-        {
-          price: "$250",
-          name: "Бери свою команду",
-          description: "Всё выше плюс три дополнительные лицензии HPDG 1.0 для друзей.",
-          includes: ["3 дополнительные лицензии HPDG 1.0"],
-          image: "/hpdg/rewards/item_08.webp",
-          limited: "20 мест",
-        },
-        {
-          price: "$500",
-          name: "Ты — семья",
-          description: "Статус Founding Supporter и персональный набор звуков, созданный вместе с тобой.",
-          includes: ["Founding Supporter", "Персональный sound kit"],
-          image: "/hpdg/rewards/item_10.webp",
-          limited: "5 мест",
         },
       ]
     : [
         {
-          price: "$5",
-          name: "Beta 2 Access",
-          description: "The minimum tier that unlocks the current closed HPDG beta for Windows.",
+          price: "$9.99",
+          name: "HPDG Beta 2",
+          description: "Get the current closed HPDG beta for Windows at one clear price.",
           includes: ["HPDG 0.1.0 Beta 2", "VST3 and the 849-sample library"],
           image: "/hpdg/rewards/item_01.webp",
-        },
-        {
-          price: "$9",
-          name: "Beta Supporter",
-          description: "Beta 2 plus every following beta build through the version 1.0 launch.",
-          includes: ["All future beta updates", "Name on the supporter list"],
-          image: "/hpdg/rewards/item_02.webp",
-        },
-        {
-          price: "$19.99",
-          name: "HPDG 1.0",
-          description: "Everything above plus the release version of HPDG 1.0 at no extra charge when it launches.",
-          includes: ["HPDG 1.0 license", "Release delivered by email"],
-          image: "/hpdg/rewards/item_03.webp",
-          featured: true,
-        },
-        {
-          price: "$29",
-          name: "All 1.x Updates",
-          description: "Version 1.0 and every HPDG 1.x update: new styles, sounds, fixes and improvements.",
-          includes: ["All HPDG 1.x updates"],
-          image: "/hpdg/rewards/item_04.webp",
-        },
-        {
-          price: "$45",
-          name: "Beta Insider",
-          description: "Early test builds, a private channel and a place to suggest upcoming features.",
-          includes: ["Early test builds", "Private insider group"],
-          image: "/hpdg/rewards/item_05.webp",
-        },
-        {
-          price: "$100",
-          name: "Genre Vote + Credits",
-          description: "Vote on the next genre and get your name in the in-plugin Thank You credits.",
-          includes: ["Next-genre vote", "Name in the credits"],
-          image: "/hpdg/rewards/item_06.webp",
-        },
-        {
-          price: "$250",
-          name: "Bring Your Crew",
-          description: "Everything above plus three extra HPDG 1.0 licenses for friends.",
-          includes: ["3 extra HPDG 1.0 licenses"],
-          image: "/hpdg/rewards/item_08.webp",
-          limited: "20 available",
-        },
-        {
-          price: "$500",
-          name: "You’re Family",
-          description: "Founding Supporter status and a custom sound kit developed with you.",
-          includes: ["Founding Supporter credit", "Custom sound kit"],
-          image: "/hpdg/rewards/item_10.webp",
-          limited: "5 available",
         },
       ];
 
@@ -388,7 +282,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
             </ul>
             <div className={styles.heroActions}>
               <a className={styles.primaryButton} href="#support">
-                {isRu ? "Получить Beta 2 от $5" : "Get Beta 2 from $5"}<span>↓</span>
+                {isRu ? "Купить Beta 2 за $9.99" : "Buy Beta 2 for $9.99"}<span>↓</span>
               </a>
               <a className={styles.secondaryButton} href="#video">
                 <span aria-hidden="true">▶</span>{isRu ? "Смотреть видео" : "Watch the demo"}
@@ -406,7 +300,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <div><strong>4</strong><span>{isRu ? "жанра" : "genres"}</span></div>
         <div><strong>849</strong><span>{isRu ? "семплов" : "samples"}</span></div>
         <div><strong>MIDI + WAV</strong><span>{isRu ? "экспорт" : "export"}</span></div>
-        <div><strong>FROM $5</strong><span>{isRu ? "доступ к бете" : "beta access"}</span></div>
+        <div><strong>$9.99</strong><span>{isRu ? "цена Beta 2" : "Beta 2 price"}</span></div>
       </section>
 
       <section className={styles.videoSection} id="video">
@@ -475,17 +369,16 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
       <section className={styles.supportSection} id="support">
         <div className={styles.supportIntro}>
           <p className={styles.eyebrow}>{isRu ? "ПОДДЕРЖКА / РАННИЙ ДОСТУП" : "SUPPORT / EARLY ACCESS"}</p>
-          <h2>{isRu ? "Выбери свой уровень" : "Choose your tier"}</h2>
+          <h2>{isRu ? "Получи Beta 2" : "Get Beta 2"}</h2>
           <p>
             {isRu
-              ? "Доступ к HPDG Beta 2 начинается с $5. Каждый следующий уровень включает всё из предыдущих. Награды цифровые и отправляются на email, указанный при оплате."
-              : "HPDG Beta 2 access starts at $5. Every higher tier includes everything below it. Rewards are digital and delivered to the email used at checkout."}
+              ? "HPDG Beta 2 стоит $9.99. После оплаты доступ отправляется на email, указанный в Stripe."
+              : "HPDG Beta 2 costs $9.99. After payment, access is delivered to the email used in Stripe."}
           </p>
         </div>
         <div className={styles.tierGrid}>
           {supportTiers.map((tier) => (
-            <article className={`${styles.tierCard} ${tier.featured ? styles.tierFeatured : ""}`} key={tier.price}>
-              {tier.featured ? <span className={styles.tierFlag}>{isRu ? "С РЕЛИЗОМ 1.0" : "INCLUDES 1.0"}</span> : null}
+            <article className={styles.tierCard} key={tier.price}>
               <Image src={tier.image} width={696} height={464} sizes="(max-width: 700px) 100vw, 33vw" alt="" />
               <div className={styles.tierBody}>
                 <p className={styles.tierPrice}>{tier.price}</p>
@@ -494,9 +387,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
                 <ul>
                   {tier.includes.map((item) => <li key={item}>{item}</li>)}
                 </ul>
-                {tier.limited ? <p className={styles.tierLimited}>{tier.limited}</p> : null}
                 <a className={styles.tierButton} href={tipHref} target="_blank" rel="noreferrer">
-                  {isRu ? `Выбрать ${tier.price}` : `Choose ${tier.price}`}<span aria-hidden="true">↗</span>
+                  {isRu ? `Купить за ${tier.price}` : `Buy for ${tier.price}`}<span aria-hidden="true">↗</span>
                 </a>
               </div>
             </article>
@@ -506,8 +398,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <strong>{isRu ? "Как это работает" : "How it works"}</strong>
           <p>
             {isRu
-              ? "На странице Stripe укажи сумму не ниже выбранного уровня и email для доставки. Beta 2 и остальные цифровые награды отправляются на этот адрес. Даты будущих релизов не фиксированы; при задержке участники продолжают получать beta-обновления."
-              : "On Stripe, enter at least the amount of the selected tier and an email for delivery. Beta 2 and the other digital rewards are sent to that address. Future release dates are not fixed; supporters continue receiving beta updates if development takes longer."}
+              ? "На странице Stripe укажи сумму $9.99 и email для доставки. После подтверждения оплаты мы отправим Beta 2 на этот адрес."
+              : "On Stripe, enter $9.99 and an email for delivery. After payment is confirmed, we will send Beta 2 to that address."}
           </p>
           <span>Windows 10/11 x64 · VST3 · {isRu ? "без macOS / AU" : "no macOS / AU"}</span>
         </div>
@@ -537,7 +429,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           </details>
           <details>
             <summary>{isRu ? "Как я получу Beta 2 после оплаты?" : "How will I receive Beta 2 after payment?"}</summary>
-            <p>{isRu ? "Доступ отправляется в цифровом виде на email, указанный в Stripe. Минимальный уровень для Beta 2 — $5." : "Access is delivered digitally to the email used in Stripe. The minimum tier for Beta 2 is $5."}</p>
+            <p>{isRu ? "Доступ отправляется в цифровом виде на email, указанный в Stripe. Стоимость Beta 2 — $9.99." : "Access is delivered digitally to the email used in Stripe. Beta 2 costs $9.99."}</p>
           </details>
         </div>
       </section>
