@@ -4,13 +4,14 @@ import type { Metadata } from "next";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
-import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
+import { PaymentsDisabledNotice, SELLER_INSTAGRAM_URL, SELLER_TELEGRAM_URL } from "@/components/checkout/payments-disabled-notice";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { dictionary } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n-server";
+import { localizeBeats } from "@/lib/localize-content";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import { getBeatBySlug, getBeats } from "@/services/content";
 
@@ -18,14 +19,16 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://hamloprod.com";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const beat = await getBeatBySlug(slug);
+  const [locale, rawBeat] = await Promise.all([getLocale(), getBeatBySlug(slug)]);
 
-  if (!beat) {
+  if (!rawBeat) {
     return {
       title: "Beat not found | HamloProd",
       description: "Beat page",
     };
   }
+
+  const [beat] = await localizeBeats([rawBeat], locale);
 
   const pageUrl = `${siteUrl}/beats/${beat.slug}`;
   const imageUrl = beat.coverImageUrl ?? undefined;
@@ -62,18 +65,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BeatCasePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [locale, beat, beats, session] = await Promise.all([getLocale(), getBeatBySlug(slug), getBeats(), getPublicSessionState()]);
+  const [locale, rawBeat, rawBeats, session] = await Promise.all([getLocale(), getBeatBySlug(slug), getBeats(), getPublicSessionState()]);
   const t = dictionary[locale];
 
-  if (!beat) {
+  if (!rawBeat) {
     notFound();
   }
+
+  const [[beat], beats] = await Promise.all([localizeBeats([rawBeat], locale), localizeBeats(rawBeats, locale)]);
 
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
   const paidCheckoutEnabled = isPaidCheckoutEnabled();
-  const buyLicenseHref = locale === "ru" ? "https://t.me/Andrei91S" : `/checkout/${beat.slug}`;
+  const buyLicenseHref = locale === "ru" ? SELLER_TELEGRAM_URL : `/checkout/${beat.slug}`;
 
   return (
     <section className="space-y-8">
@@ -141,6 +146,16 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                     {t.buyLicense}
                     <ArrowRight size={14} />
                   </Link>
+                  {locale === "ru" ? (
+                    <a
+                      href={SELLER_INSTAGRAM_URL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(255,255,255,0.05)]"
+                    >
+                      Instagram
+                    </a>
+                  ) : null}
                 </div>
               </>
             ) : (
