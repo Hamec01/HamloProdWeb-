@@ -8,6 +8,7 @@ const adminNavigation = [
   { href: "/admin/releases", label: "Releases (альбомы)" },
   { href: "/admin/artists", label: "Artists CRUD" },
   { href: "/admin/posts", label: "Posts / News" },
+  { href: "/admin/hpdg", label: "HPDG (ключи, релизы)" },
 ];
 
 export function AdminSidebar() {

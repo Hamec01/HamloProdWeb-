@@ -110,16 +110,16 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  sessions      Session[]
-  uploadIntents UploadIntent[]
-  orders        Order[]
-  purchases     BeatPurchase[]
-  reactions     BeatReaction[]
-  comments      ContentComment[]
-  ratings       ContentRating[]
-  loyalty       LoyaltyPoint?
+  sessions         Session[]
+  uploadIntents    UploadIntent[]
+  orders           Order[]
+  purchases        BeatPurchase[]
+  reactions        BeatReaction[]
+  comments         ContentComment[]
+  ratings          ContentRating[]
+  loyalty          LoyaltyPoint?
   authoredComments Comment[]
-  favorites     Favorite[]
+  favorites        Favorite[]
 
   @@index([artistId])
   @@map("users")
@@ -418,7 +418,7 @@ model Order {
 /// generated PDF key.
 model Contract {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  orderId      String    @unique @map("order_id") @db.Uuid
+  orderId      String   @unique @map("order_id") @db.Uuid
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   beatId       String   @map("beat_id") @db.Uuid
   beat         Beat     @relation(fields: [beatId], references: [id], onDelete: Restrict)
@@ -572,4 +572,64 @@ model Favorite {
   @@id([userId, trackId])
   @@index([userId])
   @@map("favorites")
+}
+
+/// HPDG (VST3) release offered to buyers through the in-plugin Update button.
+/// Exactly one row is current (partial unique index in the migration). Older rows
+/// stay for history / rollback. The installer itself is a private object in
+/// `hamloprod-private` under `hpdg/` (one file, no sub-folders).
+model HpdgRelease {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  version   String   @unique
+  title     String
+  notes     String   @default("")
+  page      String
+  platform  String   @default("windows-x64")
+  objectKey String   @map("object_key")
+  sha256    String
+  size      Int
+  isCurrent Boolean  @default(false) @map("is_current")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("hpdg_releases")
+}
+
+/// HPDG license key (HPDG-XXXX-XXXX-XXXX-XXXX). The key is kept in plain text so
+/// the admin can resend it; lookups go through `keyHash` (sha256 of the
+/// normalised key).
+model HpdgLicenseKey {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key              String    @unique
+  keyHash          String    @unique @map("key_hash")
+  email            String
+  tier             String    @default("beta")
+  source           String    @default("manual")
+  note             String?
+  stripeCustomerId String?   @map("stripe_customer_id")
+  stripeSessionId  String?   @unique @map("stripe_session_id")
+  stripePaymentId  String?   @unique @map("stripe_payment_id")
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason    String?   @map("revoked_reason")
+  createdById      String?   @map("created_by_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  downloads HpdgDownload[]
+
+  @@index([email])
+  @@map("hpdg_license_keys")
+}
+
+/// One issued download ticket (presigned installer link) — support log + daily limit.
+model HpdgDownload {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  licenseKeyId   String         @map("license_key_id") @db.Uuid
+  licenseKey     HpdgLicenseKey @relation(fields: [licenseKeyId], references: [id], onDelete: Cascade)
+  version        String
+  currentVersion String?        @map("current_version")
+  ipCountry      String?        @map("ip_country")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([licenseKeyId, createdAt])
+  @@map("hpdg_downloads")
 }
