@@ -212,7 +212,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         updatesAlt: "Шапка HPDG с кнопкой Update рядом с версией",
         reqTitle: "Требования и установка",
         req: [
-          "Windows 10 / 11, 64-bit; 64-битная DAW с поддержкой VST3.",
+          "Windows 10 / 11, 64-bit; 64-битная DAW с поддержкой VST3. Проверено в FL Studio.",
           "Один установщик (~110 МБ): плагин, 913 фабричных семплов и Visual C++ Runtime. Больше ничего качать не нужно, аккаунт не нужен.",
           "Ставится в C:\\Program Files\\Common Files\\VST3\\HPDG.vst3 — после установки пересканируй VST3-плагины в DAW.",
           "Формат: только VST3, только Windows.",
@@ -253,7 +253,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         faqTitle: "Частые вопросы",
         faq: [
           ["Нужен ли интернет или активация?", "Нет. Кнопка Update выходит в интернет только когда ты проверяешь или скачиваешь обновление."],
-          ["Какие DAW поддерживаются?", "Любая 64-битная DAW для Windows, которая загружает VST3."],
+          ["Какие DAW поддерживаются?", "Проверено в FL Studio. Должна работать любая 64-битная DAW для Windows, которая загружает VST3 — если что-то не так, напиши нам."],
           ["Есть версия для Mac?", "Нет. HPDG — VST3-плагин только для Windows."],
           ["Как получить HPDG после оплаты?", "Ключ лицензии приходит на email, указанный в Stripe. С ним HPDG скачивается на hamloprod.org/hpdg/download."],
           ["Как обновиться?", "Нажми Update в шапке плагина. Или запусти новый установщик поверх старого — проекты и настройки сохранятся."],
@@ -338,7 +338,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         updatesAlt: "HPDG header with the Update button next to the version",
         reqTitle: "Requirements and install",
         req: [
-          "Windows 10 / 11, 64-bit; a 64-bit DAW with VST3 support.",
+          "Windows 10 / 11, 64-bit; a 64-bit DAW with VST3 support. Tested in FL Studio.",
           "One installer (~110 MB): the plugin, 913 factory samples and the Visual C++ Runtime. Nothing else to download, no account.",
           "Installs to C:\\Program Files\\Common Files\\VST3\\HPDG.vst3 — rescan VST3 plugins in your DAW.",
           "Format: VST3 plugin only, Windows only.",
@@ -379,7 +379,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         faqTitle: "FAQ",
         faq: [
           ["Does it need internet or activation?", "No. The Update button uses the internet only when you check for or download an update."],
-          ["Which DAWs?", "Any 64-bit Windows DAW that loads VST3."],
+          ["Which DAWs?", "Tested in FL Studio. Any 64-bit Windows DAW that loads VST3 should work — tell us if something doesn't."],
           ["Is there a Mac version?", "No. HPDG is a VST3 plugin for Windows only."],
           ["How do I get HPDG after paying?", "Your license key is sent to the email used in Stripe. With it you download HPDG at hamloprod.org/hpdg/download."],
           ["How do I update?", "Press Update in the plugin header. Or run the new installer over the old one — projects and settings stay."],
