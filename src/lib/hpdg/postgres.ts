@@ -13,6 +13,7 @@ import { ContaboS3Storage } from "@/lib/storage/contabo-s3-storage";
 import { INSTALLER_URL_TTL_SECONDS, type DownloadPorts } from "./download-service";
 import { generateLicenseKey, licenseKeyHash } from "./license-key";
 import { HPDG_OBJECT_PREFIX } from "./release";
+import type { StripeWebhookPorts } from "./stripe-webhook";
 
 export const IP_MAX_FAILURES = 20;
 const IP_WINDOW = "60 minutes";
@@ -158,6 +159,7 @@ export type AdminLicenseKey = {
   downloads24h: number;
   lastDownloadAt: string | null;
   lastVersion: string | null;
+  lastEmailedAt: string | null;
 };
 
 export async function listLicenseKeys(): Promise<AdminLicenseKey[]> {
@@ -184,6 +186,7 @@ export async function listLicenseKeys(): Promise<AdminLicenseKey[]> {
     downloads24h: recentByKey.get(row.id) ?? 0,
     lastDownloadAt: row.downloads[0]?.createdAt.toISOString() ?? null,
     lastVersion: row.downloads[0]?.version ?? null,
+    lastEmailedAt: row.lastEmailedAt?.toISOString() ?? null,
   }));
 }
 
@@ -223,4 +226,94 @@ export async function makeReleaseCurrent(id: string) {
     prisma.hpdgRelease.updateMany({ where: { isCurrent: true, NOT: { id } }, data: { isCurrent: false } }),
     prisma.hpdgRelease.update({ where: { id }, data: { isCurrent: true } }),
   ]);
+}
+
+// --- Stripe webhook ----------------------------------------------------------------
+
+export function hpdgPaymentLinkIds(env: Record<string, string | undefined> = process.env): string[] {
+  return (env.HPDG_STRIPE_PAYMENT_LINK_IDS ?? "").split(",").map((id) => id.trim()).filter(Boolean);
+}
+
+export function createStripeWebhookPorts(input: {
+  paymentLinkIds: string[];
+  sendKeyEmail: StripeWebhookPorts["sendKeyEmail"];
+}): StripeWebhookPorts {
+  return {
+    paymentLinkIds: input.paymentLinkIds,
+    sendKeyEmail: input.sendKeyEmail,
+
+    findCheckout(sessionId) {
+      return prisma.hpdgStripeCheckout.findUnique({ where: { sessionId }, select: { sessionId: true, emailedAt: true } });
+    },
+
+    async recordCheckout({ sessionId, paymentIntentId, email }) {
+      await prisma.hpdgStripeCheckout.createMany({ data: [{ sessionId, paymentIntentId, email }], skipDuplicates: true });
+    },
+
+    assignKey({ sessionId, email, paymentIntentId, customerId }) {
+      return prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT session_id FROM hpdg_stripe_checkouts WHERE session_id = ${sessionId} FOR UPDATE`;
+        const checkout = await tx.hpdgStripeCheckout.findUniqueOrThrow({ where: { sessionId }, include: { licenseKey: { select: { key: true } } } });
+        if (checkout.licenseKey) return { key: checkout.licenseKey.key, created: false };
+
+        // One active key per email: a repeat buyer gets their existing key again.
+        const active = await tx.hpdgLicenseKey.findFirst({ where: { email, revokedAt: null }, select: { id: true, key: true } });
+        if (active) {
+          await tx.hpdgStripeCheckout.update({ where: { sessionId }, data: { licenseKeyId: active.id, createdKey: false } });
+          return { key: active.key, created: false };
+        }
+
+        const key = generateLicenseKey();
+        const row = await tx.hpdgLicenseKey.create({
+          data: {
+            key,
+            keyHash: licenseKeyHash(key),
+            email,
+            source: "stripe",
+            stripeSessionId: sessionId,
+            stripePaymentId: paymentIntentId,
+            stripeCustomerId: customerId,
+          },
+          select: { id: true },
+        });
+        await tx.hpdgStripeCheckout.update({ where: { sessionId }, data: { licenseKeyId: row.id, createdKey: true } });
+        return { key, created: true };
+      });
+    },
+
+    async markEmailed(sessionId) {
+      const now = new Date();
+      const checkout = await prisma.hpdgStripeCheckout.update({ where: { sessionId }, data: { emailedAt: now }, select: { licenseKeyId: true } });
+      if (checkout.licenseKeyId) await prisma.hpdgLicenseKey.update({ where: { id: checkout.licenseKeyId }, data: { lastEmailedAt: now } });
+    },
+
+    async revokeForPayment({ chargeId, paymentIntentId }) {
+      const ids = new Set<string>();
+      if (paymentIntentId) {
+        const checkouts = await prisma.hpdgStripeCheckout.findMany({ where: { paymentIntentId }, select: { sessionId: true, licenseKeyId: true, createdKey: true } });
+        for (const c of checkouts) if (c.createdKey && c.licenseKeyId) ids.add(c.licenseKeyId);
+        await prisma.hpdgStripeCheckout.updateMany({ where: { paymentIntentId }, data: { refundedAt: new Date() } });
+      }
+      // Keys imported from a Stripe CSV carry the charge id (ch_…) or payment intent id.
+      const imported = await prisma.hpdgLicenseKey.findMany({
+        where: { stripePaymentId: { in: [chargeId, ...(paymentIntentId ? [paymentIntentId] : [])] } },
+        select: { id: true },
+      });
+      for (const k of imported) ids.add(k.id);
+      if (ids.size === 0) return [];
+      await prisma.hpdgLicenseKey.updateMany({
+        where: { id: { in: [...ids] }, revokedAt: null },
+        data: { revokedAt: new Date(), revokedReason: "Stripe refund" },
+      });
+      return [...ids];
+    },
+  };
+}
+
+/** Admin "send key by email" — also records when the key was last emailed. */
+export async function emailLicenseKey(id: string, send: (input: { email: string; key: string }) => Promise<void>) {
+  const row = await prisma.hpdgLicenseKey.findUniqueOrThrow({ where: { id }, select: { email: true, key: true, revokedAt: true } });
+  if (row.revokedAt) throw new Error("Key is revoked.");
+  await send({ email: row.email, key: row.key });
+  await prisma.hpdgLicenseKey.update({ where: { id }, data: { lastEmailedAt: new Date() } });
 }

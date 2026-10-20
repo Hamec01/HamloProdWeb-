@@ -612,9 +612,11 @@ model HpdgLicenseKey {
   revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
   revokedReason    String?   @map("revoked_reason")
   createdById      String?   @map("created_by_id") @db.Uuid
+  lastEmailedAt    DateTime? @map("last_emailed_at") @db.Timestamptz(6)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   downloads HpdgDownload[]
+  checkouts HpdgStripeCheckout[]
 
   @@index([email])
   @@map("hpdg_license_keys")
@@ -632,4 +634,22 @@ model HpdgDownload {
 
   @@index([licenseKeyId, createdAt])
   @@map("hpdg_downloads")
+}
+
+/// One paid Stripe Checkout Session for HPDG (Payment Link). Makes the webhook
+/// idempotent: a session gets at most one key and one email, and a refund of the
+/// payment intent revokes the key that this session created.
+model HpdgStripeCheckout {
+  sessionId       String          @id @map("session_id")
+  paymentIntentId String?         @unique @map("payment_intent_id")
+  email           String
+  licenseKeyId    String?         @map("license_key_id") @db.Uuid
+  licenseKey      HpdgLicenseKey? @relation(fields: [licenseKeyId], references: [id], onDelete: SetNull)
+  createdKey      Boolean         @default(false) @map("created_key")
+  emailedAt       DateTime?       @map("emailed_at") @db.Timestamptz(6)
+  refundedAt      DateTime?       @map("refunded_at") @db.Timestamptz(6)
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([licenseKeyId])
+  @@map("hpdg_stripe_checkouts")
 }

@@ -340,6 +340,8 @@ function StripeImportSection({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys
 function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: AdminLicenseKey[]) => void }) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [sending, setSending] = useState<string | null>(null);
   const visible = keys.filter((k) => !query || k.email.includes(query.toLowerCase()) || k.key.includes(query.toUpperCase()));
 
   async function setRevoked(key: AdminLicenseKey, revoked: boolean) {
@@ -350,6 +352,16 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
     catch (e) { setError(e instanceof Error ? e.message : "Ошибка."); }
   }
 
+  async function sendEmail(key: AdminLicenseKey) {
+    if (!window.confirm(`Отправить ключ ${key.key} на ${key.email}?`)) return;
+    setError(null); setNotice(null); setSending(key.id);
+    try {
+      onKeys((await call<{ keys: AdminLicenseKey[] }>(`/api/admin/hpdg/keys/${key.id}/email`, "POST")).keys);
+      setNotice(`Письмо с ключом отправлено на ${key.email}.`);
+    } catch (e) { setError(e instanceof Error ? e.message : "Ошибка."); }
+    finally { setSending(null); }
+  }
+
   return (
     <section className={panel}>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -357,10 +369,11 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
         <input className={`${input} max-w-xs`} placeholder="Поиск: email или ключ" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       {error ? <p className={alert}>{error}</p> : null}
+      {notice ? <p className="text-xs text-[var(--color-paper-200)]">{notice}</p> : null}
       <div className="overflow-auto">
         <table className="w-full text-left text-xs [&_td]:pr-3 [&_th]:pr-3">
           <thead className={label}>
-            <tr><th className="py-2">Ключ</th><th>Email</th><th>Откуда</th><th>Выдан</th><th>Скачиваний (24 ч / всего)</th><th>Последнее</th><th /></tr>
+            <tr><th className="py-2">Ключ</th><th>Email</th><th>Откуда</th><th>Выдан</th><th>Скачиваний (24 ч / всего)</th><th>Последнее</th><th>Письмо</th><th /></tr>
           </thead>
           <tbody>
             {visible.map((k) => (
@@ -371,19 +384,23 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
                 <td>{formatDate(k.createdAt)}</td>
                 <td>{k.downloads24h} / {k.downloads}</td>
                 <td>{k.lastDownloadAt ? `${formatDate(k.lastDownloadAt)} · ${k.lastVersion}` : "—"}</td>
-                <td className="text-right">
+                <td>{k.lastEmailedAt ? formatDate(k.lastEmailedAt) : "—"}</td>
+                <td className="whitespace-nowrap text-right">
                   {k.revokedAt ? (
                     <span className="space-x-3">
                       <span className="text-[var(--color-alert)]">отозван{k.revokedReason ? `: ${k.revokedReason}` : ""}</span>
                       <button type="button" className="uppercase tracking-[0.16em] text-[var(--color-paper-400)] hover:text-[var(--color-paper-100)]" onClick={() => setRevoked(k, false)}>вернуть</button>
                     </span>
                   ) : (
-                    <button type="button" className="uppercase tracking-[0.16em] text-[var(--color-paper-400)] hover:text-[var(--color-alert)]" onClick={() => setRevoked(k, true)}>отозвать</button>
+                    <span className="space-x-3">
+                      <button type="button" disabled={sending === k.id} className="uppercase tracking-[0.16em] text-[var(--color-paper-400)] hover:text-[var(--color-paper-100)] disabled:opacity-50" onClick={() => sendEmail(k)}>{sending === k.id ? "отправляю…" : "на email"}</button>
+                      <button type="button" className="uppercase tracking-[0.16em] text-[var(--color-paper-400)] hover:text-[var(--color-alert)]" onClick={() => setRevoked(k, true)}>отозвать</button>
+                    </span>
                   )}
                 </td>
               </tr>
             ))}
-            {visible.length === 0 ? <tr><td colSpan={7} className={`py-4 ${muted}`}>Ключей пока нет.</td></tr> : null}
+            {visible.length === 0 ? <tr><td colSpan={8} className={`py-4 ${muted}`}>Ключей пока нет.</td></tr> : null}
           </tbody>
         </table>
       </div>
