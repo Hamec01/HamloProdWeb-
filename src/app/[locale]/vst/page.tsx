@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AdminPostCrudManager } from "@/components/admin/admin-post-crud-manager";
@@ -8,6 +9,9 @@ import { localizePosts } from "@/lib/localize-content";
 import { normalizeLocale } from "@/lib/market";
 import { getAdminPosts, getPosts } from "@/services/content";
 import styles from "./page.module.css";
+
+/** Date of the built-in Beta 2 notes in the dev log (older than any post written after it). */
+const BETA2_RELEASED_AT = Date.UTC(2026, 9, 13);
 
 /** Stripe Payment Link for the "HPDG Beta" product (EUR 9.99, metadata product=hpdg). */
 const buyHref =
@@ -135,7 +139,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
   const [vstPosts, adminSession] = await Promise.all([getPosts("vst"), getAdminSessionState()]);
   const posts = await localizePosts(vstPosts, locale);
   const adminPosts = adminSession.isAuthenticated
-    ? (await getAdminPosts()).filter((post) => post.section === "vst")
+    ? (await getAdminPosts()).filter((post) => post.section === "vst" || post.section === "general")
     : [];
 
   const features: Feature[] = isRu
@@ -254,12 +258,91 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         },
       ];
 
+  type DevlogEntry = { id: string; date: number; title: string; content: ReactNode };
+  const formatDevlogDate = (time: number) =>
+    new Intl.DateTimeFormat(isRu ? "ru-RU" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(time);
+  const devlogEntries: DevlogEntry[] = [
+    ...posts.map((post) => ({
+      id: post.id,
+      date: Date.parse(post.createdAt) || 0,
+      title: post.title,
+      content: (
+        <div className={styles.newsGrid}>
+          <article>
+            <p>{post.category}</p><h3>{post.title}</h3><p>{post.excerpt}</p>
+            <PostRichContent content={post.content} />
+            {post.ctaLabel && post.ctaUrl ? <Link href={post.ctaUrl}>{post.ctaLabel} →</Link> : null}
+          </article>
+        </div>
+      ),
+    })),
+    {
+      id: "beta2",
+      date: BETA2_RELEASED_AT,
+      title: "HPDG 0.1.0 Beta 2",
+      content: (
+        <>
+          <div className={styles.betaIntro}>
+            <p className={styles.eyebrow}>0.1.0 / BETA 2</p>
+            <h2>{isRu ? "Что нового" : "What’s new"}</h2>
+            <p>{isRu ? "Beta 2 углубляет работу с семплами и басом, добавляет ещё один характер Techno и делает интерфейс гибче." : "Beta 2 deepens sample and bass control, adds another Techno character, and makes the interface more flexible."}</p>
+          </div>
+          <ol className={styles.updateList}>
+            {newItems.map((item, index) => <li key={item}><span>{String(index + 1).padStart(2, "0")}</span>{item}</li>)}
+          </ol>
+          <div className={styles.skinGrid}>
+            {[
+              ["Dark", "/hpdg/img/skin_dark-1600.webp"],
+              ["Steel", "/hpdg/img/skin_steel-1600.webp"],
+              ["Sketch", "/hpdg/img/skin_sketch-1600.webp"],
+            ].map(([name, src]) => (
+              <figure key={name}>
+                <Image src={src} width={1600} height={833} sizes="(max-width: 800px) 100vw, 33vw" alt={`HPDG ${name} skin`} />
+                <figcaption>{name}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </>
+      ),
+    },
+  ].sort((a, b) => b.date - a.date);
+  const [latestEntry, ...olderEntries] = devlogEntries;
+
+  const devlogSection = (
+      <section className={styles.devlog} id="devlog">
+        <header className={styles.sectionHeader}>
+          <span>DEV LOG</span>
+          <h2>{isRu ? "Дневник разработки" : "Dev log"}</h2>
+        </header>
+        {latestEntry ? (
+          <div className={styles.devlogLatest} id={latestEntry.id === "beta2" ? "beta2" : undefined}>
+            <time className={styles.devlogDate}>{formatDevlogDate(latestEntry.date)}</time>
+            {latestEntry.content}
+          </div>
+        ) : null}
+        {olderEntries.length ? (
+          <div className={styles.devlogArchive}>
+            <p className={styles.devlogArchiveLabel}>{isRu ? "Старые версии · дневник разработчика" : "Earlier versions · developer diary"}</p>
+            {olderEntries.map((entry) => (
+              <details key={entry.id} className={styles.devlogItem} id={entry.id === "beta2" ? "beta2" : undefined}>
+                <summary>
+                  <span>{entry.title}</span>
+                  <time>{formatDevlogDate(entry.date)}</time>
+                </summary>
+                <div className={styles.devlogBody}>{entry.content}</div>
+              </details>
+            ))}
+          </div>
+        ) : null}
+      </section>
+  );
+
   return (
     <div className={styles.page}>
       <nav className={styles.localNav} aria-label={isRu ? "Разделы страницы" : "Page sections"}>
         <a href="#features">{isRu ? "Возможности" : "Features"}</a>
         <a href="#video">{isRu ? "Видео" : "Video"}</a>
-        <a href="#beta2">Beta 2</a>
+        <a href="#devlog">{isRu ? "Дневник" : "Dev log"}</a>
         <a href="#support">{isRu ? "Получить бету" : "Get the beta"}</a>
       </nav>
 
@@ -344,28 +427,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         </figure>
       </section>
 
-      <section className={styles.betaSection} id="beta2">
-        <div className={styles.betaIntro}>
-          <p className={styles.eyebrow}>0.1.0 / BETA 2</p>
-          <h2>{isRu ? "Что нового" : "What’s new"}</h2>
-          <p>{isRu ? "Beta 2 углубляет работу с семплами и басом, добавляет ещё один характер Techno и делает интерфейс гибче." : "Beta 2 deepens sample and bass control, adds another Techno character, and makes the interface more flexible."}</p>
-        </div>
-        <ol className={styles.updateList}>
-          {newItems.map((item, index) => <li key={item}><span>{String(index + 1).padStart(2, "0")}</span>{item}</li>)}
-        </ol>
-        <div className={styles.skinGrid}>
-          {[
-            ["Dark", "/hpdg/img/skin_dark-1600.webp"],
-            ["Steel", "/hpdg/img/skin_steel-1600.webp"],
-            ["Sketch", "/hpdg/img/skin_sketch-1600.webp"],
-          ].map(([name, src]) => (
-            <figure key={name}>
-              <Image src={src} width={1600} height={833} sizes="(max-width: 800px) 100vw, 33vw" alt={`HPDG ${name} skin`} />
-              <figcaption>{name}</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      {devlogSection}
 
       <section className={styles.supportSection} id="support">
         <div className={styles.supportIntro}>
@@ -434,21 +496,6 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           </details>
         </div>
       </section>
-
-      {posts.length ? (
-        <section className={styles.news}>
-          <header className={styles.sectionHeader}><span>DEV LOG</span><h2>{isRu ? "Новости HPDG" : "HPDG updates"}</h2></header>
-          <div className={styles.newsGrid}>
-            {posts.map((post) => (
-              <article key={post.id}>
-                <p>{post.category}</p><h3>{post.title}</h3><p>{post.excerpt}</p>
-                <PostRichContent content={post.content} />
-                {post.ctaLabel && post.ctaUrl ? <Link href={post.ctaUrl}>{post.ctaLabel} →</Link> : null}
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       {adminSession.isAuthenticated ? (
         <section className={styles.adminSection}>

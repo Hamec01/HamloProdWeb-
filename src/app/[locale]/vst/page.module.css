@@ -407,3 +407,23 @@
 @media (prefers-reduced-motion: reduce) {
   .seqRows::after { animation: none; transform: translateX(700%); }
 }
+
+/* Dev log: newest entry open, older entries collapsed (<details>). */
+.devlog { padding: clamp(5rem, 10vw, 9rem) 0; border-bottom: 1px solid var(--hpdg-line); }
+.devlogDate { display: block; margin-bottom: 1rem; color: var(--hpdg-muted); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.devlogArchive { display: grid; gap: 0.8rem; margin-top: clamp(3rem, 6vw, 4.5rem); }
+.devlogArchiveLabel { color: var(--hpdg-muted); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.devlogItem { border: 1px solid var(--hpdg-line); border-radius: 6px; background: var(--hpdg-panel); }
+.devlogItem > summary { display: flex; gap: 0.9rem; align-items: baseline; padding: 1.1rem 1.25rem; cursor: pointer; list-style: none; color: var(--hpdg-text); font-family: var(--font-heading), sans-serif; font-size: 1.35rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.devlogItem > summary::-webkit-details-marker { display: none; }
+.devlogItem > summary::before { content: "+"; flex: none; width: 1rem; color: var(--hpdg-red); }
+.devlogItem[open] > summary::before { content: "−"; }
+.devlogItem > summary > span { flex: 1; min-width: 0; }
+.devlogItem > summary > time { flex: none; color: var(--hpdg-muted); font-family: inherit; font-size: 0.66rem; letter-spacing: 0.14em; }
+.devlogItem > summary:hover { background: rgba(255, 255, 255, 0.02); }
+.devlogBody { padding: 0.5rem 1.25rem 1.75rem; }
+.devlogBody .newsGrid article { padding: 0; border: 0; background: none; }
+@media (max-width: 520px) {
+  .devlogItem > summary { flex-wrap: wrap; font-size: 1.1rem; }
+  .devlogItem > summary > time { width: 100%; padding-left: 1.9rem; }
+}
