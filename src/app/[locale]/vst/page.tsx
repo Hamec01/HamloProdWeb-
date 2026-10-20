@@ -254,6 +254,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         faq: [
           ["Нужен ли интернет или активация?", "Нет. Кнопка Update выходит в интернет только когда ты проверяешь или скачиваешь обновление."],
           ["Какие DAW поддерживаются?", "Проверено в FL Studio. Должна работать любая 64-битная DAW для Windows, которая загружает VST3 — если что-то не так, напиши нам."],
+          ["Можно ли продавать и выпускать биты, сделанные в HPDG?", "Да. Паттерны, MIDI и аудио, которые ты делаешь в HPDG, — включая встроенные звуки внутри твоих треков — твои: выпускай и продавай их без отчислений. Нельзя только перепродавать или раздавать сами фабричные семплы (как семпл-пак или кит)."],
           ["Есть версия для Mac?", "Нет. HPDG — VST3-плагин только для Windows."],
           ["Как получить HPDG после оплаты?", "Ключ лицензии приходит на email, указанный в Stripe. С ним HPDG скачивается на hamloprod.org/hpdg/download."],
           ["Как обновиться?", "Нажми Update в шапке плагина. Или запусти новый установщик поверх старого — проекты и настройки сохранятся."],
@@ -380,6 +381,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         faq: [
           ["Does it need internet or activation?", "No. The Update button uses the internet only when you check for or download an update."],
           ["Which DAWs?", "Tested in FL Studio. Any 64-bit Windows DAW that loads VST3 should work — tell us if something doesn't."],
+          ["Can I sell and release beats made with HPDG?", "Yes. Patterns, MIDI and audio you make with HPDG — including the factory sounds inside your tracks — are yours to release and sell, royalty-free. You just can't resell or share the factory samples themselves (as a sample pack or kit)."],
           ["Is there a Mac version?", "No. HPDG is a VST3 plugin for Windows only."],
           ["How do I get HPDG after paying?", "Your license key is sent to the email used in Stripe. With it you download HPDG at hamloprod.org/hpdg/download."],
           ["How do I update?", "Press Update in the plugin header. Or run the new installer over the old one — projects and settings stay."],
