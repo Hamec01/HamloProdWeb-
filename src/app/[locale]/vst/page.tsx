@@ -9,9 +9,10 @@ import { normalizeLocale } from "@/lib/market";
 import { getAdminPosts, getPosts } from "@/services/content";
 import styles from "./page.module.css";
 
-const tipHref =
-  process.env.DRUM_GENERATOR_TIP_URL?.trim() ||
-  "https://donate.stripe.com/8x29AVffaaKFavQ7QicjS00";
+/** Stripe Payment Link for the "HPDG Beta" product (EUR 9.99, metadata product=hpdg). */
+const buyHref =
+  process.env.HPDG_BUY_URL?.trim() ||
+  "https://buy.stripe.com/8x214pc2Y4mh5bw9YqcjS01";
 
 export async function generateMetadata({
   params,
@@ -236,7 +237,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
   const supportTiers: SupportTier[] = isRu
     ? [
         {
-          price: "$9.99",
+          price: "€9.99",
           name: "HPDG Beta 2",
           description: "Получи текущую закрытую бету HPDG для Windows по единой цене.",
           includes: ["HPDG 0.1.0 Beta 2", "VST3 и библиотека из 849 семплов"],
@@ -245,7 +246,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
       ]
     : [
         {
-          price: "$9.99",
+          price: "€9.99",
           name: "HPDG Beta 2",
           description: "Get the current closed HPDG beta for Windows at one clear price.",
           includes: ["HPDG 0.1.0 Beta 2", "VST3 and the 849-sample library"],
@@ -282,7 +283,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
             </ul>
             <div className={styles.heroActions}>
               <a className={styles.primaryButton} href="#support">
-                {isRu ? "Купить Beta 2 за $9.99" : "Buy Beta 2 for $9.99"}<span>↓</span>
+                {isRu ? "Купить Beta 2 за €9.99" : "Buy Beta 2 for €9.99"}<span>↓</span>
               </a>
               <a className={styles.secondaryButton} href="#video">
                 <span aria-hidden="true">▶</span>{isRu ? "Смотреть видео" : "Watch the demo"}
@@ -300,7 +301,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <div><strong>4</strong><span>{isRu ? "жанра" : "genres"}</span></div>
         <div><strong>849</strong><span>{isRu ? "семплов" : "samples"}</span></div>
         <div><strong>MIDI + WAV</strong><span>{isRu ? "экспорт" : "export"}</span></div>
-        <div><strong>$9.99</strong><span>{isRu ? "цена Beta 2" : "Beta 2 price"}</span></div>
+        <div><strong>€9.99</strong><span>{isRu ? "цена Beta 2" : "Beta 2 price"}</span></div>
       </section>
 
       <section className={styles.videoSection} id="video">
@@ -372,8 +373,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <h2>{isRu ? "Получи Beta 2" : "Get Beta 2"}</h2>
           <p>
             {isRu
-              ? "HPDG Beta 2 стоит $9.99. После оплаты доступ отправляется на email, указанный в Stripe."
-              : "HPDG Beta 2 costs $9.99. After payment, access is delivered to the email used in Stripe."}
+              ? "HPDG Beta 2 стоит €9.99. После оплаты ключ лицензии приходит на email, указанный в Stripe."
+              : "HPDG Beta 2 costs €9.99. After payment, your license key is sent to the email used in Stripe."}
           </p>
         </div>
         <div className={styles.tierGrid}>
@@ -387,7 +388,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
                 <ul>
                   {tier.includes.map((item) => <li key={item}>{item}</li>)}
                 </ul>
-                <a className={styles.tierButton} href={tipHref} target="_blank" rel="noreferrer">
+                <a className={styles.tierButton} href={buyHref} target="_blank" rel="noreferrer">
                   {isRu ? `Купить за ${tier.price}` : `Buy for ${tier.price}`}<span aria-hidden="true">↗</span>
                 </a>
               </div>
@@ -398,8 +399,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <strong>{isRu ? "Как это работает" : "How it works"}</strong>
           <p>
             {isRu
-              ? "На странице Stripe укажи сумму $9.99 и email для доставки. После подтверждения оплаты мы отправим Beta 2 на этот адрес."
-              : "On Stripe, enter $9.99 and an email for delivery. After payment is confirmed, we will send Beta 2 to that address."}
+              ? "Оплати на странице Stripe и укажи email. В течение 24 часов на него придёт ключ лицензии: с ним скачай HPDG на hamloprod.org/hpdg/download и введи ключ один раз в плагине — новые версии будут приходить через кнопку Update."
+              : "Pay on Stripe and enter your email. Within 24 hours you get a license key: download HPDG at hamloprod.org/hpdg/download and enter the key once in the plugin — new versions then arrive through its Update button."}
           </p>
           <span>Windows 10/11 x64 · VST3 · {isRu ? "без macOS / AU" : "no macOS / AU"}</span>
         </div>
@@ -417,7 +418,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           </details>
           <details>
             <summary>{isRu ? "Нужен ли интернет или ключ?" : "Do I need internet or a license key?"}</summary>
-            <p>{isRu ? "Нет. Для работы плагина не нужны ни подключение к интернету, ни ключ активации." : "No. The plugin does not require an internet connection or activation key to run."}</p>
+            <p>{isRu ? "Для работы плагина не нужны ни интернет, ни активация. Ключ лицензии нужен только чтобы скачивать HPDG и получать обновления через кнопку Update." : "The plugin runs without an internet connection or activation. Your license key is only used to download HPDG and to get updates through the Update button."}</p>
           </details>
           <details>
             <summary>{isRu ? "Есть версия для macOS или AU?" : "Is there a macOS or AU version?"}</summary>
@@ -429,7 +430,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           </details>
           <details>
             <summary>{isRu ? "Как я получу Beta 2 после оплаты?" : "How will I receive Beta 2 after payment?"}</summary>
-            <p>{isRu ? "Доступ отправляется в цифровом виде на email, указанный в Stripe. Стоимость Beta 2 — $9.99." : "Access is delivered digitally to the email used in Stripe. Beta 2 costs $9.99."}</p>
+            <p>{isRu ? "Ключ лицензии приходит на email, указанный в Stripe; с ним HPDG скачивается на hamloprod.org/hpdg/download. Стоимость — €9.99." : "Your license key is sent to the email used in Stripe; with it you download HPDG at hamloprod.org/hpdg/download. The price is €9.99."}</p>
           </details>
         </div>
       </section>
