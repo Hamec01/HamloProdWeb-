@@ -7,7 +7,7 @@ import { postFormSchema } from "@/lib/validations/post";
 export const runtime = "nodejs";
 
 function revalidatePostPages() {
-  for (const p of ["/", "/ru/vst", "/en/vst", "/admin/posts"]) revalidatePath(p);
+  for (const p of ["/", "/ru/vst", "/en/vst", "/ru/vst/hpdg", "/en/vst/hpdg", "/admin/posts"]) revalidatePath(p);
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {

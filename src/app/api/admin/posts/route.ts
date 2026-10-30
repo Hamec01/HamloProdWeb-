@@ -37,6 +37,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  for (const p of ["/", "/ru/vst", "/en/vst", "/admin/posts"]) revalidatePath(p);
+  for (const p of ["/", "/ru/vst", "/en/vst", "/ru/vst/hpdg", "/en/vst/hpdg", "/admin/posts"]) revalidatePath(p);
   return NextResponse.json({ ok: true });
 }

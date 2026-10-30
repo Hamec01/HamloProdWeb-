@@ -53,13 +53,13 @@ export function formatMarketMoney(amount: number, currency: CurrencyCode, locale
 export const sectorLabels: Record<Locale, Record<SectorKey, string>> = {
   en: {
     beats: "Beats Archive",
-    vst: "Drum Generator VST",
+    vst: "VST",
     ham: "HaM Hamilio",
     artists: "Artists",
   },
   ru: {
     beats: "Архив битов",
-    vst: "Drum Generator VST",
+    vst: "VST",
     ham: "HaM Hamilio",
     artists: "Артисты",
   },

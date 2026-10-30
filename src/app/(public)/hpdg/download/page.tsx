@@ -52,7 +52,7 @@ export default async function HpdgDownloadPage({ searchParams }: { searchParams:
         </ol>
         <p className="pt-2 text-sm text-[var(--color-paper-400)]">
           {copy.noKey}{" "}
-          <Link href={`/${locale}/vst`} className="text-[var(--color-paper-100)] underline">{copy.buy}</Link>
+          <Link href={`/${locale}/vst/hpdg`} className="text-[var(--color-paper-100)] underline">{copy.buy}</Link>
         </p>
       </div>
     </section>
