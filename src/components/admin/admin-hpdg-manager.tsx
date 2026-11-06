@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AdminHpdgCampaign } from "./admin-hpdg-campaign";
 import type { AdminHpdgRelease, AdminLicenseKey, IssueOutcome } from "@/lib/hpdg/postgres";
 import { parseStripePayments, type StripePayment } from "@/lib/hpdg/stripe-csv";
 
@@ -414,6 +415,7 @@ export function AdminHpdgManager({ initialReleases, initialKeys }: { initialRele
   return (
     <div className="space-y-6">
       <ReleasesSection releases={releases} onChange={setReleases} />
+      <AdminHpdgCampaign releases={releases} />
       <IssueSection onKeys={setKeys} />
       <StripeImportSection keys={keys} onKeys={setKeys} />
       <KeysTable keys={keys} onKeys={setKeys} />

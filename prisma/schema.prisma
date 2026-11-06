@@ -591,6 +591,7 @@ model HpdgRelease {
   isCurrent Boolean  @default(false) @map("is_current")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updateCampaign HpdgUpdateCampaign?
 
   @@map("hpdg_releases")
 }
@@ -617,6 +618,7 @@ model HpdgLicenseKey {
 
   downloads HpdgDownload[]
   checkouts HpdgStripeCheckout[]
+  updateRecipients HpdgUpdateRecipient[]
 
   @@index([email])
   @@map("hpdg_license_keys")
@@ -652,4 +654,43 @@ model HpdgStripeCheckout {
 
   @@index([licenseKeyId])
   @@map("hpdg_stripe_checkouts")
+}
+
+/// One immutable update email and recipient snapshot per release.
+model HpdgUpdateCampaign {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  releaseId         String   @unique @map("release_id") @db.Uuid
+  release           HpdgRelease @relation(fields: [releaseId], references: [id], onDelete: Restrict)
+  version           String   @unique
+  subject           String
+  text              String
+  createdById       String   @map("created_by_id") @db.Uuid
+  testEmail         String?  @map("test_email")
+  testMessageId     String?  @map("test_message_id")
+  testConfirmedAt   DateTime? @map("test_confirmed_at") @db.Timestamptz(6)
+  testConfirmedById String?  @map("test_confirmed_by_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  recipients        HpdgUpdateRecipient[]
+
+  @@map("hpdg_update_campaigns")
+}
+
+model HpdgUpdateRecipient {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  campaignId   String   @map("campaign_id") @db.Uuid
+  campaign     HpdgUpdateCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  licenseKeyId String   @map("license_key_id") @db.Uuid
+  licenseKey   HpdgLicenseKey @relation(fields: [licenseKeyId], references: [id], onDelete: Restrict)
+  email        String
+  /// pending -> sending -> accepted/delivered; rejected is a definite HTTP rejection.
+  /// unknown or an interrupted sending is never retried automatically.
+  status       String   @default("pending")
+  messageId    String?  @map("message_id")
+  error        String?
+  attemptedAt  DateTime? @map("attempted_at") @db.Timestamptz(6)
+  acceptedAt   DateTime? @map("accepted_at") @db.Timestamptz(6)
+
+  @@unique([campaignId, email])
+  @@index([campaignId, status])
+  @@map("hpdg_update_recipients")
 }
