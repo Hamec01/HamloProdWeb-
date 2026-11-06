@@ -67,11 +67,12 @@ Selected IDs: `SK3EnGJ92HQ`, `qF5HT82e0T0`, `EncE73aViI4`, `TvjsnCh6J8w`,
 `dfGLEPtaYG8`, `d17_KGVUdBw`. Their public oEmbed responses were checked and
 thumbnail assets are served locally from `/hpdg/youtube/`.
 
-A visitor first selects a video, then opens its player. No YouTube iframe is
-mounted on page load or selection. The player uses youtube-nocookie.com with
-`autoplay=0` and no autoplay permission. The original direct MP4 remains inside a
-collapsed disclosure, with controls and no autoplay. The older overview is
-explicitly labelled Beta 6.
+All six videos are embedded directly as YouTube players, in two columns on desktop
+and one on mobile. Each player uses youtube-nocookie.com with `autoplay=0`, visible
+controls and no autoplay permission. Iframes load lazily as the visitor scrolls;
+pressing the native YouTube Play button starts the selected video. The original
+direct MP4 remains inside a collapsed disclosure, with controls and no autoplay.
+The older overview is explicitly labelled Beta 6.
 
 Both VST catalog cards now show Beta 7 and 919 samples. The HPDG hero identifies
 Beta 7 beside the product name, and a release summary appears before Video.
