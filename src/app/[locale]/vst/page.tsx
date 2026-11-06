@@ -63,12 +63,12 @@ export default async function VstPage({ params }: { params: Promise<{ locale: st
             <Image src={`${MEDIA}/logo-white.webp`} width={850} height={1024} alt="HPDG" />
           </div>
           <div className={styles.pluginInfo}>
-            <p className={styles.pluginType}>VST3 · WINDOWS 10/11</p>
-            <h2>HPDG</h2>
+            <p className={styles.pluginType}>VST3 · WINDOWS 10/11 · 919 {isRu ? "СЕМПЛОВ" : "SAMPLES"}</p>
+            <h2>HPDG <span className={styles.releaseBadge}>Beta 7</span></h2>
             <p>
               {isRu
-                ? "Генератор барабанов и баса: создай паттерн, проанализируй луп и перенеси результат в DAW."
-                : "A drum and bass generator: create patterns, analyze a loop, and move the result into your DAW."}
+                ? "Новая Beta 7: ATL Classic и Dark Trap, редактор HPDG 808 и анализ тональности Basic Pitch. Создай бит под свой луп и перенеси MIDI или WAV в DAW."
+                : "New in Beta 7: ATL Classic and Dark Trap, the HPDG 808 editor and Basic Pitch key analysis. Build a beat around your loop and drag MIDI or WAV into your DAW."}
             </p>
             <span className={styles.pluginLink}>
               {isRu ? "Подробнее о плагине" : "Explore plugin"} <span aria-hidden="true">→</span>

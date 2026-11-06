@@ -58,3 +58,20 @@ deployment do not send messages automatically.
 The Linux website environment cannot launch the Windows installer or audition the
 plugin inside a DAW. Those checks and actual test-email receipt remain owner checks;
 mocked mail tests are not evidence of delivery to real inboxes.
+
+## Video section and visible release summary
+
+The existing Video section includes six verified public videos from
+https://www.youtube.com/@hpdgvst (channel `UCruQVITDiU1b1zWi5PAaZiA`).
+Selected IDs: `SK3EnGJ92HQ`, `qF5HT82e0T0`, `EncE73aViI4`, `TvjsnCh6J8w`,
+`dfGLEPtaYG8`, `d17_KGVUdBw`. Their public oEmbed responses were checked and
+thumbnail assets are served locally from `/hpdg/youtube/`.
+
+A visitor first selects a video, then opens its player. No YouTube iframe is
+mounted on page load or selection. The player uses youtube-nocookie.com with
+`autoplay=0` and no autoplay permission. The original direct MP4 remains inside a
+collapsed disclosure, with controls and no autoplay. The older overview is
+explicitly labelled Beta 6.
+
+Both VST catalog cards now show Beta 7 and 919 samples. The HPDG hero identifies
+Beta 7 beside the product name, and a release summary appears before Video.

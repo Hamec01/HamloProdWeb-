@@ -112,6 +112,8 @@
   line-height: 1.7;
 }
 
+.releaseBadge { display: inline-block; padding: .35rem .55rem; border: 1px solid #743439; border-radius: 4px; color: #ff9292; font-family: var(--font-mono),monospace; font-size: .8rem; line-height: 1; vertical-align: middle; }
+
 .pluginLink {
   display: flex;
   justify-content: space-between;

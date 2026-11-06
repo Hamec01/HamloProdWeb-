@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Image from "next/image";
 import { AdminPostCrudManager } from "@/components/admin/admin-post-crud-manager";
 import { DeveloperDiaryDialog } from "@/components/vst/developer-diary-dialog";
+import { HpdgVideoGallery } from "@/components/vst/hpdg-video-gallery";
 import { getAdminSessionState } from "@/lib/auth/session";
 import { localizePosts } from "@/lib/localize-content";
 import { normalizeLocale } from "@/lib/market";
@@ -147,7 +148,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         heroMeta: `Версия ${VERSION_LABEL} · Windows 10/11 64-bit · VST3 · без активации`,
         trust: [["5", "жанров"], ["28", "стилей"], ["919", "семплов"], [PRICE, "Beta 7"]],
         videoTitle: "Посмотри, как это звучит",
-        videoText: "Каждый экран и каждый звук в этом видео — настоящий плагин Beta 6.",
+        videoText: "Демо и короткие разборы с канала @hpdgvst. Выбери жанр и послушай HPDG в работе.",
         aboutTitle: "Что такое HPDG",
         about: [
           "HPDG пишет барабанные партии и бас за тебя. Выбери жанр и стиль, нажми Generate Pattern — и в сетке появится полный бит: кик, снейр, хэты, перкуссия, тарелки и линия 808 или баса, сразу со своими звуками.",
@@ -280,7 +281,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         heroMeta: `Version ${VERSION_LABEL} · Windows 10/11 64-bit · VST3 · no activation`,
         trust: [["5", "genres"], ["28", "styles"], ["919", "samples"], [PRICE, "Beta 7"]],
         videoTitle: "See and hear it in action",
-        videoText: "Every screen and every sound in this video comes from the real Beta 6 plugin.",
+        videoText: "Demos and quick walkthroughs from @hpdgvst. Choose a genre and hear HPDG at work.",
         aboutTitle: "What HPDG is",
         about: [
           "HPDG writes drum patterns and a bass line for you. Pick a genre and a style, press Generate Pattern, and a full beat appears in the grid: kick, snare, hats, percussion, cymbals and an 808 or bass line, already playing with its own sounds.",
@@ -453,7 +454,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <a href="#features">{t.nav[0]}</a>
         <a href="#video">{t.nav[1]}</a>
         <a href="#updates">{t.nav[2]}</a>
-        <a href="#devlog">{t.nav[3]}</a>
+        <a href="#beta7">{t.nav[3]}</a>
         <a href="#support">{t.nav[4]}</a>
         <DeveloperDiaryDialog posts={posts} locale={locale} isAdmin={adminSession.isAuthenticated} />
       </nav>
@@ -464,7 +465,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           <div className={styles.heroCopy}>
             <p className={styles.eyebrow}>BETA 7 · WINDOWS 10/11 · VST3</p>
             <Image className={styles.heroLogo} src={media("logo-white.webp")} width={106} height={128} alt="HPDG" priority />
-            <h1>HPDG</h1>
+            <h1>HPDG <span className={styles.heroVersion}>Beta 7</span></h1>
             <p className={styles.heroSubtitle}>HAMLOPROD DRUM GENERATOR</p>
             <p className={styles.heroLead}>{t.heroLead}</p>
             <ul className={styles.heroBullets}>
@@ -488,19 +489,43 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         {t.trust.map(([value, label]) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}
       </section>
 
+      <section className={styles.releaseSpotlight} id="beta7" aria-labelledby="beta7-title">
+        <header className={styles.sectionHeader}>
+          <span>NEW RELEASE / 0.1.0 BETA 7</span>
+          <h2 id="beta7-title">{isRu ? "Больше характера. Больше контроля." : "More character. More control."}</h2>
+          <p>{isRu ? "Новые правила Trap, полноценный редактор 808 и более точная работа с твоим семплом. Уже в текущей версии HPDG." : "New Trap rules, hands-on 808 editing and more precise sample guidance. Available in the current HPDG release."}</p>
+        </header>
+        <div className={styles.releaseCards}>
+          {[
+            { tag: "01 / TRAP", title: "ATL Classic + Dark Trap", text: isRu ? "Два разных характера: разреженные кики и ответы 808 или тёмный бас с длинными опорными нотами. Роллы: Off / Style / Fills." : "Two distinct characters: sparse kicks and 808 answers, or darker bass with sustained anchors. Rolls: Off / Style / Fills." },
+            { tag: "02 / HPDG 808", title: isRu ? "Твой звук Sub808" : "Shape your Sub808", text: isRu ? "Слой семпла, фильтры, Drive, огибающие и сохранение пресетов. Шесть новых голосов ATL/Dark — 919 семплов в библиотеке." : "Sample layer, filters, Drive, envelopes and preset saving. Six new ATL/Dark voices bring the library to 919 samples." },
+            { tag: "03 / SAMPLE ANALYSIS", title: isRu ? "От нот — к тональности" : "From notes to key", text: isRu ? "Тональность по нотам Basic Pitch с резервным chroma-анализом. Ручной выбор сохраняет приоритет. Более точная сетка и триоли." : "Key estimation from Basic Pitch notes with a chroma fallback. Manual selection keeps priority. A finer grid and triplets." },
+          ].map((item) => <article key={item.tag}><span>{item.tag}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}
+        </div>
+        <div className={styles.releaseLinks}>
+          <a href="#devlog">{isRu ? "Все изменения Beta 7" : "All Beta 7 changes"} ↓</a>
+          <a href="/hpdg/releases/beta7/HPDG_Beta7_Guide_EN.pdf" target="_blank" rel="noreferrer">{t.guideLabel} ↗</a>
+          <a href={`/hpdg/download?lang=${locale}`}>{isRu ? "Скачать по своему ключу" : "Download with your key"} ↗</a>
+        </div>
+      </section>
+
       <section className={styles.videoSection} id="video">
         <header className={styles.sectionHeader}>
-          <span>LIVE / 03:01</span>
+          <span>HPDG / YOUTUBE</span>
           <h2>{t.videoTitle}</h2>
           <p>{t.videoText}</p>
         </header>
-        <div className={styles.videoFrame}>
-          <video controls preload="none" playsInline poster={media("beta6/video-poster.jpg")}>
-            <source src={media("beta6/hpdg-beta6-demo-720p.mp4")} type="video/mp4" media="(max-width: 900px)" />
-            <source src={media("beta6/hpdg-beta6-demo-1080p.mp4")} type="video/mp4" />
-            <a href={media("beta6/hpdg-beta6-demo-720p.mp4")}>HPDG Beta 6 demo (MP4)</a>
-          </video>
-        </div>
+        <HpdgVideoGallery isRu={isRu} />
+        <details className={styles.directVideo}>
+          <summary>{isRu ? "Обзор Beta 6 — смотреть без YouTube" : "Beta 6 overview — watch without YouTube"}</summary>
+          <div className={styles.videoFrame}>
+            <video controls preload="none" playsInline poster={media("beta6/video-poster.jpg")}>
+              <source src={media("beta6/hpdg-beta6-demo-720p.mp4")} type="video/mp4" media="(max-width: 900px)" />
+              <source src={media("beta6/hpdg-beta6-demo-1080p.mp4")} type="video/mp4" />
+              <a href={media("beta6/hpdg-beta6-demo-720p.mp4")}>HPDG Beta 6 demo (MP4)</a>
+            </video>
+          </div>
+        </details>
       </section>
 
       <section className={styles.aboutSection}>

@@ -116,6 +116,22 @@
   letter-spacing: 0.045em;
 }
 
+.heroVersion { display: inline-block; margin-left: .5rem; color: #ff7979; font-size: clamp(1.4rem,3vw,2.5rem); line-height: 1; vertical-align: middle; letter-spacing: .02em; white-space: nowrap; }
+.releaseSpotlight { scroll-margin-top: 5rem; padding: clamp(3rem,6vw,5rem) 0; border-bottom: 1px solid var(--hpdg-line); }
+.releaseSpotlight .sectionHeader { margin-bottom: 2rem; }
+.releaseSpotlight h2 { font-size: clamp(2.5rem,5vw,4.5rem); }
+.releaseCards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; }
+.releaseCards article { padding: clamp(1.25rem,2vw,2rem); border: 1px solid #442a30; border-radius: 7px; background: linear-gradient(145deg,#20171c,#14161b); }
+.releaseCards article > span { color: #ff7979; font-size: .65rem; letter-spacing: .1em; }
+.releaseCards h3 { margin-top: 1rem !important; font-family: var(--font-heading),sans-serif; font-size: clamp(1.6rem,3vw,2.4rem); font-weight: 400; line-height: 1.1; }
+.releaseCards p { margin-top: 1rem !important; color: #bfc3ca; font-size: .8rem; line-height: 1.8; }
+.releaseLinks { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-top: 1.75rem; font-size: .75rem; }
+.releaseLinks a { color: var(--hpdg-text); text-decoration: underline; text-underline-offset: .35rem; }
+.directVideo { margin-top: 2rem; border-top: 1px solid var(--hpdg-line); }
+.directVideo summary { padding: 1.25rem 0; color: var(--hpdg-muted); font-size: .8rem; cursor: pointer; }
+.videoSection { scroll-margin-top: 4rem; }
+@media(max-width:800px) { .releaseCards { grid-template-columns: 1fr; } }
+
 .heroSubtitle {
   display: flex;
   align-items: center;
