@@ -60,8 +60,14 @@ export function DeveloperDiaryDialog({ posts, locale, isAdmin }: { posts: Post[]
   async function uploadFile(file: File) {
     if (!editor) throw new Error(t("Сначала открой редактор.", "Open the editor first."));
     const type = file.type.toLowerCase();
-    if (!imageExtension[type]) throw new Error(t("Поддерживаются JPG, PNG и WebP.", "JPG, PNG and WebP are supported."));
-    return (await uploadAdminAsset("post-file", editor.assetOwnerId, file)).publicUrl;
+    const extension = imageExtension[type];
+    if (!extension) throw new Error(t("Поддерживаются JPG, PNG и WebP.", "JPG, PNG and WebP are supported."));
+    const currentExtension = file.name.split(".").at(-1)?.toLowerCase();
+    const extensionMatches = type === "image/jpeg" ? currentExtension === "jpg" || currentExtension === "jpeg" : currentExtension === extension;
+    const upload = extensionMatches ? file : new File([file], `pasted-${crypto.randomUUID()}.${extension}`, { type });
+    const url = (await uploadAdminAsset("post-file", editor.assetOwnerId, upload)).publicUrl;
+    if (!url) throw new Error(t("Хранилище не вернуло адрес картинки.", "Storage did not return an image URL."));
+    return url;
   }
 
   async function importImage(src: string, alt: string, index: number, clipboardFile?: File) {
@@ -93,15 +99,21 @@ export function DeveloperDiaryDialog({ posts, locale, isAdmin }: { posts: Post[]
 
   async function pasteRich(event: ClipboardEvent<HTMLTextAreaElement>) {
     if (!editor || busy) return;
+    const itemFiles = Array.from(event.clipboardData.items)
+      .map((item) => item.kind === "file" ? item.getAsFile() : null)
+      .filter((file): file is File => Boolean(file?.type.startsWith("image/")));
+    const files = itemFiles.length ? itemFiles : Array.from(event.clipboardData.files).filter((file) => file.type.startsWith("image/"));
     const html = event.clipboardData.getData("text/html");
-    if (!html) return;
-    const parsed = diaryMarkdownFromHtml(html);
-    if (!parsed.images.length) return;
+    const parsed = html ? diaryMarkdownFromHtml(html) : { markdown: "", images: [] };
+    if (!parsed.images.length && !files.length) return;
     event.preventDefault();
+    if (!parsed.images.length) {
+      await addImageFiles(files);
+      return;
+    }
     if (parsed.images.length > 12) { setError(t("За один раз можно вставить не больше 12 картинок.", "Paste no more than 12 images at a time.")); return; }
     setBusy(true); setError(""); setNotice(t(`Сохраняю картинки: 0/${parsed.images.length}…`, `Saving images: 0/${parsed.images.length}…`));
     try {
-      const files = Array.from(event.clipboardData.items).map((item) => item.kind === "file" ? item.getAsFile() : null).filter((file): file is File => Boolean(file?.type.startsWith("image/")));
       let markdown = parsed.markdown;
       for (let index = 0; index < parsed.images.length; index += 1) {
         const image = parsed.images[index];
@@ -126,14 +138,15 @@ export function DeveloperDiaryDialog({ posts, locale, isAdmin }: { posts: Post[]
     } finally { setBusy(false); }
   }
 
-  async function addImageFiles(files: FileList | null) {
-    if (!files?.length || !editor || busy) return;
+  async function addImageFiles(input: FileList | File[] | null) {
+    const files = input ? Array.from(input) : [];
+    if (!files.length || !editor || busy) return;
     setBusy(true); setError(""); setNotice(t("Загружаю картинки…", "Uploading images…"));
     try {
       const snippets: string[] = [];
-      for (const file of Array.from(files).slice(0, 12)) {
+      for (const file of files.slice(0, 12)) {
         const url = await uploadFile(file);
-        if (url) snippets.push(markdownImage(file.name.replace(/\.[^.]+$/, ""), url));
+        snippets.push(markdownImage(file.name.replace(/\.[^.]+$/, "") || t("Вставленная картинка", "Pasted image"), url));
       }
       insertAtCursor(`\n\n${snippets.join("\n\n")}\n\n`);
       setNotice(t(`Добавлено картинок: ${snippets.length}.`, `Images added: ${snippets.length}.`));
