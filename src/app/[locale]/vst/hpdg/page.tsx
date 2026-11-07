@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { AdminPostCrudManager } from "@/components/admin/admin-post-crud-manager";
 import { DeveloperDiaryDialog } from "@/components/vst/developer-diary-dialog";
 import { HpdgVideoGallery } from "@/components/vst/hpdg-video-gallery";
 import { getAdminSessionState } from "@/lib/auth/session";
-import { localizePosts } from "@/lib/localize-content";
+import { getDiaryPosts } from "@/lib/diary/posts";
 import { normalizeLocale } from "@/lib/market";
-import { getAdminPosts, getPosts } from "@/services/content";
 import styles from "./page.module.css";
 
 /** Stripe Payment Link for the "HPDG Beta" product (EUR 9.99, metadata product=hpdg). */
@@ -128,11 +126,8 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
   const isRu = locale === "ru";
-  const [vstPosts, adminSession] = await Promise.all([getPosts("vst"), getAdminSessionState()]);
-  const posts = await localizePosts(vstPosts, locale);
-  const adminPosts = adminSession.isAuthenticated
-    ? (await getAdminPosts()).filter((post) => post.section === "vst" || post.section === "general")
-    : [];
+  const adminSession = await getAdminSessionState();
+  const posts = await getDiaryPosts(locale, adminSession.isAuthenticated);
 
   const t = isRu
     ? {
@@ -699,12 +694,6 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         </div>
       </section>
 
-      {adminSession.isAuthenticated ? (
-        <section className={styles.adminSection}>
-          <p>{t.adminLabel}</p>
-          <AdminPostCrudManager posts={adminPosts} />
-        </section>
-      ) : null}
     </div>
   );
 }

@@ -338,12 +338,15 @@ function StripeImportSection({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys
   );
 }
 
-function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: AdminLicenseKey[]) => void }) {
+function KeysTable({ keys, currentVersion, onKeys }: { keys: AdminLicenseKey[]; currentVersion: string | null; onKeys: (keys: AdminLicenseKey[]) => void }) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
   const visible = keys.filter((k) => !query || k.email.includes(query.toLowerCase()) || k.key.includes(query.toUpperCase()));
+  const activeCount = keys.filter((key) => !key.revokedAt).length;
+  const buyers = keys.filter((key) => !key.revokedAt && ["stripe", "stripe-csv"].includes(key.source) && key.stripePaymentId);
+  const currentDownloads = currentVersion ? buyers.filter((key) => key.lastVersion === currentVersion).length : 0;
 
   async function setRevoked(key: AdminLicenseKey, revoked: boolean) {
     const reason = revoked ? window.prompt(`Отозвать ключ ${key.key} (${key.email})? Причина:`, "refund") : null;
@@ -366,7 +369,10 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
   return (
     <section className={panel}>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h2 className="font-sans text-3xl uppercase tracking-[0.06em]">Ключи ({keys.filter((k) => !k.revokedAt).length} активных)</h2>
+        <div>
+          <h2 className="font-sans text-3xl uppercase tracking-[0.06em]">Ключи: {activeCount} активных / {keys.length} всего</h2>
+          {currentVersion ? <p className={muted}>Покупатели скачали {currentVersion}: {currentDownloads} из {buyers.length}. Это подтверждает выдачу установщика, но не саму установку.</p> : null}
+        </div>
         <input className={`${input} max-w-xs`} placeholder="Поиск: email или ключ" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
       {error ? <p className={alert}>{error}</p> : null}
@@ -374,7 +380,7 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
       <div className="overflow-auto">
         <table className="w-full text-left text-xs [&_td]:pr-3 [&_th]:pr-3">
           <thead className={label}>
-            <tr><th className="py-2">Ключ</th><th>Email</th><th>Откуда</th><th>Выдан</th><th>Скачиваний (24 ч / всего)</th><th>Последнее</th><th>Письмо</th><th /></tr>
+            <tr><th className="py-2">Ключ</th><th>Email</th><th>Откуда</th><th>Выдан</th><th>Скачиваний (24 ч / всего)</th><th>Последнее</th><th>Текущая версия</th><th>Письмо с ключом</th><th /></tr>
           </thead>
           <tbody>
             {visible.map((k) => (
@@ -385,6 +391,7 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
                 <td>{formatDate(k.createdAt)}</td>
                 <td>{k.downloads24h} / {k.downloads}</td>
                 <td>{k.lastDownloadAt ? `${formatDate(k.lastDownloadAt)} · ${k.lastVersion}` : "—"}</td>
+                <td>{currentVersion && ["stripe", "stripe-csv"].includes(k.source) && k.stripePaymentId ? (k.lastVersion === currentVersion ? `скачана ${formatDate(k.lastDownloadAt)}` : "не скачана") : "—"}</td>
                 <td>{k.lastEmailedAt ? formatDate(k.lastEmailedAt) : "—"}</td>
                 <td className="whitespace-nowrap text-right">
                   {k.revokedAt ? (
@@ -401,7 +408,7 @@ function KeysTable({ keys, onKeys }: { keys: AdminLicenseKey[]; onKeys: (keys: A
                 </td>
               </tr>
             ))}
-            {visible.length === 0 ? <tr><td colSpan={8} className={`py-4 ${muted}`}>Ключей пока нет.</td></tr> : null}
+            {visible.length === 0 ? <tr><td colSpan={9} className={`py-4 ${muted}`}>Ключей пока нет.</td></tr> : null}
           </tbody>
         </table>
       </div>
@@ -418,7 +425,7 @@ export function AdminHpdgManager({ initialReleases, initialKeys }: { initialRele
       <AdminHpdgCampaign releases={releases} />
       <IssueSection onKeys={setKeys} />
       <StripeImportSection keys={keys} onKeys={setKeys} />
-      <KeysTable keys={keys} onKeys={setKeys} />
+      <KeysTable keys={keys} currentVersion={releases.find((release) => release.isCurrent)?.version ?? null} onKeys={setKeys} />
     </div>
   );
 }

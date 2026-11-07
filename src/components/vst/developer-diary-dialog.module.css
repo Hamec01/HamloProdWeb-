@@ -35,7 +35,8 @@
 }
 
 .dialog {
-  width: min(44rem, calc(100vw - 2rem));
+  width: min(50rem, calc(100vw - 2rem));
+  margin: auto;
   max-width: none;
   max-height: min(82vh, 52rem);
   overflow: hidden;
@@ -47,15 +48,15 @@
   box-shadow: 0 2rem 7rem rgba(0, 0, 0, 0.72);
 }
 
+.dialog[open] { display: flex; flex-direction: column; }
+
 .dialog::backdrop {
   background: rgba(4, 5, 7, 0.8);
   backdrop-filter: blur(5px);
 }
 
 .dialogHeader {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -100,28 +101,35 @@
   color: #ff7979;
 }
 
-.manageLink {
-  display: flex;
-  justify-content: space-between;
-  margin: 1rem 1.5rem 0;
-  padding: 0.85rem 1rem;
-  border: 1px solid rgba(226, 62, 62, 0.4);
-  color: #ffd2d2;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-}
-
-.manageLink:hover {
-  background: rgba(226, 62, 62, 0.1);
-}
-
-.entries {
-  display: grid;
-  max-height: calc(min(82vh, 52rem) - 6rem);
-  gap: 1rem;
-  overflow-y: auto;
-  padding: 1.5rem;
-}
+.body { min-height: 0; overflow-y: auto; padding: 1.5rem; overscroll-behavior: contain; }
+.toolbar, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.toolbar { justify-content: space-between; margin-bottom: 1.25rem; }
+.primaryButton, .textButton, .deleteButton { min-height: 2.5rem; padding: .6rem .85rem; border-radius: 4px; color: #e8eaee; cursor: pointer; font: inherit; font-size: .75rem; }
+.primaryButton { border: 1px solid #e23e3e; background: #a52429; }
+.textButton { border: 1px solid #3a3e47; background: transparent; }
+.deleteButton { border: 1px solid #6b3034; background: transparent; color: #ff9898; }
+.primaryButton:hover { background: #ce343a; }
+.textButton:hover { background: #25272e; }
+.body button:disabled { opacity: .45; cursor: default; }
+.body :is(button, input, textarea):focus-visible { outline: 2px solid #ff9292; outline-offset: 3px; }
+.editor { display: grid; gap: 1rem; margin-bottom: 1.5rem; padding: 1.25rem; border: 1px solid #71353b; border-radius: 6px; background: #17191e; }
+.editor h3 { margin: 0; font-family: var(--font-heading), sans-serif; font-size: 1.8rem; font-weight: 400; }
+.editor label:not(.checkbox) { display: grid; gap: .5rem; font-size: .8rem; }
+.editor :is(input:not([type=checkbox]), textarea) { box-sizing: border-box; width: 100%; min-width: 0; padding: .75rem; border: 1px solid #3a3e47; border-radius: 4px; background: #101115; color: #e8eaee; font: inherit; font-size: .85rem; line-height: 1.65; }
+.editor textarea { resize: vertical; min-height: 9rem; }
+.formatToolbar { display: flex; flex-wrap: wrap; gap: .5rem; }
+.formatToolbar button { min-height: 2.2rem; padding: .45rem .7rem; border: 1px solid #3a3e47; border-radius: 3px; background: #101115; color: #e8eaee; cursor: pointer; font: inherit; font-size: .7rem; }
+.formatToolbar button:hover { border-color: #e23e3e; }
+.filePicker input { padding: .55rem !important; cursor: pointer; }
+.filePicker input::file-selector-button { margin-right: .75rem; padding: .45rem .65rem; border: 1px solid #3a3e47; border-radius: 3px; background: #25272e; color: #e8eaee; cursor: pointer; }
+.checkbox { display: flex; align-items: center; gap: .6rem; font-size: .75rem; line-height: 1.6; }
+.checkbox input { flex: none; width: 1rem; height: 1rem; accent-color: #e23e3e; }
+.hint { color: #9aa1ad; font-size: .68rem; line-height: 1.7; }
+.preview { display: grid; gap: 1rem; padding: 1rem; border: 1px solid #3a3e47; overflow-wrap: anywhere; }
+.error, .notice { margin-bottom: 1rem; padding: .85rem; border: 1px solid #71353b; border-radius: 4px; color: #ffd2d2; font-size: .8rem; line-height: 1.6; }
+.notice { border-color: #3a5442; color: #b7dbbf; }
+.entries { display: grid; gap: 1rem; }
+.entryMeta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; align-items: baseline; }
 
 .entry {
   display: grid;
@@ -130,6 +138,7 @@
   border: 1px solid #2a2e36;
   border-radius: 6px;
   background: #17191e;
+  overflow-wrap: anywhere;
 }
 
 .entry h3 {
@@ -165,11 +174,9 @@
 
 @media (max-width: 520px) {
   .dialogHeader,
-  .entries {
+  .body {
     padding: 1rem;
   }
 
-  .manageLink {
-    margin-inline: 1rem;
-  }
+  .editor { padding: 1rem; }
 }

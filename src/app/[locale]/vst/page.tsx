@@ -3,9 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { DeveloperDiaryDialog } from "@/components/vst/developer-diary-dialog";
 import { getAdminSessionState } from "@/lib/auth/session";
-import { localizePosts } from "@/lib/localize-content";
+import { getDiaryPosts } from "@/lib/diary/posts";
 import { normalizeLocale } from "@/lib/market";
-import { getPosts } from "@/services/content";
 import styles from "./page.module.css";
 
 const MEDIA = `${(
@@ -39,8 +38,8 @@ export default async function VstPage({ params }: { params: Promise<{ locale: st
   const { locale: rawLocale } = await params;
   const locale = normalizeLocale(rawLocale);
   const isRu = locale === "ru";
-  const [vstPosts, adminSession] = await Promise.all([getPosts("vst"), getAdminSessionState()]);
-  const posts = await localizePosts(vstPosts, locale);
+  const adminSession = await getAdminSessionState();
+  const posts = await getDiaryPosts(locale, adminSession.isAuthenticated);
 
   return (
     <div className={styles.page}>

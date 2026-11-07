@@ -22,3 +22,13 @@ export function resolvePublicObjectUrl(key: string | null | undefined): string |
     return null;
   }
 }
+
+const LEGACY_PUBLIC_STORAGE_URL = /https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/([a-z0-9-]+)\/([^\s)"']+)/gi;
+const PUBLIC_LEGACY_BUCKETS = new Set(["media-images", "post-files", "beat-previews"]);
+
+export function rewriteLegacyPublicStorageUrls(value: string): string {
+  return value.replace(LEGACY_PUBLIC_STORAGE_URL, (original, bucket: string, path: string) => {
+    if (!PUBLIC_LEGACY_BUCKETS.has(bucket)) return original;
+    return resolvePublicObjectUrl(`legacy-supabase/${bucket}/${path}`) ?? original;
+  });
+}

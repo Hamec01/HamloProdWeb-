@@ -47,6 +47,7 @@ export function PostRichContent({ content }: { content: string }) {
 
   const items: ReactNode[] = [];
   let listBuffer: string[] = [];
+  let imageBuffer: Array<{ alt: string; src: string }> = [];
 
   const flushList = () => {
     if (!listBuffer.length) {
@@ -64,20 +65,33 @@ export function PostRichContent({ content }: { content: string }) {
     listBuffer = [];
   };
 
+  const flushImages = () => {
+    if (!imageBuffer.length) return;
+    const images = imageBuffer;
+    items.push(
+      <div key={`images-${items.length}`} className={images.length > 1 ? "grid gap-4 sm:grid-cols-2" : ""}>
+        {images.map(({ alt, src }, index) => (
+          <figure key={`${src}-${index}`} className="space-y-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={alt || "Post image"} className="w-full rounded-2xl border border-[var(--color-line)] object-cover" />
+            {alt ? <figcaption className="text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">{alt}</figcaption> : null}
+          </figure>
+        ))}
+      </div>,
+    );
+    imageBuffer = [];
+  };
+
   blocks.forEach((line) => {
     const imageMatch = line.match(imageLineRe);
     if (imageMatch) {
       flushList();
       const [, alt, src] = imageMatch;
-      items.push(
-        <figure key={`${src}-${items.length}`} className="space-y-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt || "Post image"} className="w-full rounded-2xl border border-[var(--color-line)] object-cover" />
-          {alt ? <figcaption className="text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">{alt}</figcaption> : null}
-        </figure>,
-      );
+      imageBuffer.push({ alt, src });
       return;
     }
+
+    flushImages();
 
     const fileMatch = line.match(fileLineRe);
     if (fileMatch) {
@@ -141,6 +155,7 @@ export function PostRichContent({ content }: { content: string }) {
   });
 
   flushList();
+  flushImages();
 
   return <div className="space-y-4">{items}</div>;
 }

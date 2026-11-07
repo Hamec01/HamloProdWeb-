@@ -2,7 +2,7 @@ import { siteSettings } from "@/services/mock-data";
 import type { Artist, ArtistPost, Beat, Comment, Post, Release, SiteSettings, Track, TrackDownloadLog } from "@/types";
 import { BeatService } from "@/lib/beats/service";
 import { prisma } from "@/lib/db/client";
-import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
+import { resolvePublicObjectUrl, rewriteLegacyPublicStorageUrls } from "@/lib/storage/public-url";
 
 const beatService = new BeatService();
 
@@ -79,16 +79,6 @@ function mapPostgresRelease(row: PostgresReleaseRow): Release {
 
 
 
-
-const LEGACY_PUBLIC_STORAGE_URL = /https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\/([a-z0-9-]+)\/([^\s)"']+)/gi;
-const PUBLIC_LEGACY_BUCKETS = new Set(["media-images", "post-files", "beat-previews"]);
-
-function rewriteLegacyPublicStorageUrls(value: string): string {
-  return value.replace(LEGACY_PUBLIC_STORAGE_URL, (original, bucket: string, path: string) => {
-    if (!PUBLIC_LEGACY_BUCKETS.has(bucket)) return original;
-    return resolvePublicObjectUrl(`legacy-supabase/${bucket}/${path}`) ?? original;
-  });
-}
 
 type PostgresPostRow = Awaited<ReturnType<typeof prisma.post.findFirst>>;
 
