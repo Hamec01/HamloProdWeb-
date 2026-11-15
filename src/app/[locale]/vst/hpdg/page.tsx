@@ -218,7 +218,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         releaseNotes: "список изменений",
         changelog: [
           { version: "0.1.0 Beta 8", items: [
-            "Boom Bap Underground полностью перестроен: двухтактовые барабаны, четыре семейства грува, собственная басовая линия по реальным кикам и новый кит из 18 звуков. Проекты Beta 7 продолжают открываться.",
+            "Boom Bap Underground полностью перестроен: двухтактовые барабаны, четыре семейства грува, собственная басовая линия по реальным кикам и новый кит из 18 звуков. Анализ семпла стал точнее. Проекты Beta 7 продолжают открываться.",
             "Sample 1 / 2 / 3 задаёт силу влияния семпла на Guide; Copy + Sample Tempo копирует брейк в темпе семпла на 1–16 тактов.",
             "Темп определяется целыми BPM, а лупы читаются целыми тактами.",
             "Export Full MIDI создаёт одну дорожку как drum map, с барабанами на отдельных нотах и басом ниже.",
@@ -361,7 +361,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         releaseNotes: "release notes",
         changelog: [
           { version: "0.1.0 Beta 8", items: [
-            "Boom Bap Underground rebuilt: two-bar drums, four groove families, its own bass line on the real kicks and a new 18-sound kit. Beta 7 projects still open.",
+            "Boom Bap Underground rebuilt: two-bar drums, four groove families, its own bass line on the real kicks and a new 18-sound kit. Sample analysis is now more accurate. Beta 7 projects still open.",
             "Sample 1 / 2 / 3 controls Guide influence; Copy + Sample Tempo copies a break at the sample tempo for 1–16 bars.",
             "Tempo detection lands on whole BPMs, and loops are read as whole bars.",
             "Export Full MIDI writes one drum-map track, with every drum on its own note and bass below.",
@@ -507,7 +507,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
       <section className={styles.releaseSpotlight} id="beta8" aria-labelledby="beta8-title">
         <header className={styles.sectionHeader}>
           <span>NEW RELEASE / 0.1.0 BETA 8 · 14 NOVEMBER 2026</span>
-          <h2 id="beta8-title">{isRu ? "Новый Underground. Точнее работа с семплом." : "A new Underground. More sample control."}</h2>
+          <h2 id="beta8-title">{isRu ? "Перестроенный Boom Bap Underground. Точнее анализ семпла." : "Rebuilt Boom Bap Underground. Better sample analysis."}</h2>
           <p>{isRu ? "Перестроенный Boom Bap Underground, управление влиянием семпла, более чистый MIDI-экспорт и 1147 аудиосемплов — уже в текущей версии HPDG." : "Rebuilt Boom Bap Underground, adjustable sample influence, a cleaner MIDI export and 1147 audio samples — available in the current HPDG release."}</p>
         </header>
         <div className={styles.releaseCards}>
