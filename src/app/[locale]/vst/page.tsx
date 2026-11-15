@@ -62,12 +62,12 @@ export default async function VstPage({ params }: { params: Promise<{ locale: st
             <Image src={`${MEDIA}/logo-white.webp`} width={850} height={1024} alt="HPDG" />
           </div>
           <div className={styles.pluginInfo}>
-            <p className={styles.pluginType}>VST3 · WINDOWS 10/11 · 919 {isRu ? "СЕМПЛОВ" : "SAMPLES"}</p>
-            <h2>HPDG <span className={styles.releaseBadge}>Beta 7</span></h2>
+            <p className={styles.pluginType}>VST3 · WINDOWS 10/11 · 1147 {isRu ? "СЕМПЛОВ" : "SAMPLES"}</p>
+            <h2>HPDG <span className={styles.releaseBadge}>Beta 8</span></h2>
             <p>
               {isRu
-                ? "Новая Beta 7: ATL Classic и Dark Trap, редактор HPDG 808 и анализ тональности Basic Pitch. Создай бит под свой луп и перенеси MIDI или WAV в DAW."
-                : "New in Beta 7: ATL Classic and Dark Trap, the HPDG 808 editor and Basic Pitch key analysis. Build a beat around your loop and drag MIDI or WAV into your DAW."}
+                ? "Новая Beta 8: перестроенный Boom Bap Underground, влияние семпла 1/2/3, Copy + Sample Tempo и Export Full MIDI как drum map."
+                : "New in Beta 8: rebuilt Boom Bap Underground, Sample influence 1/2/3, Copy + Sample Tempo and Export Full MIDI as a drum map."}
             </p>
             <span className={styles.pluginLink}>
               {isRu ? "Подробнее о плагине" : "Explore plugin"} <span aria-hidden="true">→</span>

@@ -20,7 +20,7 @@ const MEDIA = `${(
 ).replace(/\/+$/, "")}/hpdg/site`;
 const media = (path: string) => `${MEDIA}/${path}`;
 
-const VERSION_LABEL = "0.1.0 Beta 7";
+const VERSION_LABEL = "0.1.0 Beta 8";
 const PRICE = "€9.99";
 
 export async function generateMetadata({
@@ -33,7 +33,7 @@ export async function generateMetadata({
   const locale = isRu ? "ru" : "en";
 
   return {
-    title: isRu ? "HPDG Beta 7 — генератор барабанов и баса VST3" : "HPDG Beta 7 — Drum & Bass Generator VST3",
+    title: isRu ? "HPDG Beta 8 — генератор барабанов и баса VST3" : "HPDG Beta 8 — Drum & Bass Generator VST3",
     description: isRu
       ? "HPDG генерирует барабаны и бас прямо в DAW: Boom Bap, Trap, DnB, Techno и Atmospheric, бит под твой луп, MIDI и WAV в один клик. VST3 для Windows."
       : "HPDG generates drums and bass in your DAW: Boom Bap, Trap, DnB, Techno and Atmospheric, beats built around your loop, MIDI and WAV in one drag. VST3 for Windows.",
@@ -46,8 +46,8 @@ export async function generateMetadata({
       siteName: "HamloProd",
       title: "HPDG — HamloProd Drum Generator · VST3",
       description: isRu
-        ? "Барабаны и бас для твоих битов — прямо в DAW. Beta 7 для Windows."
-        : "Drums and bass for your beats, generated in your DAW. Beta 7 for Windows.",
+        ? "Барабаны и бас для твоих битов — прямо в DAW. Beta 8 для Windows."
+        : "Drums and bass for your beats, generated in your DAW. Beta 8 for Windows.",
       images: [{ url: media("beta6/video-poster.jpg"), width: 1920, height: 1080, alt: "HPDG Drum Generator VST3" }],
     },
   };
@@ -115,7 +115,7 @@ function FeatureBlock({ feature, flip = false }: { feature: Feature; flip?: bool
 }
 
 const GENRES = [
-  { name: "Boom Bap", styles: ["Classic", "Dusty", "Jazzy", "Boom Bap Gold", "Russian Underground", "Lo-fi Rap"] },
+  { name: "Boom Bap", styles: ["Classic", "Dusty", "Jazzy", "Boom Bap Gold", "Underground", "Lo-fi Rap"] },
   { name: "Trap", styles: ["ATL Classic", "Dark", "Cloud", "Rage", "Memphis", "Luxury"] },
   { name: "DnB", styles: ["Modern", "Roller", "Liquid", "Neurofunk", "Jump-Up", "Breakbeat"] },
   { name: "Techno", styles: ["Peak Time", "Hypnotic", "Minimal", "Detroit", "Dub", "Acid", "Hard"] },
@@ -141,7 +141,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         heroBuy: `Купить HPDG — ${PRICE}`,
         heroVideo: "Смотреть видео",
         heroMeta: `Версия ${VERSION_LABEL} · Windows 10/11 64-bit · VST3 · без активации`,
-        trust: [["5", "жанров"], ["28", "стилей"], ["919", "семплов"], [PRICE, "Beta 7"]],
+        trust: [["5", "жанров"], ["28", "стилей"], ["1147", "семплов"], [PRICE, "Beta 8"]],
         videoTitle: "Посмотри, как это звучит",
         videoText: "Демо и короткие разборы с канала @hpdgvst. Выбери жанр и послушай HPDG в работе.",
         aboutTitle: "Что такое HPDG",
@@ -160,10 +160,11 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         workflowTitle: "От идеи до дорожки",
         workflowText: "Генерируй основу, направляй грув своим семплом и забирай результат в свой проект.",
         sampleTitle: "Стартуй от своего семпла",
-        sampleText: "Брось луп или семпл в Sample Analysis (WAV, AIFF, FLAC, MP3). HPDG оценит темп и свинг, определит тональность по нотам Basic Pitch (с резервным chroma-анализом), найдёт басовые ноты и соберёт бит под этот материал: тот же темп, бас в нужной тональности, грув, который садится на луп. Play w/ HPDG играет твой луп и бит вместе прямо в плагине, со своей громкостью.",
+        sampleText: "Загрузи WAV, AIFF, FLAC, MP3 или OGG — сразу несколько файлов или перетащи звук на нужную дорожку. HPDG определит темп и тональность, найдёт басовые ноты и соберёт бит под материал. Play w/ HPDG играет твой луп и бит вместе прямо в плагине.",
         sampleBullets: [
-          "Trim — выбери нужный кусок файла: Loop / Play / Stop, тяни края или впиши «Selection = N bars», и темп подстроится.",
-          "Guide generation (по умолчанию) — анализ направляет генератор.",
+          "Sample 1 / 2 / 3 задаёт силу влияния семпла на Guide: 3 следует близко, 1 оставляет ведущим грув жанра.",
+          "Copy + Sample Tempo копирует брейк в его собственном темпе на 1–16 тактов; темп DAW не меняется.",
+          "Темп округляется до целого BPM, когда длина лупа это подтверждает; лупы читаются целыми тактами.",
           "Ручной выбор тональности имеет приоритет. Оценка помогает, но может ошибаться на сложном аудио.",
         ],
         sampleAlt: "Анализ семпла и Guide generation в HPDG",
@@ -173,7 +174,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         dawTitle: "Прямо в DAW",
         dawText: "Всё, что получилось, уходит в проект одним перетаскиванием.",
         dawBullets: [
-          "Drag Full — перетащи весь паттерн на MIDI-дорожку. Export Full сохраняет его MIDI-файлом.",
+          "Export Full MIDI создаёт одну дорожку как drum map: Kick 36, Snare 37, HiHat 38 и другие барабаны на своих нотах, бас ниже.",
           "Кнопка MIDI на дорожке тащит только её партию, кнопка WAV — партию уже со звуком.",
           "Export Loop WAV сохраняет весь микс аудиолупом.",
           "Пока тянешь файл, окно плагина отходит в сторону (FL Studio и другие).",
@@ -181,7 +182,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         ],
         dawAlt: "Перетаскивание MIDI-паттерна из HPDG в DAW",
         lanesTitle: "Каждая дорожка под контролем",
-        lanesText: "Каждый инструмент — своя дорожка: HiHat, Hat Accent, OpenHat, Snare, Kick, Kick Ghost, Ride, Cymbal, Sub808. Ещё дорожки — кнопкой + Lane.",
+        lanesText: "Каждый инструмент — своя дорожка: HiHat, Hat Accent, OpenHat, Snare, Kick, Kick Ghost, Ride, Cymbal, Sub808.",
         lanes: [
           "RG перегенерирует одну дорожку и оставляет остальные; Mutate делает вариацию всего бита.",
           "S — Solo, M — Mute, L — Lock (защитить дорожку от изменений), C — Clear; < > листают звуки кита.",
@@ -204,11 +205,11 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         keyTitle: "Ключ лицензии",
         keyText: "Выглядит как HPDG-XXXX-XXXX-XXXX-XXXX и приходит на email, с которого ты покупал HPDG. Он нужен только для скачивания и обновлений — все функции работают без него, активации нет. Потерял ключ? Напиши на hello@hamloprod.org с email покупки.",
         updatesAlt: "Шапка HPDG с кнопкой Update рядом с версией",
-        guideLabel: "Руководство Beta 7 (PDF, English)",
+        guideLabel: "Руководство Beta 8 (PDF, English)",
         reqTitle: "Требования и установка",
         req: [
           "Windows 10 / 11, 64-bit; 64-битная DAW с поддержкой VST3. Проверено в FL Studio.",
-          "Один установщик (~122 МБ): плагин, 919 фабричных семплов и Visual C++ Runtime. Больше ничего качать не нужно, аккаунт не нужен.",
+          "Один установщик (~160 МБ): плагин, 1147 фабричных семплов и Visual C++ Runtime. Больше ничего качать не нужно, аккаунт не нужен.",
           "Ставится в C:\\Program Files\\Common Files\\VST3\\HPDG.vst3 — после установки пересканируй VST3-плагины в DAW.",
           "Формат: только VST3, только Windows.",
         ],
@@ -216,9 +217,18 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         devlogArchive: "Старые версии · дневник разработчика",
         releaseNotes: "список изменений",
         changelog: [
+          { version: "0.1.0 Beta 8", items: [
+            "Boom Bap Underground полностью перестроен: двухтактовые барабаны, четыре семейства грува, собственная басовая линия по реальным кикам и новый кит из 18 звуков. Проекты Beta 7 продолжают открываться.",
+            "Sample 1 / 2 / 3 задаёт силу влияния семпла на Guide; Copy + Sample Tempo копирует брейк в темпе семпла на 1–16 тактов.",
+            "Темп определяется целыми BPM, а лупы читаются целыми тактами.",
+            "Export Full MIDI создаёт одну дорожку как drum map, с барабанами на отдельных нотах и басом ниже.",
+            "Можно загружать WAV, AIFF, FLAC, MP3 и OGG, несколько файлов сразу, или бросать звук прямо на дорожку.",
+            "LuxuryTrap и DarkTrap доработаны; DarkTrap получил новый кит из 131 звука с 20 вариантами 808. Всего в библиотеке 1147 аудиосемплов.",
+            "Copy Break сохраняет флэмы на дорожке Snare и тихие кики перед снейром на дорожке Kick; шапка рэка стала чище.",
+          ] },
           { version: "0.1.0 Beta 7", items: [
             "Разные правила ATLClassic и DarkTrap: кик, хэты и 808, компактный басовый регистр и улучшенная работа по семплу.",
-            "Движок HPDG 808 в Sub808: слой семпла, фильтры, Drive с компенсацией уровня, огибающие и пресеты. Шесть новых голосов ATL/Dark — всего 919 семплов.",
+            "Движок HPDG 808 в Sub808: слой семпла, фильтры, Drive с компенсацией уровня, огибающие, пресеты и шесть новых голосов ATL/Dark.",
             "Trap Rolls: Off / Style / Fills. Более точная сетка, триоли и отображение роллов.",
             "Тональность по нотам Basic Pitch с резервным chroma-анализом; ручной выбор сохраняет приоритет.",
             "Исправления треска на окончании нот Sub808 и меньше прерываний аудио при работе с интерфейсом. При высокой нагрузке прерывания ещё возможны.",
@@ -246,7 +256,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         buyTitle: "Купить HPDG",
         buyText: `HPDG ${VERSION_LABEL} стоит ${PRICE}. После оплаты на email из Stripe приходит ключ лицензии.`,
         tierDescription: "Текущая бета HPDG для Windows и обновления через кнопку Update.",
-        tierIncludes: ["VST3-плагин и 919 фабричных семплов (один установщик ~122 МБ)", "Ключ лицензии на email — обновления прямо в плагине", "Windows 10/11 64-bit · без активации"],
+        tierIncludes: ["VST3-плагин и 1147 фабричных семплов (один установщик ~160 МБ)", "Ключ лицензии на email — обновления прямо в плагине", "Windows 10/11 64-bit · без активации"],
         tierButton: `Купить за ${PRICE}`,
         howTitle: "Как это работает",
         how: "Оплати на странице Stripe и укажи email. На него придёт ключ лицензии: с ним скачай HPDG на hamloprod.org/hpdg/download и введи ключ один раз в плагине — дальше новые версии приходят через кнопку Update. Вопросы: hello@hamloprod.org.",
@@ -274,7 +284,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         heroBuy: `Get HPDG — ${PRICE}`,
         heroVideo: "Watch the video",
         heroMeta: `Version ${VERSION_LABEL} · Windows 10/11 64-bit · VST3 · no activation`,
-        trust: [["5", "genres"], ["28", "styles"], ["919", "samples"], [PRICE, "Beta 7"]],
+        trust: [["5", "genres"], ["28", "styles"], ["1147", "samples"], [PRICE, "Beta 8"]],
         videoTitle: "See and hear it in action",
         videoText: "Demos and quick walkthroughs from @hpdgvst. Choose a genre and hear HPDG at work.",
         aboutTitle: "What HPDG is",
@@ -293,10 +303,11 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         workflowTitle: "From idea to track",
         workflowText: "Generate the foundation, guide the groove with your sample, and move the result into your project.",
         sampleTitle: "Start from your sample",
-        sampleText: "Drop a loop or a sample into Sample Analysis (WAV, AIFF, FLAC, MP3). HPDG estimates tempo and swing, infers the key from Basic Pitch notes with a chroma fallback, and finds the bass notes, then builds the beat for that sample: the same tempo, a bass line in the right key, a groove that sits with the loop. Play w/ HPDG plays your loop and the beat together inside the plugin, with its own volume, before you export anything.",
+        sampleText: "Load WAV, AIFF, FLAC, MP3 or OGG files — several at once, or drop a sound straight onto a lane. HPDG estimates tempo and key, finds bass notes, and builds the beat around the material. Play w/ HPDG plays your loop and the beat together inside the plugin.",
         sampleBullets: [
-          "Trim — pick the part of the file you need: Loop / Play / Stop, drag the edges, or type “Selection = N bars” and the tempo follows.",
-          "Guide generation (default) — the analysis guides the generator.",
+          "Sample 1 / 2 / 3 controls how strongly the sample steers Guide: 3 follows closely, while 1 lets the genre lead.",
+          "Copy + Sample Tempo copies a break at its own tempo for 1–16 bars; the DAW tempo stays unchanged.",
+          "Tempo lands on a whole BPM when the loop confirms it, and loops are read as whole bars.",
           "Manual key selection takes priority. The estimate is a guide and can be wrong on complex audio.",
         ],
         sampleAlt: "Sample Analysis and Guide generation in HPDG",
@@ -306,7 +317,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         dawTitle: "Into your DAW",
         dawText: "Whatever you made goes into your project with one drag.",
         dawBullets: [
-          "Drag Full — drag the whole pattern onto a MIDI track. Export Full saves it as a MIDI file.",
+          "Export Full MIDI writes one drum-map track: Kick 36, Snare 37, HiHat 38 and the other drums on their own notes, with bass below.",
           "The MIDI button on a lane drags just that part; the WAV button drags it rendered with its sound.",
           "Export Loop WAV saves the full mix as an audio loop.",
           "While you drag, the plugin window steps aside once the file leaves it (FL Studio and others).",
@@ -314,7 +325,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         ],
         dawAlt: "Dragging a MIDI pattern from HPDG into a DAW",
         lanesTitle: "Control every lane",
-        lanesText: "Each instrument is one lane: HiHat, Hat Accent, OpenHat, Snare, Kick, Kick Ghost, Ride, Cymbal, Sub808 — add more with + Lane.",
+        lanesText: "Each instrument is one lane: HiHat, Hat Accent, OpenHat, Snare, Kick, Kick Ghost, Ride, Cymbal, Sub808.",
         lanes: [
           "RG regenerates one lane and keeps the rest; Mutate makes a variation of the whole beat.",
           "S Solo, M Mute, L Lock (protect a lane from changes), C Clear; < > flip through the kit sounds.",
@@ -337,11 +348,11 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         keyTitle: "Your license key",
         keyText: "Looks like HPDG-XXXX-XXXX-XXXX-XXXX and comes by email to the address you used to buy HPDG. It is only for downloads and updates — every feature works without it, and there is no activation. Lost it? Write to hello@hamloprod.org from your purchase email.",
         updatesAlt: "HPDG header with the Update button next to the version",
-        guideLabel: "Beta 7 guide (PDF, English)",
+        guideLabel: "Beta 8 guide (PDF, English)",
         reqTitle: "Requirements and install",
         req: [
           "Windows 10 / 11, 64-bit; a 64-bit DAW with VST3 support. Tested in FL Studio.",
-          "One installer (~122 MB): the plugin, 919 factory samples and the Visual C++ Runtime. Nothing else to download, no account.",
+          "One installer (~160 MB): the plugin, 1147 factory samples and the Visual C++ Runtime. Nothing else to download, no account.",
           "Installs to C:\\Program Files\\Common Files\\VST3\\HPDG.vst3 — rescan VST3 plugins in your DAW.",
           "Format: VST3 plugin only, Windows only.",
         ],
@@ -349,9 +360,18 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         devlogArchive: "Earlier versions · developer diary",
         releaseNotes: "release notes",
         changelog: [
+          { version: "0.1.0 Beta 8", items: [
+            "Boom Bap Underground rebuilt: two-bar drums, four groove families, its own bass line on the real kicks and a new 18-sound kit. Beta 7 projects still open.",
+            "Sample 1 / 2 / 3 controls Guide influence; Copy + Sample Tempo copies a break at the sample tempo for 1–16 bars.",
+            "Tempo detection lands on whole BPMs, and loops are read as whole bars.",
+            "Export Full MIDI writes one drum-map track, with every drum on its own note and bass below.",
+            "Load WAV, AIFF, FLAC, MP3 or OGG files, several at once, or drop a sound directly onto a lane.",
+            "LuxuryTrap and DarkTrap refined; DarkTrap gets a new 131-sound kit with 20 808s. The library now contains 1147 audio samples.",
+            "Copy Break keeps snare flams on the Snare lane and quiet pre-snare kicks on Kick; the rack header is cleaner.",
+          ] },
           { version: "0.1.0 Beta 7", items: [
             "Distinct ATLClassic and DarkTrap kick, hat and 808 rules, a compact bass register and improved sample guidance.",
-            "The HPDG 808 engine in Sub808: sample layer, filters, level-compensated Drive, envelopes and presets. Six new ATL/Dark voices — 919 samples in total.",
+            "The HPDG 808 engine in Sub808: sample layer, filters, level-compensated Drive, envelopes, presets and six new ATL/Dark voices.",
             "Trap Rolls: Off / Style / Fills. A finer grid, triplets and clearer roll notes.",
             "Key estimation from Basic Pitch notes with a chroma fallback. Manual key selection keeps priority.",
             "Fixes for Sub808 note-end crackle and fewer UI-related audio interruptions. Heavy load can still cause interruptions.",
@@ -379,7 +399,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         buyTitle: "Get HPDG",
         buyText: `HPDG ${VERSION_LABEL} costs ${PRICE}. After payment, your license key is sent to the email used in Stripe.`,
         tierDescription: "The current HPDG beta for Windows plus updates through the Update button.",
-        tierIncludes: ["VST3 plugin and 919 factory samples (one ~122 MB installer)", "License key by email — updates right in the plugin", "Windows 10/11 64-bit · no activation"],
+        tierIncludes: ["VST3 plugin and 1147 factory samples (one ~160 MB installer)", "License key by email — updates right in the plugin", "Windows 10/11 64-bit · no activation"],
         tierButton: `Buy for ${PRICE}`,
         howTitle: "How it works",
         how: "Pay on Stripe and enter your email. Your license key arrives there: download HPDG at hamloprod.org/hpdg/download and enter the key once in the plugin — new versions then arrive through its Update button. Questions: hello@hamloprod.org.",
@@ -409,7 +429,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
   type DevlogEntry = { id: string; date: number; title: string; showDate: boolean; content: ReactNode };
   const formatDevlogDate = (time: number) =>
     new Intl.DateTimeFormat(isRu ? "ru-RU" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(time);
-  const builtInSortKeys = [Date.UTC(2026, 10, 6, 12), Date.UTC(2026, 9, 20, 12), Date.UTC(2026, 9, 20, 10), Date.UTC(2026, 9, 16)];
+  const builtInSortKeys = [Date.UTC(2026, 10, 14, 12), Date.UTC(2026, 10, 6, 12), Date.UTC(2026, 9, 20, 12), Date.UTC(2026, 9, 20, 10), Date.UTC(2026, 9, 16)];
   const devlogEntries: DevlogEntry[] = [
     ...t.changelog.map((release, index) => ({
       id: `release-${release.version}`,
@@ -449,7 +469,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <a href="#features">{t.nav[0]}</a>
         <a href="#video">{t.nav[1]}</a>
         <a href="#updates">{t.nav[2]}</a>
-        <a href="#beta7">{t.nav[3]}</a>
+        <a href="#beta8">{t.nav[3]}</a>
         <a href="#support">{t.nav[4]}</a>
         <DeveloperDiaryDialog posts={posts} locale={locale} isAdmin={adminSession.isAuthenticated} />
       </nav>
@@ -458,9 +478,9 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <Image className={styles.heroMark} src={media("logo-white.webp")} width={850} height={1024} alt="" priority />
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>BETA 7 · WINDOWS 10/11 · VST3</p>
+            <p className={styles.eyebrow}>BETA 8 · WINDOWS 10/11 · VST3</p>
             <Image className={styles.heroLogo} src={media("logo-white.webp")} width={106} height={128} alt="HPDG" priority />
-            <h1>HPDG <span className={styles.heroVersion}>Beta 7</span></h1>
+            <h1>HPDG <span className={styles.heroVersion}>Beta 8</span></h1>
             <p className={styles.heroSubtitle}>HAMLOPROD DRUM GENERATOR</p>
             <p className={styles.heroLead}>{t.heroLead}</p>
             <ul className={styles.heroBullets}>
@@ -484,22 +504,26 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         {t.trust.map(([value, label]) => <div key={label}><strong>{value}</strong><span>{label}</span></div>)}
       </section>
 
-      <section className={styles.releaseSpotlight} id="beta7" aria-labelledby="beta7-title">
+      <section className={styles.releaseSpotlight} id="beta8" aria-labelledby="beta8-title">
         <header className={styles.sectionHeader}>
-          <span>NEW RELEASE / 0.1.0 BETA 7</span>
-          <h2 id="beta7-title">{isRu ? "Больше характера. Больше контроля." : "More character. More control."}</h2>
-          <p>{isRu ? "Новые правила Trap, полноценный редактор 808 и более точная работа с твоим семплом. Уже в текущей версии HPDG." : "New Trap rules, hands-on 808 editing and more precise sample guidance. Available in the current HPDG release."}</p>
+          <span>NEW RELEASE / 0.1.0 BETA 8 · 14 NOVEMBER 2026</span>
+          <h2 id="beta8-title">{isRu ? "Новый Underground. Точнее работа с семплом." : "A new Underground. More sample control."}</h2>
+          <p>{isRu ? "Перестроенный Boom Bap Underground, управление влиянием семпла, более чистый MIDI-экспорт и 1147 аудиосемплов — уже в текущей версии HPDG." : "Rebuilt Boom Bap Underground, adjustable sample influence, a cleaner MIDI export and 1147 audio samples — available in the current HPDG release."}</p>
         </header>
         <div className={styles.releaseCards}>
           {[
-            { tag: "01 / TRAP", title: "ATL Classic + Dark Trap", text: isRu ? "Два разных характера: разреженные кики и ответы 808 или тёмный бас с длинными опорными нотами. Роллы: Off / Style / Fills." : "Two distinct characters: sparse kicks and 808 answers, or darker bass with sustained anchors. Rolls: Off / Style / Fills." },
-            { tag: "02 / HPDG 808", title: isRu ? "Твой звук Sub808" : "Shape your Sub808", text: isRu ? "Слой семпла, фильтры, Drive, огибающие и сохранение пресетов. Шесть новых голосов ATL/Dark — 919 семплов в библиотеке." : "Sample layer, filters, Drive, envelopes and preset saving. Six new ATL/Dark voices bring the library to 919 samples." },
-            { tag: "03 / SAMPLE ANALYSIS", title: isRu ? "От нот — к тональности" : "From notes to key", text: isRu ? "Тональность по нотам Basic Pitch с резервным chroma-анализом. Ручной выбор сохраняет приоритет. Более точная сетка и триоли." : "Key estimation from Basic Pitch notes with a chroma fallback. Manual selection keeps priority. A finer grid and triplets." },
+            { tag: "01 / BOOM BAP", title: "Boom Bap Underground", text: isRu ? "Двухтактовые барабаны, четыре семейства грува со своим свингом, формой кика, ghost-снейрами и хэтами. Бас ложится на реальные кики; новый кит из 18 звуков." : "Two-bar drums, four groove families with their own swing, kick shapes, ghost snares and hats. Bass lands on the real kicks; a new 18-sound kit." },
+            { tag: "02 / SAMPLE", title: isRu ? "Влияние 1 / 2 / 3" : "Influence 1 / 2 / 3", text: isRu ? "Выбирай, насколько сильно семпл направляет Guide: 3 следует близко, а 1 оставляет ведущим грув жанра. Copy Break не меняется." : "Choose how strongly the sample steers Guide: 3 follows closely, while 1 lets the genre lead. Copy Break is unaffected." },
+            { tag: "03 / COPY", title: "Copy + Sample Tempo", text: isRu ? "Копируй брейк в собственном темпе семпла на 1–16 тактов. Семпл и MIDI-луп перезапускаются вместе, темп DAW не меняется." : "Copy a break at the sample's own tempo for 1–16 bars. The sample and MIDI loop restart together; the DAW tempo stays unchanged." },
+            { tag: "04 / TEMPO", title: isRu ? "Целые BPM и такты" : "Whole BPM and bars", text: isRu ? "Темп определяется целыми значениями, когда длина лупа это подтверждает, а четырёхтактовый луп больше не читается как три такта." : "Tempo lands on a whole BPM when the loop confirms it, and a four-bar loop is no longer read as three bars." },
+            { tag: "05 / MIDI", title: "Export Full MIDI", text: isRu ? "Одна дорожка как drum map: Kick 36, Snare 37, HiHat 38 и остальные инструменты на своих нотах, бас — ниже." : "One drum-map track: Kick 36, Snare 37, HiHat 38 and the other instruments on their own notes, with bass below." },
+            { tag: "06 / SOUNDS", title: isRu ? "Твои собственные звуки" : "Your own sounds", text: isRu ? "Загружай WAV, AIFF, FLAC, MP3 или OGG, несколько файлов сразу, или бросай звук прямо на дорожку. Он остаётся там после Generate." : "Load WAV, AIFF, FLAC, MP3 or OGG files, several at once, or drop a sound directly onto a lane. It stays there after Generate." },
+            { tag: "07 / TRAP", title: isRu ? "Точнее Luxury и Dark" : "Sharper Luxury and Dark", text: isRu ? "LuxuryTrap и DarkTrap доработаны. DarkTrap получил новый кит из 131 звука с 20 вариантами 808; выбранный 808 можно зафиксировать." : "LuxuryTrap and DarkTrap refined. DarkTrap gets a new 131-sound kit with 20 808s; lock the one you want to keep." },
           ].map((item) => <article key={item.tag}><span>{item.tag}</span><h3>{item.title}</h3><p>{item.text}</p></article>)}
         </div>
         <div className={styles.releaseLinks}>
-          <a href="#devlog">{isRu ? "Все изменения Beta 7" : "All Beta 7 changes"} ↓</a>
-          <a href="/hpdg/releases/beta7/HPDG_Beta7_Guide_EN.pdf" target="_blank" rel="noreferrer">{t.guideLabel} ↗</a>
+          <a href="#devlog">{isRu ? "Все изменения Beta 8" : "All Beta 8 changes"} ↓</a>
+          <a href="/hpdg/releases/beta8/HPDG_Beta8_Guide_EN.pdf" target="_blank" rel="noreferrer">{t.guideLabel} ↗</a>
           <a href={`/hpdg/download?lang=${locale}`}>{isRu ? "Скачать по своему ключу" : "Download with your key"} ↗</a>
         </div>
       </section>
@@ -621,7 +645,7 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
         <header className={styles.sectionHeader}>
           <span>DEV LOG</span>
           <h2>{t.devlogTitle}</h2>
-          <a href="/hpdg/releases/beta7/HPDG_Beta7_Guide_EN.pdf" target="_blank" rel="noreferrer">{t.guideLabel} ↗</a>
+          <a href="/hpdg/releases/beta8/HPDG_Beta8_Guide_EN.pdf" target="_blank" rel="noreferrer">{t.guideLabel} ↗</a>
         </header>
         {latestEntry ? (
           <div className={styles.devlogLatest}>

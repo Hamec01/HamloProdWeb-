@@ -1,0 +1,105 @@
+﻿HPDG 0.1.0 Beta 8 — HamloProd
+Windows 10/11, x64, VST3 only.
+
+Includes the VST3 plugin, the full library of 1147 audio samples, the guide
+and the rights notices. No activation and no internet connection are needed
+to use the plugin; your license key (sent by email after the purchase) is only for
+in-plugin updates. The Microsoft Visual C++ Runtime is included and installed
+if needed.
+
+Close your DAW before installing. The plugin goes into the standard Windows
+folder: C:\Program Files\Common Files\VST3\HPDG.vst3.
+The samples live inside that bundle, next to the plugin binary.
+After installing, rescan VST3 plugins in your DAW.
+
+This is a beta: keep backups of your projects and report bugs with your DAW,
+Windows version, genre and the steps that led to the problem.
+Standalone is not part of this release.
+
+What's new in Beta 8 (since Beta 7):
+- Boom Bap Underground (formerly Russian Underground): two-bar loop drums,
+  four groove families with their own swing, kick shapes, ghost snares and
+  hats, and its own bass line built on the kicks. The bass no longer hits
+  just before a kick. A new HamloProd underground kit (18 one-shots) is
+  used only by this substyle. Projects saved with Beta 7 still open.
+- Sample influence 1 / 2 / 3 in the Instrument Rack header: how strongly
+  a loaded sample steers Guide generation. 3 (default) works as in Beta 7,
+  2 follows the sample more loosely, 1 keeps only the lightest guidance.
+  Copy Break is not affected.
+- Copy + Sample Tempo: copy a break at the sample's own tempo (detected or
+  typed). The pattern length equals the selection (1-16 bars), and the
+  sample and the copied MIDI loop together. The DAW tempo is not changed.
+- Sample tempo detection lands on a whole BPM when the loop length
+  confirms it (77 instead of 76.90, 88 instead of 87.97).
+- Loops are read as whole bars: a 4-bar loop is no longer read as 3 bars.
+- Export Full MIDI writes one track laid out like a drum map: Kick on
+  note 36, Snare 37, HiHat 38, Open Hat 39 and so on, with the bass below.
+  Dragging a single lane works as before.
+- Your own samples: load WAV, AIFF, FLAC, MP3 or OGG files (up to 30 s,
+  several at once) or drop them onto a lane row. A loaded sample stays on
+  its lane when you regenerate.
+- Boom Bap Classic with a sample: the bass follows what "Play w/ HPDG"
+  actually plays (Trim, DAW Sync, loop restart), and Bass 1 answers in
+  the gaps of the sample's low end.
+- LuxuryTrap: rebuilt hi-hat carrier and rattles, two-bar kick call and
+  answer, 808 kept in its register, rebalanced lane volumes.
+- DarkTrap: a new drum kit of 131 sounds with 20 808s, a different 808 on
+  every Generate (a locked 808 stays). The 808 rhythm is closer to the
+  reference beats, with triplet pickups, a smoother sidechain and glides
+  on the target note. Guide accents land where the sample is heard.
+- Copy Break: snare flams stay on the Snare lane, and quiet kicks before a
+  snare stay kicks.
+- The +Lane button and the RG hint were removed from the rack header.
+
+What's new in Beta 7 (since Beta 6):
+- Rebuilt LuxuryTrap kick/808 phrases and hat rolls; 79 Luxury kit assets.
+- HPDG 808 Play/Stop audition with repeating notes.
+- Six new factory 808 voices: ATL 1-3 and Dark 1-3 (998 audio samples total).
+- Distinct ATLClassic and DarkTrap kick, hat and 808 rules; compact bass
+  register and improved sample-guided bass/kick behaviour.
+- Trap kicks avoid the snare and its immediate aftermath.
+- Trap Rolls: Off / Style / Fills; finer grid and triplet editing.
+- Sub808 uses the HPDG 808 synth engine, with bass strip, sound editor,
+  sample layer, filters, drive and presets. Drive level compensation and
+  inline preset saving; Boom Bap bass enabled by default.
+- Sample Analysis infers the key from Basic Pitch notes, with chroma
+  fallback. Manual key selection retains priority.
+- Reduced Sub808 note-end crackle and UI-related audio interruptions.
+
+What's new in Beta 6:
+- The installer, the guide (FAQ) and the release notes are in English.
+- FAQ: where to find your license key and how HPDG uses it.
+
+What's new in Beta 5:
+- Update button next to the version in the header. Click it to check for
+  a new version: Latest, Update: <version> or Offline.
+- In-plugin updates for buyers: enter your license key once (from your
+  purchase email) and HPDG downloads the new installer, checks that it is
+  complete and unchanged, and starts it when you confirm.
+- Click "HPDG" in the header for the menu: Update, Instruction, Site.
+- No internet? HPDG works exactly as before.
+
+What's new in Beta 3:
+- New genre Atmospheric: Pulse, Two-Step and Broken rhythms, a melodic bass
+  over minor harmony and its own drums and basses (64 new samples).
+- Intensity 1-5 in the Instrument Rack header: 1 is the simplest beat, 3 is
+  as before, 5 is the most hits. The next Generate / Mutate / RG use it.
+- Strength knob on every lane (instead of pan): left removes the weakest
+  hits, right adds hits typical for the genre.
+- Trap: 808 in the right register, bass lines across the whole phrase with
+  glides, kick and snare after reference trap packs; the hat Strength knob
+  removes whole rolls first and keeps the quarter notes.
+- Sub808 plays the HPDG synth sub by default (4 variants, tuned to C2).
+- Dragging MIDI / WAV into the DAW: the plugin window hides once the file
+  leaves it and comes back after the drop (FL Studio and others).
+- Sample Analysis: Guide generation is now the default mode.
+
+What's new in Beta 2:
+- Trim sample: Loop / Play / Stop buttons; dragging the edges no longer
+  restarts the sound; a click on the waveform sets the play cursor.
+- Trim sample: "Selection = N bars" field - choose how many bars the
+  selection holds and the tempo follows (for example exactly 4 bars).
+- Sub808 plays notes as written; the - / + buttons on the bass lane change
+  the octave (Shift - a semitone), and MIDI export keeps it.
+- Dark and Steel skins, switched right from the SKIN menu.
+- Techno: a second drum set (tech house) and basses, 100 new samples.
