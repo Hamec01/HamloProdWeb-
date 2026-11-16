@@ -24,6 +24,9 @@ export function AdminSidebar() {
           </Link>
         ))}
       </nav>
+      <a href="/api/admin/hpdg808/contacts" className="mt-3 block px-3 py-3 text-sm text-[var(--color-paper-200)] hover:text-white">
+        HPDG 808 — Email CSV ↓
+      </a>
       <div className="case-divider my-5" />
       <AdminLogoutButton />
     </aside>

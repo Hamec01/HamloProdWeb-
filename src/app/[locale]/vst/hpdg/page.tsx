@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { DeveloperDiaryDialog } from "@/components/vst/developer-diary-dialog";
 import { HpdgVideoGallery } from "@/components/vst/hpdg-video-gallery";
 import { getAdminSessionState } from "@/lib/auth/session";
@@ -717,6 +718,14 @@ export default async function SectorVstPage({ params }: { params: Promise<{ loca
           ))}
         </div>
       </section>
+
+      <aside className={styles.supportNote}>
+        <strong>HPDG 808</strong>
+        <p>{isRu ? "Басовый движок HPDG как отдельный бесплатный инструмент: 200 пресетов, VST3 и Standalone." : "The HPDG bass engine as a separate free instrument: 200 presets, VST3 and Standalone."}</p>
+        <Link href={`/${locale}/vst/hpdg808`}>
+          {isRu ? "Открыть HPDG 808 →" : "Explore HPDG 808 →"}
+        </Link>
+      </aside>
 
     </div>
   );

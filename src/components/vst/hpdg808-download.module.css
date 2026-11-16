@@ -1,0 +1,19 @@
+.dialog { position: fixed; inset: 0; margin: auto; width: min(30rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; padding: clamp(1.5rem, 5vw, 2.5rem); border: 1px solid #63312f; border-radius: 6px; color: #e8eaee; background: #151619; font-family: var(--font-mono), monospace; box-shadow: 0 24px 100px #000b; }
+.dialog::backdrop { background: #000c; backdrop-filter: blur(5px); }
+.dialog h2 { margin: 0.9rem 0; font-family: var(--font-heading), sans-serif; font-size: 2rem; font-weight: 400; line-height: 1.25; }
+.dialog > p:not(.eyebrow) { color: #a3a6ae; font-size: 0.78rem; line-height: 1.9; }
+.eyebrow { padding-right: 1.5rem; color: #ff7979; font-size: 0.63rem; letter-spacing: 0.08em; }
+.close { position: absolute; top: 0.5rem; right: 0.5rem; width: 44px; height: 44px; cursor: pointer; font-size: 1.6rem; color: #a3a6ae; }
+.dialog form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem; }
+.dialog label { font-size: 0.73rem; }
+.dialog label span { color: #a3a6ae; }
+.dialog input { width: 100%; border: 1px solid #41434b; border-radius: 3px; padding: 0.85rem; background: #0d0e10; color: #e8eaee; font-size: 16px; }
+.dialog :where(button, input):focus-visible { outline: 2px solid #ff7979; outline-offset: 3px; }
+.primary, .skip { min-height: 46px; padding: 0.8rem; border: 1px solid #c4483c; font-size: 0.75rem; cursor: pointer; }
+.primary { background: #bd3c33; color: #fff; }
+.primary:hover { background: #a12e27; }
+.skip { border-color: #585056; color: #e8eaee; }
+.skip:hover { border-color: #ff7979; }
+.dialog button:disabled { opacity: 0.6; cursor: wait; }
+.note { color: #a3a6ae; font-size: 0.65rem; line-height: 1.8; }
+.error { color: #ff9e9e; font-size: 0.75rem; line-height: 1.8; }

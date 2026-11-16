@@ -1,0 +1,39 @@
+HPDG 808 1.0.0
+HamloProd bass instrument - Windows 10/11 x64 - VST3 and Standalone
+
+HPDG 808 is the 808 and bass engine from HPDG, now as its own instrument.
+Play it from any MIDI keyboard or piano roll, shape the sound, and drag the
+finished bass one-shot straight into your DAW.
+
+WHAT IS INSIDE
+- 200 factory presets by genre and substyle: Boom Bap, Trap, Rap, Drill,
+  Drum & Bass, Techno, Atmospheric and four utility subs.
+- An 808 synth: Sine, Triangle, Saw, Square and Reese waves, a sub oscillator,
+  Punch (the pitch drop of an 808) up to 48 semitones, Drive / Even / Saturation,
+  a key-tracked Tone, Tone Fall, Click and Boost.
+- An envelope with Swell: the level can keep rising after the hit, as on many
+  real 808 recordings.
+- A sample layer: load your own 808 or kick, loop it, play it across the keys,
+  or let it hand over to the synth after the kick.
+- Filter (LP12, LP24, HP12, BP, Vowel) with its own envelope and an LFO synced to
+  the tempo.
+- The HamloMag saturator with six models: Classic, Tape, Tube, Iron, Germanium,
+  Vinyl.
+- MASTER: a finishing section for the bass alone - sub cut or boost, a mono low
+  band with width above it, stereo harmonics that help the bass on small
+  speakers, a compressor / expander and a limiter.
+- Export WAV and Drag: the last note you played, with the master, as a
+  48 kHz stereo WAV. Drag it onto a DAW track or save it.
+- Play modes: Retrigger, Legato and Glide (808 slides).
+
+REQUIREMENTS
+Windows 10 or 11, 64-bit. A VST3 host for the plugin; the Standalone runs on
+its own. No activation.
+
+INSTALLED TO
+VST3:        C:\Program Files\Common Files\VST3\HPDG 808.vst3
+Standalone:  C:\Program Files\HamloProd\HPDG 808\HPDG 808.exe
+Guide:       Start menu -> HamloProd -> HPDG 808 Guide
+
+HPDG users: the same engine, presets and MASTER are inside HPDG's Sub808 lane.
+Your own presets (Save) are shared by both, in Documents\HamloProd\Bass808 Presets.

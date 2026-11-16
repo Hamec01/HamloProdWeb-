@@ -75,11 +75,21 @@ export default async function VstPage({ params }: { params: Promise<{ locale: st
           </div>
         </Link>
 
-        <article className={styles.comingSoon}>
-          <span aria-hidden="true">+</span>
-          <h2>{isRu ? "Скоро" : "Coming soon"}</h2>
-          <p>{isRu ? "Здесь появятся новые плагины HamloProd." : "New HamloProd plugins will appear here."}</p>
-        </article>
+        <Link className={styles.pluginCard} href={`/${locale}/vst/hpdg808`}>
+          <div className={`${styles.pluginImage} ${styles.bassImage}`}>
+            <Image src="/hpdg808/images/hpdg808_synth.png" width={1000} height={650} sizes="(max-width: 700px) 100vw, 50vw" alt={isRu ? "Интерфейс басового инструмента HPDG 808" : "HPDG 808 bass instrument interface"} />
+          </div>
+          <div className={styles.pluginInfo}>
+            <p className={styles.pluginType}>VST3 + STANDALONE · WINDOWS 10/11 x64</p>
+            <h2>HPDG 808 <span className={styles.freeBadge}>{isRu ? "Бесплатно" : "Free"}</span></h2>
+            <p>{isRu
+              ? "808-синтезатор, семплер и мастер-секция для баса. 200 пресетов, экспорт WAV и бесплатное скачивание. Чаевые — по желанию =)"
+              : "An 808 synth, sample layer and bass mastering. 200 presets, WAV export and a free download. Tips welcome =)"}</p>
+            <span className={styles.pluginLink}>
+              {isRu ? "Подробнее о плагине" : "Explore plugin"} <span aria-hidden="true">→</span>
+            </span>
+          </div>
+        </Link>
       </section>
     </div>
   );

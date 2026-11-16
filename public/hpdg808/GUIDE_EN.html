@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>HPDG 808 Guide</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{font:15px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;max-width:920px;margin:40px auto;padding:0 24px 60px;color:#d7d9df;background:#0e0f12}
+h1{font:600 clamp(36px,7vw,64px)/1.1 system-ui,sans-serif;letter-spacing:-.03em;margin:32px 0 12px;color:#e8eaee}
+h1+p{color:#a3a6ae}
+h2{font:600 24px/1.3 system-ui,sans-serif;margin-top:40px;padding-bottom:12px;border-bottom:1px solid #343038;color:#ff7979}
+code{background:#202126;color:#e8eaee;padding:3px 6px;border-radius:3px;overflow-wrap:anywhere}
+dt{font-weight:600;margin-top:16px;color:#e8eaee}dd{margin-left:18px;color:#a3a6ae}
+a{color:#ff7979;text-underline-offset:4px}a:focus-visible{outline:2px solid #ff7979;outline-offset:4px}
+nav{display:flex;flex-wrap:wrap;gap:20px;border-bottom:1px solid #2a2e36;padding-bottom:20px;font-size:13px}
+@media(max-width:600px){body{font-size:13px;margin-top:24px}dd{margin-left:0}}
+</style>
+</head>
+<body>
+<nav><a href="/en/vst/hpdg808">← HPDG 808</a><a href="/en/vst/hpdg808#download">Download free ↓</a><a href="/ru/vst/hpdg808">Русская страница</a></nav>
+<h1>HPDG 808</h1>
+<p>HamloProd bass instrument, version 1.0.0. Windows 10/11 x64, VST3 and Standalone.</p>
+
+<h2>Start</h2>
+<p>Add HPDG 808 to an instrument track and play MIDI notes. 808s sit best between A0 and C2. Choose a sound
+from the preset menu at the top (or step with &lt; &gt;): presets are grouped by genre, and each name tells its
+substyle and character, for example <code>Dark Trap - Long Dark Grit</code>.</p>
+<p>PLAY sounds a note without a keyboard. Mode sets how notes join: <b>Retrigger</b> starts every note anew,
+<b>Legato</b> keeps the note going and changes its pitch, <b>Glide</b> slides to the next note over the Glide time
+(808 slides: overlap two notes in the piano roll).</p>
+
+<h2>SYNTH</h2>
+<dl>
+<dt>Oscillator</dt><dd>Wave (Sine, Triangle, Saw, Square, Reese), Shape (its variation), Sub and Sub Octave (a sine
+under the wave).</dd>
+<dt>Pitch</dt><dd>Punch: how far above the note the 808 starts, up to 48 semitones; Punch Time: how fast it
+falls to the note.</dd>
+<dt>808 Tone</dt><dd>Drive, Even and Saturation colour the sound; Tone is a low-pass that follows the note; Tone
+Fall lets the upper harmonics fade faster than the body, as on a real string; Click adds a beater; Boost lifts the
+low end at the hit.</dd>
+<dt>Envelope</dt><dd>Attack, Swell and Swell Time (after the hit the level starts lower and rises: the bloom of many
+recorded 808s), Hold, Decay, Sustain, Release.</dd>
+</dl>
+
+<h2>SAMPLE</h2>
+<p>LOAD an 808, a kick or any bass sample (WAV, AIFF, FLAC, MP3, OGG) or drop it on the screen. Set Start, End and
+Loop Start on the waveform. FOLLOW KEY plays it at the note's pitch; LOCK TIME keeps its length on every note;
+Stretch makes it longer or shorter; REVERSE and INVERT flip it. The sample and the synth play together.</p>
+
+<h2>MIX</h2>
+<p>The levels of the synth and the sample. Handoff lets the sample (a kick) play first and then crossfades into the
+synth: a kick that turns into an 808. Phantom adds the harmonics that make the bass audible on phones and laptops.</p>
+
+<h2>FILTER / FX</h2>
+<p>Filter: LP12, LP24, HP12, BP or Vowel, with Key tracking, its own envelope (Env, Env Decay) and an LFO (free or
+synced to the tempo). The HamloMag saturator: Classic, Tape, Tube, Iron, Germanium or Vinyl, with Drive, Harmonics,
+Even/Odd and Mix.</p>
+
+<h2>MASTER</h2>
+<p>The bass finished on its own, before it goes to the mix. The screen shows the response, the mono and the wide
+band, the dynamics curve and the stereo correlation.</p>
+<dl>
+<dt>Sub Filter</dt><dd>Cut removes the rumble under Sub Freq; Boost lifts it.</dd>
+<dt>Band / Width</dt><dd>Under Freq the bass stays mono (Low Gain sets its level); above it, Width spreads it.</dd>
+<dt>Stereo Harmonics</dt><dd>Adds harmonics (2nd / 3rd, Even / Odd or Crunchy) in the middle or on the sides; Dampen
+softens them.</dd>
+<dt>Dynamics</dt><dd>Threshold, Amount (left compresses, right expands) and Release; LIMIT keeps the peaks under
+0 dB.</dd>
+</dl>
+
+<h2>Export and drag</h2>
+<p>EXPORT WAV saves the last note you played, as you hear it (with the master), as a stereo WAV; the save window
+opens in <code>Documents\HamloProd\Bass808 Exports</code>. DRAG: drag that note straight onto a track in your DAW or
+onto the desktop.</p>
+
+<h2>Your presets</h2>
+<p>SAVE stores the sound (and its sample) in <code>Documents\HamloProd\Bass808 Presets</code>. They appear in the
+preset menu, and in HPDG's Sub808 lane too.</p>
+
+<h2>Questions</h2>
+<p>Not in the DAW's list: rescan VST3 plugins; HPDG 808 is in <code>C:\Program Files\Common Files\VST3</code>.
+Too loud or quiet: every factory preset is levelled to the same loudness; use Gain at the top.
+Contact: the support address on hamloprod.org.</p>
+</body>
+</html>

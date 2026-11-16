@@ -694,3 +694,14 @@ model HpdgUpdateRecipient {
   @@index([campaignId, status])
   @@map("hpdg_update_recipients")
 }
+
+/// Voluntarily supplied addresses for the free HPDG 808 download. No account.
+model Hpdg808Contact {
+  email          String   @id @db.Citext
+  locale         String   @default("en")
+  releaseVersion String   @map("release_version")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("hpdg808_contacts")
+}
