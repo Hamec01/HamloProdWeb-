@@ -103,3 +103,6 @@
   .actions > a { flex: 1 1 auto; }
   .frameLabel { font-size: 0.56rem; }
 }
+
+.releaseNote { margin-top: 1.5rem; padding: 1.3rem 1.5rem; border: 1px solid #63312f; border-radius: 4px; background: #191417; }
+.releaseNote > p:last-child { margin-top: 0.7rem; color: var(--muted); font-size: 0.78rem; line-height: 1.9; }

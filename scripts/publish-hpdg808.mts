@@ -1,6 +1,6 @@
 /**
  * Upload this free release to its own private object, without touching HPDG.
- * npx tsx --env-file=.env scripts/publish-hpdg808.mts /path/to/HPDG808_Setup_1.0.0.exe
+ * npx tsx --env-file=.env scripts/publish-hpdg808.mts /path/to/HPDG808_Setup_<version>.exe
  * Never overwrite an existing release; verify the stored bytes on every run.
  */
 import { createHash } from "node:crypto";
@@ -11,7 +11,7 @@ import { ContaboS3Storage } from "../src/lib/storage/contabo-s3-storage";
 
 async function main() {
   const filePath = process.argv[2];
-  if (!filePath) throw new Error("Pass the path to HPDG808_Setup_1.0.0.exe.");
+  if (!filePath) throw new Error(`Pass the path to ${release.fileName}.`);
   const bytes = await readFile(filePath);
   if (bytes.byteLength !== release.size || createHash("sha256").update(bytes).digest("hex") !== release.sha256) {
     throw new Error("Installer size or SHA-256 does not match the verified release.");

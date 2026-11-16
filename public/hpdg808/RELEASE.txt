@@ -1,9 +1,13 @@
-HPDG 808 1.0.0
+HPDG 808 1.0.1
 HamloProd bass instrument - Windows 10/11 x64 - VST3 and Standalone
 
 HPDG 808 is the 808 and bass engine from HPDG, now as its own instrument.
 Play it from any MIDI keyboard or piano roll, shape the sound, and drag the
 finished bass one-shot straight into your DAW.
+
+WHAT IS NEW IN 1.0.1
+- MIX tab: LAYERS, WEIGHT and ENVELOPE now sit in two rows, so the Sustain
+  and Release knobs are no longer cut off.
 
 WHAT IS INSIDE
 - 200 factory presets by genre and substyle: Boom Bap, Trap, Rap, Drill,

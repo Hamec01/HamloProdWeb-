@@ -129,9 +129,16 @@ export default async function Hpdg808Page({ params }: PageProps) {
         ))}
       </section>
 
+      <aside className={styles.releaseNote}>
+        <p className={styles.eyebrow}>{hpdg808Release.version} / {isRu ? "ИСПРАВЛЕНИЕ" : "BUG FIX"}</p>
+        <p>{isRu
+          ? "Исправлена вкладка MIX: секции LAYERS, WEIGHT и ENVELOPE размещены в два ряда, а регуляторы Sustain и Release больше не обрезаются. Если у тебя версия 1.0.0 — скачай обновлённый установщик."
+          : "Fixed the MIX tab: LAYERS, WEIGHT and ENVELOPE now sit in two rows, so the Sustain and Release knobs are no longer cut off. If you have version 1.0.0, download the updated installer."}</p>
+      </aside>
+
       <section className={styles.section} id="features">
         <header className={styles.sectionHeader}>
-          <p className={styles.eyebrow}>{isRu ? "ОТДЕЛЬНЫЙ ИНСТРУМЕНТ" : "A STANDALONE INSTRUMENT"} / 1.0.0</p>
+          <p className={styles.eyebrow}>{isRu ? "ОТДЕЛЬНЫЙ ИНСТРУМЕНТ" : "A STANDALONE INSTRUMENT"} / {hpdg808Release.version}</p>
           <h2>{isRu ? "Тот самый 808 из HPDG. Теперь отдельно." : "The 808 from HPDG. Now on its own."}</h2>
           <p>{isRu ? "Играй с MIDI-клавиатуры или из piano roll, меняй характер звука и забирай готовый бас в свой проект." : "Play from a MIDI keyboard or piano roll, shape the sound, and bring the finished bass into your project."}</p>
         </header>
@@ -172,11 +179,11 @@ export default async function Hpdg808Page({ params }: PageProps) {
           <h2>{isRu ? "Бас — бесплатно." : "The bass is free."}</h2>
           <p>{isRu ? "Полная версия, все 200 пресетов, VST3 и Standalone в одном установщике. Без регистрации и ключа активации." : "The full version, all 200 presets, VST3 and Standalone in one installer. No account or activation key needed."}</p>
           <Hpdg808Download className={styles.primaryButton} locale={locale} label={isRu ? "Скачать для Windows" : "Download for Windows"} />
-          <p className={styles.fine}>WINDOWS 10/11 · 64-BIT · EXE · 22.2 MiB</p>
+          <p className={styles.fine}>WINDOWS 10/11 · 64-BIT · EXE · {(hpdg808Release.size / 1024 / 1024).toFixed(1)} MiB</p>
           <div className={styles.fileLinks}>
             <a href={guideHref} target="_blank" rel="noreferrer">{isRu ? "Руководство (EN)" : "User guide (EN)"} ↗</a>
             <a href="/hpdg808/RELEASE.txt" target="_blank" rel="noreferrer">{isRu ? "О релизе (EN)" : "Release notes"} ↗</a>
-            <a href="/hpdg808/HPDG808_Setup_1.0.0.exe.sha256" download>SHA-256 ↓</a>
+            <a href={`/hpdg808/${hpdg808Release.fileName}.sha256`} download>SHA-256 ↓</a>
           </div>
         </div>
         <aside className={styles.tipCard} id="support" aria-labelledby="tip-title">
