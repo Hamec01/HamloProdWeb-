@@ -57,6 +57,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tagAudioRef = useRef<HTMLAudioElement | null>(null);
   const lastTagSlotRef = useRef(0);
+  const playAttemptRef = useRef(0);
   const queue = usePlayerStore((state) => state.queue);
   const sectionQueue = usePlayerStore((state) => state.sectionQueue);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
@@ -78,6 +79,8 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
   const reset = usePlayerStore((state) => state.reset);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   const [isResolvingQueue, setIsResolvingQueue] = useState(false);
   const [favoriteTrackIds, setFavoriteTrackIds] = useState<string[]>([]);
   const [isFavoritesAuthenticated, setIsFavoritesAuthenticated] = useState(false);
@@ -249,15 +252,26 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
         next();
       }
     };
-    const handlePause = () => syncPlayback(false);
+    const handlePause = () => {
+      // load() pauses the previous source while a new track is being selected.
+      if (audio.readyState > 0) syncPlayback(false);
+    };
     const handlePlay = () => syncPlayback(true);
     const handleLoadedMetadata = () => setDuration(audio.duration || 0);
+    const handleLoading = () => { setIsBuffering(true); setAudioError(false); };
+    const handleReady = () => setIsBuffering(false);
+    const handleError = () => { setIsBuffering(false); setAudioError(true); syncPlayback(false); };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("loadstart", handleLoading);
+    audio.addEventListener("waiting", handleLoading);
+    audio.addEventListener("playing", handleReady);
+    audio.addEventListener("canplay", handleReady);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
@@ -265,10 +279,16 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("loadstart", handleLoading);
+      audio.removeEventListener("waiting", handleLoading);
+      audio.removeEventListener("playing", handleReady);
+      audio.removeEventListener("canplay", handleReady);
+      audio.removeEventListener("error", handleError);
     };
   }, [currentTrack, next, syncPlayback, tagAudioUrl, tagIntervalSeconds]);
 
   useEffect(() => {
+    const attempt = ++playAttemptRef.current;
     const audio = audioRef.current;
     if (!audio) {
       return;
@@ -281,31 +301,41 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
       requestAnimationFrame(() => {
         setCurrentTime(0);
         setDuration(0);
+        setIsBuffering(false);
+        setAudioError(false);
       });
       return;
     }
 
     if (!currentTrack.previewUrl) {
       audio.pause();
+      syncPlayback(false);
       lastTagSlotRef.current = 0;
       requestAnimationFrame(() => {
         setCurrentTime(0);
         setDuration(0);
+        setIsBuffering(false);
+        setAudioError(true);
       });
       return;
     }
 
-    if (audio.src !== currentTrack.previewUrl) {
+    if (audio.src !== new URL(currentTrack.previewUrl, window.location.href).href || audio.error) {
       audio.src = currentTrack.previewUrl;
       audio.load();
       lastTagSlotRef.current = 0;
       requestAnimationFrame(() => {
         setCurrentTime(0);
+        setDuration(0);
+        setAudioError(false);
       });
     }
 
     if (isPlaying) {
-      void audio.play().catch(() => {
+      void audio.play().catch((error: unknown) => {
+        if (playAttemptRef.current !== attempt || (error instanceof DOMException && error.name === "AbortError")) return;
+        setIsBuffering(false);
+        setAudioError(true);
         syncPlayback(false);
       });
     } else {
@@ -356,7 +386,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-line)] bg-[rgba(12,11,9,0.96)] px-1 pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur sm:px-0">
-      <audio ref={audioRef} preload="none" />
+      <audio ref={audioRef} preload="metadata" />
       {tagAudioUrl ? <audio ref={tagAudioRef} preload="none" src={tagAudioUrl} /> : null}
       <div className="mx-auto grid max-w-7xl gap-3 rounded-t-xl border-x border-[var(--color-line)] bg-[rgba(12,11,9,0.98)] px-3 py-2 shadow-[0_-16px_40px_rgba(0,0,0,0.35)] md:grid-cols-[1.4fr_2fr_auto] md:items-center md:gap-4 md:rounded-none md:border-x-0 md:bg-transparent md:px-4 md:py-3 md:shadow-none">
         <div className="min-w-0 space-y-1">
@@ -394,6 +424,8 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
                 : `${currentTrack.mood} / ${currentTrack.bpm} BPM / ${currentTrack.caseNumber}`
               : "Open Archive and press Play"}
           </p>
+          {audioError ? <p role="alert" className="text-xs text-red-300">{locale === "ru" ? "Не удалось загрузить аудио. Нажми Play, чтобы повторить." : "Audio could not load. Press Play to retry."}</p> : null}
+          {currentTrack && isPlaying && isBuffering && !audioError ? <p role="status" className="text-xs text-[var(--color-paper-400)]">{locale === "ru" ? "Загрузка аудио…" : "Loading audio…"}</p> : null}
         </div>
 
         <div className="space-y-2 md:space-y-2">
@@ -410,7 +442,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           />
           <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-[var(--color-paper-400)]">
             <span>{formatSeconds(currentTime)}</span>
-            <span>{currentTrack?.duration ?? "00:00"}</span>
+            <span>{duration > 0 ? formatSeconds(duration) : currentTrack?.duration ?? "00:00"}</span>
           </div>
         </div>
 
@@ -431,7 +463,7 @@ export function StickyPlayer({ locale }: { locale: Locale }) {
           <Button
             className="h-9 min-w-9 px-2 md:h-auto md:w-auto md:px-4"
             variant={currentTrack ? "primary" : "ghost"}
-            icon={isResolvingQueue ? <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
+            icon={isResolvingQueue || (isPlaying && isBuffering) ? <span className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" /> : isPlaying ? <Pause size={14} /> : <Play size={14} />}
             onClick={handlePrimaryAction}
             disabled={isResolvingQueue || (!currentTrack && !(pathSection === "ham" && queue.length > 0))}
           >

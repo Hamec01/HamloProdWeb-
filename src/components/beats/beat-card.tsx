@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { BeatLikeButton } from "@/components/beats/beat-like-button";
@@ -8,6 +9,8 @@ import { getGenreLabel } from "@/lib/beats-taxonomy";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
+import type { BeatReactionStats } from "@/lib/beats/pagination";
+import { beatCoverSrc } from "@/lib/beats/cover-src";
 
 export function BeatCard({
   beat,
@@ -15,12 +18,14 @@ export function BeatCard({
   locale,
   hrefBase = "/beats",
   isAuthenticated,
+  initialReactionStats,
 }: {
   beat: Beat;
   queue: Beat[];
   locale: Locale;
   hrefBase?: string;
   isAuthenticated: boolean;
+  initialReactionStats?: BeatReactionStats;
 }) {
   const t = dictionary[locale];
   const market = getMarketContext(locale);
@@ -46,10 +51,9 @@ export function BeatCard({
       <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-paper-400)]">{beat.mood}</p>
 
       {beat.coverImageUrl ? (
-        <div
-          className="case-artwork mt-4 h-44"
-          style={{ backgroundImage: `url(${beat.coverImageUrl})` }}
-        />
+        <div className="case-artwork relative mt-4 h-44 overflow-hidden">
+          <Image src={beatCoverSrc(beat)} alt="" fill sizes="(min-width: 1024px) 380px, (min-width: 640px) 90vw, 100vw" quality={60} className="object-cover" />
+        </div>
       ) : (
         <div className={`mt-4 h-44 border border-[var(--color-line)] bg-gradient-to-br ${beat.coverPalette}`} />
       )}
@@ -66,7 +70,7 @@ export function BeatCard({
           <ArrowRight size={14} />
         </Link>
         <BeatShareButton beatSlug={beat.slug} beatTitle={beat.title} locale={locale} />
-        <BeatLikeButton beatId={beat.id} locale={locale} isAuthenticated={isAuthenticated} />
+        <BeatLikeButton beatId={beat.id} locale={locale} isAuthenticated={isAuthenticated} initialStats={initialReactionStats} />
       </div>
 
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">

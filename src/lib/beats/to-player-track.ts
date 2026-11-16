@@ -7,7 +7,7 @@ export function beatToPlayerTrack(beat: Beat): PlayerTrack {
     id: beat.id,
     title: beat.title,
     slug: beat.slug,
-    previewUrl: beat.previewUrl ?? "",
+    previewUrl: beat.previewUrl ? `/api/beats/${beat.id}/preview?v=${encodeURIComponent(beat.previewUrl.split("/").at(-1) ?? "")}` : "",
     kind: "beat",
     bpm: beat.bpm ?? undefined,
     mood: beat.mood ?? undefined,

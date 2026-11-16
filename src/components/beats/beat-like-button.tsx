@@ -16,18 +16,21 @@ export function BeatLikeButton({
   isAuthenticated,
   locale,
   size = "default",
+  initialStats,
 }: {
   beatId: string;
   isAuthenticated: boolean;
   locale: Locale;
   size?: "default" | "small";
+  initialStats?: ReactionStats;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [stats, setStats] = useState<ReactionStats>({ likes: 0, dislikes: 0, userReaction: null });
+  const [stats, setStats] = useState<ReactionStats>(initialStats ?? { likes: 0, dislikes: 0, userReaction: null });
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (initialStats) return;
     const load = async () => {
       const response = await fetch(`/api/beats/${beatId}/reaction`, { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as ReactionStats | null;
@@ -37,7 +40,7 @@ export function BeatLikeButton({
     };
 
     void load();
-  }, [beatId]);
+  }, [beatId, initialStats]);
 
   const handleLike = async () => {
     if (!isAuthenticated) {

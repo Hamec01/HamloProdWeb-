@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { requireAdminMutation } from "@/lib/auth/guard";
-import { publishBeatToTelegram } from "@/lib/telegram/beats";
+import { publishBeatToTelegram, TelegramPublishError } from "@/lib/telegram/beats";
 import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireAdminMutation(request);
@@ -46,6 +47,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       beatId: id,
       beatSlug: beat.slug,
     });
-    return NextResponse.json({ ok: false, error: "Failed to publish beat to Telegram." }, { status: 502 });
+    return NextResponse.json({ ok: false, error: publishError instanceof TelegramPublishError ? publishError.message : "Не удалось подготовить файлы для Telegram. Попробуй позже." }, { status: 502 });
   }
 }
