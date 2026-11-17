@@ -30,7 +30,7 @@ export type BeatServiceFailure = {
 export type BeatServiceOk<T> = { ok: true; data: T };
 export type BeatServiceResult<T> = BeatServiceOk<T> | BeatServiceFailure;
 
-const PUBLIC_STATUSES: BeatStatus[] = ["available", "reserved"];
+const PUBLIC_STATUSES: BeatStatus[] = ["available", "reserved", "sold"];
 const UNDELETABLE_STATUSES: BeatStatus[] = ["reserved", "sold"];
 const MAX_LIMIT = 100;
 
@@ -142,7 +142,7 @@ export class BeatService {
       priceUsd: values.priceUsd,
       priceRub: values.priceRub,
       featured: values.featured,
-      availableForDownload: values.availableForDownload,
+      availableForDownload: status !== "sold" && values.availableForDownload,
       publishedAt: status !== "private" ? new Date() : null,
     };
 
@@ -150,6 +150,7 @@ export class BeatService {
       const record = await this.repo.create(input);
       return { ok: true, data: toAdminBeat(record, BeatService.resolveUrl) };
     } catch (error) {
+      if (error instanceof Error && /SOLD_BEAT_LOCKED|sold beat cannot be reactivated/i.test(error.message)) return fail(409, "Проданный бит нельзя вернуть в продажу.", "SOLD_LOCKED");
       const unique = isUniqueViolation(error);
       if (unique) {
         return fail(409, `A beat with this ${unique.target === "caseNumber" ? "case number" : "slug"} already exists.`, "DUPLICATE");
@@ -174,6 +175,9 @@ export class BeatService {
     }
 
     const values = parsed.data;
+    if (existing.status === "sold" && ((values.status !== undefined && values.status !== "sold") || values.availableForDownload === true)) {
+      return fail(409, "Проданный бит нельзя вернуть в продажу или открыть для скачивания.", "SOLD_LOCKED");
+    }
     if (values.status === "available" && (!existing.coverKey || !existing.previewKey)) return fail(409, "Attach a cover and preview before publishing.", "MISSING_REQUIRED_ASSETS");
     const input: BeatUpdateInput = {};
 
@@ -201,6 +205,8 @@ export class BeatService {
       }
     }
 
+    if (existing.status === "sold" || values.status === "sold") input.availableForDownload = false;
+
     try {
       const record = await this.repo.update(id, input);
       if (!record) {
@@ -208,6 +214,7 @@ export class BeatService {
       }
       return { ok: true, data: toAdminBeat(record, BeatService.resolveUrl) };
     } catch (error) {
+      if (error instanceof Error && /SOLD_BEAT_LOCKED|sold beat cannot be reactivated/i.test(error.message)) return fail(409, "Проданный бит нельзя вернуть в продажу.", "SOLD_LOCKED");
       const unique = isUniqueViolation(error);
       if (unique) {
         return fail(409, `A beat with this ${unique.target === "caseNumber" ? "case number" : "slug"} already exists.`, "DUPLICATE");

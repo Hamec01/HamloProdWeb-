@@ -411,6 +411,7 @@ model Order {
   paymentUrl           String?   @map("payment_url")
   downloadToken        String?   @unique @map("download_token")
   expiresAt            DateTime? @map("expires_at") @db.Timestamptz(6)
+  loyaltyAwardedAt     DateTime? @map("loyalty_awarded_at") @db.Timestamptz(6)
   paidAt               DateTime? @map("paid_at") @db.Timestamptz(6)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)

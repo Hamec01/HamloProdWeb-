@@ -5,6 +5,7 @@ import {
   verifyLavaWebhookSignature,
   type LavaWebhookPayload,
 } from "@/lib/payments/lava";
+import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { ensureOrderLicense } from "@/lib/contracts/issue";
 import { lockBeatForExclusiveSale } from "@/lib/orders/exclusive-sale";
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       });
       if (!order) return "not_found" as const;
       if (order.status === "paid" && nextStatus === "failed") return "duplicate" as const;
-      if (order.status === nextStatus) return "duplicate" as const;
+      if (order.status === nextStatus) { if (nextStatus === "paid") await awardSalePoints(tx, order.id); return "duplicate" as const; }
       if (order.status !== "pending_payment") return "conflict" as const;
 
       if (nextStatus === "failed") {
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
         data: { status: "paid", paidAt: new Date(), rightsFormStatus: "not_started" },
       });
       if (updated.count !== 1) throw new Error("LAVA_ORDER_STATE_CHANGED");
+      await awardSalePoints(tx, order.id);
       return "applied" as const;
     });
 

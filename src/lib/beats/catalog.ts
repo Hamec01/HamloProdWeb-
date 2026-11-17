@@ -5,7 +5,7 @@ import { resolvePublicObjectUrl } from "@/lib/storage/public-url";
 import type { BeatGenre } from "@/lib/beats-taxonomy";
 import { BEATS_PER_PAGE, CAROUSEL_BEATS, beatPagination, type BeatReactionStats } from "./pagination";
 
-const publicWhere = { publishedAt: { not: null }, status: { in: ["available", "reserved"] } } satisfies Prisma.BeatWhereInput;
+const publicWhere = { publishedAt: { not: null }, status: { in: ["available", "reserved", "sold"] } } satisfies Prisma.BeatWhereInput;
 
 export async function getBeatCatalog(rawPage?: string, genre?: BeatGenre) {
   const where = { ...publicWhere, ...(genre ? { genre } : {}) };
@@ -14,7 +14,7 @@ export async function getBeatCatalog(rawPage?: string, genre?: BeatGenre) {
   const [rows, randomIds] = await Promise.all([
     prisma.beat.findMany({ where, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: pagination.offset, take: BEATS_PER_PAGE }),
     // A fresh sample of the complete public catalogue for each page request.
-    prisma.$queryRaw<Array<{ id: string }>>`SELECT id FROM beats WHERE published_at IS NOT NULL AND status IN ('available', 'reserved') ORDER BY random() LIMIT ${CAROUSEL_BEATS}`,
+    prisma.$queryRaw<Array<{ id: string }>>`SELECT id FROM beats WHERE published_at IS NOT NULL AND status IN ('available', 'reserved', 'sold') ORDER BY random() LIMIT ${CAROUSEL_BEATS}`,
   ]);
   const randomRows = randomIds.length ? await prisma.beat.findMany({ where: { ...publicWhere, id: { in: randomIds.map((row) => row.id) } } }) : [];
   const map = new Map(randomRows.map((row) => [row.id, row]));

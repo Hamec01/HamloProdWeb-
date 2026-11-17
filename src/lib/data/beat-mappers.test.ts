@@ -81,3 +81,12 @@ test("ADMIN DTO exposes storage references + presence flags", () => {
   // still no raw upload intent
   assert.doesNotMatch(JSON.stringify(admin), /uploadIntent/i);
 });
+
+
+test("sold public cards keep artwork while audio and downloads are unavailable", () => {
+  const sold = toPublicBeat({ ...toBeatRecord(row), status: "sold", availableForDownload: true }, resolve);
+  assert.equal(sold.status, "sold");
+  assert.equal(sold.previewUrl, null);
+  assert.equal(sold.availableForDownload, false);
+  assert.ok(sold.coverImageUrl);
+});

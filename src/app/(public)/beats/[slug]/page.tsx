@@ -111,12 +111,12 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
             <p className="text-xs uppercase tracking-[0.32em] text-[var(--color-paper-400)]">{t.playback}</p>
             <h2 className="mt-3 font-sans text-4xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{t.previewStream}</h2>
             <div className="mt-6 flex flex-wrap gap-3">
-              <PlayBeatButton beat={beat} queue={beats} locale={locale} />
+              {beat.status !== "sold" ? <PlayBeatButton beat={beat} queue={beats.filter((item) => item.status !== "sold")} locale={locale} /> : null}
               <BeatDownloadButton
                 beatId={beat.id}
                 beatSlug={beat.slug}
                 isAuthenticated={session.isAuthenticated}
-                availableForDownload={beat.availableForDownload}
+                availableForDownload={beat.status !== "sold" && beat.availableForDownload}
                 locale={locale}
               />
             </div>
@@ -125,11 +125,12 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
           <section className="case-panel p-6">
             <p className="text-xs uppercase tracking-[0.32em] text-[var(--color-paper-400)]">{t.purchase}</p>
             <h2 className="mt-3 font-sans text-4xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">{t.licenseAccess}</h2>
+            {beat.status === "sold" ? <p className="mt-5 border border-red-400 bg-red-950/60 p-5 text-red-100"><strong className="block text-3xl tracking-[0.15em]">SOLD</strong><span className="mt-2 block text-sm">{locale === "ru" ? "Бит продан. Повторная покупка и скачивание недоступны." : "This beat is sold. Purchase and download are unavailable."}</span></p> : <>
             <div className="mt-4 flex items-end justify-between gap-4 border-b border-[var(--color-line)] pb-4">
               <span className="text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.currentPrice}</span>
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{priceLabel}</span>
             </div>
-            {beat.status !== "sold" && beat.status !== "private" ? <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.12em]">
+            {beat.status !== "private" ? <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.12em]">
               {locale === "ru" ? "Заполнить данные для лицензии" : "Fill License Details"}
             </Link> : null}
             {getBeatCheckoutProvider(locale) === "contact" ? (
@@ -164,6 +165,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
                 </Link>
               </div>
             )}
+            </>}
           </section>
 
           <ContentFeedbackCard entity="beats" contentId={beat.id} isAuthenticated={session.isAuthenticated} locale={locale} />

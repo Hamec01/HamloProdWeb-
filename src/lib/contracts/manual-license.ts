@@ -1,3 +1,4 @@
+import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 import { getSellerIdentity } from "@/lib/contracts/seller";
@@ -26,7 +27,9 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
   if (!beat) throw new Error("BEAT_NOT_FOUND");
   if (beat.status !== "available" && beat.status !== "reserved") throw new Error("BEAT_NOT_AVAILABLE");
 
-  const buyer = await prisma.user.findFirst({ where: { email: { equals: input.buyerEmail, mode: "insensitive" } }, select: { id: true } });
+  const buyer = await prisma.user.findFirst({ where: input.buyerUserId ? { id: input.buyerUserId } : { email: { equals: input.buyerEmail, mode: "insensitive" } }, select: { id: true, email: true } });
+  if (input.buyerUserId && !buyer) throw new Error("BUYER_NOT_FOUND");
+  if (input.buyerUserId && buyer?.email.toLowerCase() !== input.buyerEmail.toLowerCase()) throw new Error("BUYER_EMAIL_MISMATCH");
 
   const contractHtml = renderExclusiveLicenseBilingual({
     contract_number: getContractNumber(orderId),
@@ -93,6 +96,7 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
           htmlSnapshot: contractHtml,
         },
       });
+      await awardSalePoints(tx, orderId);
     });
   } catch (error) {
     if (error instanceof Error && error.message === "BEAT_NOT_AVAILABLE") throw error;
@@ -106,12 +110,12 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
 
   try {
     const pdf = await ensureOrderLicense(orderId);
-    return { orderId, beatId: beat.id, beatSlug: beat.slug, beatTitle: beat.title, downloadUrl: pdf.downloadUrl, pdfReady: true };
+    return { orderId, beatId: beat.id, beatSlug: beat.slug, beatTitle: beat.title, downloadUrl: pdf.downloadUrl, pdfReady: true, buyerLinked: Boolean(buyer) };
   } catch (error) {
     console.error("[admin:licenses] sale saved but PDF generation failed", {
       orderId,
       error: error instanceof Error ? error.name : "unknown",
     });
-    return { orderId, beatId: beat.id, beatSlug: beat.slug, beatTitle: beat.title, downloadUrl: null, pdfReady: false };
+    return { orderId, beatId: beat.id, beatSlug: beat.slug, beatTitle: beat.title, downloadUrl: null, pdfReady: false, buyerLinked: Boolean(buyer) };
   }
 }

@@ -21,6 +21,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   const storage = new ContaboS3Storage(getS3Config());
   const keys = new Set<string>();
   const beatIds: string[] = [];
+  const user = await prisma.user.create({ data: { email: `sale-buyer-${randomUUID()}@example.invalid`, displayName: "Test Registered Artist", role: "USER" } });
   const originalSecret = process.env.STRIPE_WEBHOOK_SECRET;
   process.env.STRIPE_WEBHOOK_SECRET = "license-integration-only";
   t.after(async () => {
@@ -31,6 +32,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
     for (const key of keys) await storage.deleteObject({ visibility: "private", key });
     await prisma.order.deleteMany({ where: { beatId: { in: beatIds } } });
     await prisma.beat.deleteMany({ where: { id: { in: beatIds } } });
+    await prisma.user.delete({ where: { id: user.id } });
     await prisma.$disconnect();
   });
   const makeBeat = async () => {
@@ -39,15 +41,22 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
     beatIds.push(beat.id);
     return beat;
   };
-  const buyer = { buyerName: "Тестовый Покупатель", buyerEmail: "license-test@example.invalid", buyerCountry: "Finland", buyerCity: "Turku", buyerStageName: "Test Artist", buyerPhone: "", amount: 100, currency: "USD" as const, contractLanguage: "en" as const, buyerAcceptedTerms: true as const, buyerConsentedToData: true as const };
+  const buyer = { buyerName: "Тестовый Покупатель", buyerEmail: user.email, buyerUserId: user.id, buyerCountry: "Finland", buyerCity: "Turku", buyerStageName: "Test Artist", buyerPhone: "", amount: 100, currency: "USD" as const, contractLanguage: "en" as const, buyerAcceptedTerms: true as const, buyerConsentedToData: true as const };
   const manualBeat = await makeBeat();
   const manual = await createManualExclusiveLicense({ ...buyer, beatId: manualBeat.id });
   assert.equal(manual.pdfReady, true);
+  assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: manual.orderId } })).buyerUserId, user.id);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 1);
+  await assert.rejects(prisma.beat.update({ where: { id: manualBeat.id }, data: { status: "available" } }), /sold beat cannot be reactivated/);
+  await prisma.beat.update({ where: { id: manualBeat.id }, data: { availableForDownload: true } });
+  assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: manualBeat.id } })).availableForDownload, false);
   assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: manualBeat.id } })).status, "sold");
   await assert.rejects(createManualExclusiveLicense({ ...buyer, beatId: manualBeat.id }), /BEAT_NOT_AVAILABLE/);
   const first = await ensureOrderLicense(manual.orderId);
   const second = await ensureOrderLicense(manual.orderId);
   assert.equal(first.key, second.key);
+  await confirmManualOrder(manual.orderId);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 1);
   const download = await fetch(second.downloadUrl);
   assert.equal(download.status, 200);
   const bytes = Buffer.from(await download.arrayBuffer());
@@ -59,7 +68,8 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   assert.ok(manualOrder.contract?.htmlSnapshot.includes(buyer.buyerName));
 
   const paidBeat = await makeBeat();
-  const order = await prisma.order.create({ data: { beatId: paidBeat.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCity: buyer.buyerCity, buyerCountry: buyer.buyerCountry, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, currency: "USD", market: "global", provider: "stripe", paymentExternalId: `cs_test_${randomUUID()}`, status: "pending_payment", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
+  await assert.rejects(createManualExclusiveLicense({ ...buyer, beatId: paidBeat.id, buyerEmail: "wrong-account@example.invalid" }), /BUYER_EMAIL_MISMATCH/);
+  const order = await prisma.order.create({ data: { beatId: paidBeat.id, buyerUserId: user.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCity: buyer.buyerCity, buyerCountry: buyer.buyerCountry, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, currency: "USD", market: "global", provider: "stripe", paymentExternalId: `cs_test_${randomUUID()}`, status: "pending_payment", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
   const html = await renderContractHtml(toOrderRow(order), paidBeat);
   await prisma.contract.create({ data: { orderId: order.id, beatId: paidBeat.id, buyerEmail: buyer.buyerEmail, htmlSnapshot: html } });
   const webhook = async () => {
@@ -88,16 +98,20 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   await prisma.licenseSellerSetting.delete({ where: { id: "default" } });
 
   const contactBeat = await makeBeat();
-  const contactOrder = await prisma.order.create({ data: { beatId: contactBeat.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCountry: buyer.buyerCountry, buyerCity: buyer.buyerCity, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, provider: "contact", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
+  const contactOrder = await prisma.order.create({ data: { beatId: contactBeat.id, buyerUserId: user.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCountry: buyer.buyerCountry, buyerCity: buyer.buyerCity, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, provider: "contact", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
   await assert.rejects(confirmManualOrder(contactOrder.id), /ORDER_NOT_READY/);
   const acceptedHtml = await renderContractHtml(toOrderRow(contactOrder), contactBeat);
   await prisma.contract.create({ data: { orderId: contactOrder.id, beatId: contactBeat.id, buyerEmail: buyer.buyerEmail, htmlSnapshot: acceptedHtml } });
   const confirmed = await confirmManualOrder(contactOrder.id);
   assert.equal(confirmed.pdfReady, true);
   const contactPdf = await ensureOrderLicense(contactOrder.id);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 3);
   assert.equal((await confirmManualOrder(contactOrder.id)).pdfReady, true);
   assert.equal((await ensureOrderLicense(contactOrder.id)).key, contactPdf.key);
   assert.equal((await prisma.contract.findUniqueOrThrow({ where: { orderId: contactOrder.id } })).htmlSnapshot, acceptedHtml);
+
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 3);
+  assert.equal(await prisma.beatPurchase.count({ where: { userId: user.id } }), 3);
 
   const draftBeat = await makeBeat();
   const draft = await prisma.order.create({ data: { beatId: draftBeat.id, buyerEmail: buyer.buyerEmail, basePriceUsd: 100, finalPriceUsd: 100, status: "draft" } });

@@ -71,11 +71,11 @@ export function toPublicBeat(record: BeatRecord, resolvePublicUrl: PublicUrlReso
     duration: formatDuration(record.durationSeconds),
     coverPalette: record.coverPalette,
     coverImageUrl: resolvePublicUrl(record.coverKey),
-    previewUrl: resolvePublicUrl(record.previewKey),
+    previewUrl: record.status === "sold" ? null : resolvePublicUrl(record.previewKey),
     priceUsd: record.priceUsd,
     priceRub: record.priceRub,
     featured: record.featured,
-    availableForDownload: record.availableForDownload,
+    availableForDownload: record.status !== "sold" && record.availableForDownload,
     createdAt: record.createdAt,
   };
 }

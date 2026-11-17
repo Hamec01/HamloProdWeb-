@@ -34,7 +34,10 @@ export default async function AdminLicensesPage() {
         </p>
       </section>
 
-      <LicenseSellerForm identity={seller} />
+      <details className="case-panel p-5">
+        <summary className="cursor-pointer text-sm uppercase tracking-[0.12em]">Данные продавца и подпись</summary>
+        <div className="mt-5"><LicenseSellerForm identity={seller} /></div>
+      </details>
 
       <ManualLicenseRequests orders={requests.map((order) => ({ id: order.id, beatTitle: order.beat.title, buyerName: order.buyerName || order.buyerEmail, buyerEmail: order.buyerEmail, amount: order.finalPrice, currency: order.currency }))} />
 

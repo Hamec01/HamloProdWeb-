@@ -14,10 +14,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const beat = await prisma.beat.findUnique({
     where: { id },
-    select: { id: true, title: true, previewKey: true, availableForDownload: true },
+    select: { id: true, title: true, previewKey: true, availableForDownload: true, status: true },
   });
 
   if (!beat) return NextResponse.json({ error: "Beat not found." }, { status: 404 });
+  if (beat.status === "sold" || beat.status === "private") return NextResponse.json({ error: "Этот бит продан или недоступен для скачивания.", code: "BEAT_UNAVAILABLE" }, { status: 409 });
   if (!beat.availableForDownload || !beat.previewKey) {
     return NextResponse.json({ error: "Downloads are not available for this beat." }, { status: 404 });
   }

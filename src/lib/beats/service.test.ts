@@ -187,7 +187,7 @@ test("delete: missing beat → 404", async () => {
   if (!res.ok) assert.equal(res.status, 404);
 });
 
-test("listPublic: only published available/reserved; no private keys in the DTO", async () => {
+test("listPublic: published available/reserved/sold; no private keys in the DTO", async () => {
   const repo = new FakeRepo([
     makeRecord({ id: "1", slug: "pub-avail", status: "available", publishedAt: "2026-09-01T00:00:00.000Z", masterKey: "beats/1/master/m.wav" }),
     makeRecord({ id: "2", slug: "pub-reserved", status: "reserved", publishedAt: "2026-09-01T00:00:00.000Z" }),
@@ -198,12 +198,12 @@ test("listPublic: only published available/reserved; no private keys in the DTO"
   const svc = new BeatService(repo);
   const list = await svc.listPublic();
 
-  assert.deepEqual(list.map((b) => b.slug).sort(), ["pub-avail", "pub-reserved"]);
+  assert.deepEqual(list.map((b) => b.slug).sort(), ["pub-avail", "pub-reserved", "sold"]);
   assert.doesNotMatch(JSON.stringify(list), /masterKey|archiveKey|coverKey|previewKey|master\/m\.wav/);
   assert.ok(repo.lastListQuery?.publishedOnly);
 });
 
-test("getPublicBySlug: null for private / sold / unpublished", async () => {
+test("getPublicBySlug: sold remains visible; private / unpublished are hidden", async () => {
   const repo = new FakeRepo([
     makeRecord({ id: "p", slug: "priv", status: "private", publishedAt: null }),
     makeRecord({ id: "s", slug: "sold", status: "sold", publishedAt: "2026-09-01T00:00:00.000Z" }),
@@ -213,7 +213,7 @@ test("getPublicBySlug: null for private / sold / unpublished", async () => {
   const svc = new BeatService(repo);
 
   assert.equal(await svc.getPublicBySlug("priv"), null);
-  assert.equal(await svc.getPublicBySlug("sold"), null);
+  assert.equal((await svc.getPublicBySlug("sold"))?.status, "sold");
   assert.equal(await svc.getPublicBySlug("unpub"), null);
   assert.equal((await svc.getPublicBySlug("ok"))?.slug, "ok");
 });
@@ -234,4 +234,18 @@ test("publishing requires both cover and preview; master is not a publication re
     assert.equal(result.ok, false);
     if (!result.ok) { assert.equal(result.status, 409); assert.equal(result.code, "MISSING_REQUIRED_ASSETS"); }
   }
+});
+
+
+test("sold beats cannot be reopened or made downloadable, but metadata stays editable", async () => {
+  const repo = new FakeRepo([makeRecord({ id: "sold", status: "sold", publishedAt: "2026-09-01T00:00:00Z" })]);
+  const service = new BeatService(repo);
+  for (const change of [{ status: "available" }, { status: "private" }, { availableForDownload: true }]) {
+    const result = await service.update("sold", change, ADMIN);
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "SOLD_LOCKED");
+  }
+  assert.equal((await service.update("sold", { title: "Updated title" }, ADMIN)).ok, true);
+  assert.equal(repo.rows.get("sold")?.status, "sold");
+  assert.equal(repo.rows.get("sold")?.availableForDownload, false);
 });

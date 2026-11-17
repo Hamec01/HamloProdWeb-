@@ -10,7 +10,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   if (!isUuid(id)) return new Response(null, { status: 404 });
   try {
-    const beat = await prisma.beat.findFirst({ where: { id, publishedAt: { not: null }, status: { in: ["available", "reserved"] } }, select: { coverKey: true } });
+    const beat = await prisma.beat.findFirst({ where: { id, publishedAt: { not: null }, status: { in: ["available", "reserved", "sold"] } }, select: { coverKey: true } });
     if (!beat?.coverKey) return new Response(null, { status: 404 });
     const storage = new ContaboS3Storage(getS3Config());
     const { url } = await storage.createSignedDownloadUrl({ visibility: "public", key: beat.coverKey }, { expiresInSeconds: 300 });

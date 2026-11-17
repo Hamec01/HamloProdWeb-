@@ -50,6 +50,7 @@ export function BeatCard({
 
       <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-paper-400)]">{beat.mood}</p>
 
+      <div className="relative">
       {beat.coverImageUrl ? (
         <div className="case-artwork relative mt-4 h-44 overflow-hidden">
           <Image src={beatCoverSrc(beat)} alt="" fill sizes="(min-width: 1024px) 380px, (min-width: 640px) 90vw, 100vw" quality={60} className="object-cover" />
@@ -58,10 +59,13 @@ export function BeatCard({
         <div className={`mt-4 h-44 border border-[var(--color-line)] bg-gradient-to-br ${beat.coverPalette}`} />
       )}
 
+      {beat.status === "sold" ? <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60"><span className="border-2 border-red-400 bg-red-950/90 px-6 py-2 text-4xl font-bold tracking-[0.18em] text-red-100">SOLD</span></div> : null}
+      </div>
+
       <p className="mt-4 min-h-14 text-sm leading-6 text-[var(--color-paper-200)]">{beat.description}</p>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <PlayBeatButton beat={beat} queue={queue} locale={locale} />
+        {beat.status !== "sold" ? <PlayBeatButton beat={beat} queue={queue.filter((item) => item.status !== "sold")} locale={locale} /> : null}
         <Link
           href={`${hrefBase}/${beat.slug}`}
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
@@ -75,7 +79,7 @@ export function BeatCard({
 
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
         <span>{beat.duration}</span>
-        <span>{priceLabel}</span>
+        <span className={beat.status === "sold" ? "font-bold text-red-300" : undefined}>{beat.status === "sold" ? "SOLD" : priceLabel}</span>
       </div>
     </article>
   );

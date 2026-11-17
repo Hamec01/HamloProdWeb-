@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!upstream.ok || !upstream.body) { await upstream.body?.cancel(); return error(503); }
     const headers = new Headers({
       "Content-Type": "audio/mpeg", "Accept-Ranges": "bytes",
-      "Content-Disposition": "inline", "Cache-Control": "public, max-age=300",
+      "Content-Disposition": "inline", "Cache-Control": "private, no-store",
     });
     for (const name of ["content-length", "content-range", "etag", "last-modified"]) {
       const value = upstream.headers.get(name);

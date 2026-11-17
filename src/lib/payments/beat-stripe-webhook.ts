@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { verifyStripeWebhookSignature } from "@/lib/payments/stripe";
+import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { ensureOrderLicense } from "@/lib/contracts/issue";
 import { lockBeatForExclusiveSale } from "@/lib/orders/exclusive-sale";
 
@@ -109,6 +110,7 @@ export async function handleBeatStripeWebhook(request: Request) {
       if (!order) return "not_found" as const;
 
       if (order.status === "paid") {
+        await awardSalePoints(tx, order.id);
         await tx.beat.update({
           where: { id: order.beatId },
           data: { status: "sold", availableForDownload: false },
@@ -127,6 +129,7 @@ export async function handleBeatStripeWebhook(request: Request) {
         throw new Error("STRIPE_ORDER_STATE_CHANGED");
       }
 
+      await awardSalePoints(tx, order.id);
       return "applied" as const;
     });
 

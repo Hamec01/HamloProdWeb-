@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { RegisteredBuyerPicker, type RegisteredBuyer } from "@/components/admin/registered-buyer-picker";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import type { AdminBeat } from "@/types/beat";
@@ -27,7 +28,13 @@ const labelClass = "space-y-2 text-xs uppercase tracking-[0.16em] text-[var(--co
 
 export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
   const router = useRouter();
+  const beatSearchId = useId();
+  const [beatQuery, setBeatQuery] = useState("");
+  const [selectedBeatId, setSelectedBeatId] = useState("");
+  const [selectedBuyer, setSelectedBuyer] = useState<RegisteredBuyer | null>(null);
+  const [buyerEmail, setBuyerEmail] = useState("");
   const availableBeats = beats.filter((beat) => beat.status === "available" || beat.status === "reserved");
+  const matchingBeats = availableBeats.filter((beat) => beat.id === selectedBeatId || `${beat.caseNumber} ${beat.title}`.toLocaleLowerCase().includes(beatQuery.trim().toLocaleLowerCase()));
   const [message, setMessage] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +50,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
     const formData = new FormData(event.currentTarget);
     const payload = {
       beatId: String(formData.get("beatId") ?? ""),
+      ...(selectedBuyer ? { buyerUserId: selectedBuyer.id } : {}),
       buyerName: String(formData.get("buyerName") ?? ""),
       buyerEmail: String(formData.get("buyerEmail") ?? ""),
       buyerCountry: String(formData.get("buyerCountry") ?? ""),
@@ -66,6 +74,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
         orderId?: string;
         downloadUrl?: string | null;
         pdfReady?: boolean;
+        buyerLinked?: boolean;
         error?: string;
       };
 
@@ -77,8 +86,10 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
       setMessage(result.pdfReady
         ? "Сделка записана, бит помечен как SOLD, лицензия сформирована."
         : "Сделка записана и бит помечен как SOLD, но PDF не сформирован. Создайте документ из списка ниже.");
+      if (result.buyerLinked) setMessage((message) => `${message} Покупка привязана к аккаунту, начислен 1 балл.`);
       setDownloadUrl(result.downloadUrl ?? null);
       form.reset();
+      setSelectedBeatId(""); setBeatQuery(""); setSelectedBuyer(null); setBuyerEmail("");
       router.refresh();
     } catch {
       setMessage("Не удалось связаться с сервером.");
@@ -122,29 +133,34 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
 
           <form onSubmit={createLicense} className="mt-6 space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className={labelClass}>
-                Бит
-                <select className={fieldClass} name="beatId" required defaultValue="">
-                  <option value="" disabled>Выберите доступный бит</option>
-                  {availableBeats.map((beat) => (
-                    <option key={beat.id} value={beat.id}>CASE #{beat.caseNumber} — {beat.title}</option>
-                  ))}
-                </select>
-              </label>
+              <fieldset disabled={isSubmitting} className="space-y-3 sm:col-span-2">
+                <legend className="text-xs uppercase tracking-[0.16em] text-[var(--color-paper-200)]">Выберите бит</legend>
+                <label htmlFor={beatSearchId} className="sr-only">Поиск бита по названию или номеру</label>
+                <input id={beatSearchId} type="search" value={beatQuery} onChange={(event) => setBeatQuery(event.target.value)} placeholder="Поиск по названию или номеру CASE" autoComplete="off" className="w-full border border-stone-600 bg-[#080808] px-3 py-3 text-base text-stone-100 outline-none focus:border-amber-500" />
+                <div className="max-h-64 space-y-2 overflow-y-auto border border-stone-700 bg-[#0c0c0c] p-2">
+                  {matchingBeats.map((beat) => <label key={beat.id} className={`flex cursor-pointer items-start gap-3 border p-3 text-left ${selectedBeatId === beat.id ? "border-amber-500 bg-amber-950/40 text-amber-100" : "border-stone-700 bg-[#171614] text-stone-100 hover:border-stone-400"}`}>
+                    <input className="mt-1 accent-amber-500" type="radio" name="beatId" required value={beat.id} checked={selectedBeatId === beat.id} onChange={() => setSelectedBeatId(beat.id)} />
+                    <span className="min-w-0"><span className="block text-base leading-6">{beat.title}</span><span className="mt-1 block text-xs text-stone-300">{beat.caseNumber}</span></span>
+                  </label>)}
+                  {!matchingBeats.length ? <p className="p-3 text-sm text-stone-300">Биты не найдены.</p> : null}
+                </div>
+                <p className="text-xs text-stone-400">Доступно для продажи: {availableBeats.length}. Проданные биты исключены.</p>
+              </fieldset>
+              <RegisteredBuyerPicker selected={selectedBuyer} onSelect={(buyer) => { setSelectedBuyer(buyer); if (buyer) setBuyerEmail(buyer.email); }} />
               <label className={labelClass}>
                 Цена
                 <input className={fieldClass} name="amount" type="number" min="1" step="1" required />
               </label>
               <label className={labelClass}>
                 Валюта
-                <select className={fieldClass} name="currency" defaultValue="RUB">
+                <select className={`${fieldClass} [color-scheme:dark] [&>option]:bg-[#171614] [&>option]:text-stone-100`} name="currency" defaultValue="RUB">
                   <option value="RUB">RUB</option>
                   <option value="USD">USD</option>
                 </select>
               </label>
               <label className={labelClass}>
                 Язык договора
-                <select className={fieldClass} name="contractLanguage" defaultValue="ru">
+                <select className={`${fieldClass} [color-scheme:dark] [&>option]:bg-[#171614] [&>option]:text-stone-100`} name="contractLanguage" defaultValue="ru">
                   <option value="ru">Русский (RU + EN PDF)</option>
                   <option value="en">English (RU + EN PDF)</option>
                 </select>
@@ -159,7 +175,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
               </label>
               <label className={labelClass}>
                 Email
-                <input className={fieldClass} name="buyerEmail" type="email" autoComplete="email" required />
+                <input className={fieldClass} name="buyerEmail" type="email" autoComplete="email" required value={buyerEmail} readOnly={Boolean(selectedBuyer)} onChange={(event) => setBuyerEmail(event.target.value)} />
               </label>
               <label className={labelClass}>
                 Телефон (необязательно)
@@ -189,7 +205,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
             {availableBeats.length === 0 ? <p className="text-sm text-amber-300">Нет доступных битов для продажи.</p> : null}
             <button
               type="submit"
-              disabled={isSubmitting || availableBeats.length === 0}
+              disabled={isSubmitting || !selectedBeatId || availableBeats.length === 0}
               className="border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-5 py-3 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] disabled:opacity-50"
             >
               {isSubmitting ? "Сохраняем..." : "Создать лицензию и отметить бит SOLD"}
