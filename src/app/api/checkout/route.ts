@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
 import { getLocale } from "@/lib/i18n-server";
 import { getMarketContext } from "@/lib/market";
+import { getBeatCheckoutProvider } from "@/lib/checkout/config";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
 import { getDiscountPercent } from "@/lib/loyalty";
 
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const locale = await getLocale();
   const market = getMarketContext(locale);
-  const contactCheckout = market.market === "ru" || !process.env.STRIPE_SECRET_KEY?.trim();
+  const provider = getBeatCheckoutProvider(locale);
 
   const beat = await prisma.beat.findUnique({
     where: { id: beat_id },
@@ -78,8 +79,8 @@ export async function POST(request: NextRequest) {
     discountPercent,
     market: market.market,
     currency: market.currency,
-    provider: contactCheckout ? "contact" : market.paymentProvider,
-    paymentProvider: contactCheckout ? "contact" : market.paymentProvider,
+    provider: provider,
+    paymentProvider: provider,
     status: "draft" as const,
   };
 

@@ -8,6 +8,7 @@ import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
+import { getBeatCheckoutProvider } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { localizeBeats } from "@/lib/localize-content";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
@@ -131,7 +132,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
             {beat.status !== "sold" && beat.status !== "private" ? <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.12em]">
               {locale === "ru" ? "Заполнить данные для лицензии" : "Fill License Details"}
             </Link> : null}
-            {locale === "ru" || !process.env.STRIPE_SECRET_KEY?.trim() ? (
+            {getBeatCheckoutProvider(locale) === "contact" ? (
               <div className="mt-6 flex flex-wrap gap-3">
                 <a
                   href="https://t.me/Andrei91S"

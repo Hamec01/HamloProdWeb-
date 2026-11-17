@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
-import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 
@@ -19,15 +17,6 @@ export default async function CheckoutRightsPage({
 
   if (!session.isAuthenticated) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/rights/${orderId}`)}`);
-  }
-
-  if (!isPaidCheckoutEnabled()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Rights" title={locale === "ru" ? "Форма передачи прав" : "Rights Form"} />
-        <PaymentsDisabledNotice locale={locale} />
-      </section>
-    );
   }
 
   let paymentData: Awaited<ReturnType<typeof getOrderForPayment>>;

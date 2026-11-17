@@ -34,7 +34,7 @@ rendering. A local installation can override it with
 
 The production Stripe endpoint also handles HPDG keys/refunds. Beat checkouts are
 routed by `metadata.orderId`; the existing HPDG handler is preserved.
-`STRIPE_SECRET_KEY` is required to offer online beat checkout. Until configured,
+`STRIPE_SECRET_KEY` and `PAID_CHECKOUT_ENABLED=true` are required to offer online beat checkout. Until configured,
 beat buyers submit their license details and contact Telegram/VK; the administrator
 confirms received payment. Direct manual sales remain available for off-site buyers. `STRIPE_WEBHOOK_SECRET` must correspond to the existing Stripe destination;
 subscribe to `checkout.session.completed` and asynchronous success/failure events

@@ -41,3 +41,9 @@ export function paidCheckoutDisabledResponse(): PaidCheckoutDisabled {
     body: { error: "Online payments are temporarily unavailable.", code: PAID_CHECKOUT_DISABLED_CODE },
   };
 }
+
+/** Contact requests and issued PDFs remain available while online payments are
+ * disabled. Only new Stripe payments require both the flag and a secret key. */
+export function getBeatCheckoutProvider(locale: "ru" | "en", env: EnvSource = process.env): "stripe" | "contact" {
+  return locale === "en" && isPaidCheckoutEnabled(env) && Boolean(env.STRIPE_SECRET_KEY?.trim()) ? "stripe" : "contact";
+}
