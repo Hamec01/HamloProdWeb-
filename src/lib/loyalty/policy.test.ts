@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getDiscountPercent, POINTS_PER_FREE_BEAT, POINTS_PER_PURCHASE } from "@/lib/loyalty";
+import { getLoyaltyStatus, getDiscountPercent, POINTS_PER_FREE_BEAT, POINTS_PER_PURCHASE } from "@/lib/loyalty";
 
 test("four paid purchases earn one free beat; no partial or perpetual discount", () => {
   assert.equal(POINTS_PER_PURCHASE, 25);
@@ -8,4 +8,10 @@ test("four paid purchases earn one free beat; no partial or perpetual discount",
   for (const value of [0, 1, 4, 25, 50, 75, 99]) assert.equal(getDiscountPercent(value), 0);
   assert.equal(getDiscountPercent(100), 100);
   assert.equal(getDiscountPercent(100 - POINTS_PER_FREE_BEAT), 0);
+});
+
+
+test("the public loyalty summary uses the same 25/100 policy", () => {
+  assert.deepEqual(getLoyaltyStatus(25), { points: 25, discountPercent: 0, nextThreshold: 100, pointsPerPurchase: 25, freeBeatCost: 100 });
+  assert.equal(getLoyaltyStatus(125).nextThreshold, null);
 });

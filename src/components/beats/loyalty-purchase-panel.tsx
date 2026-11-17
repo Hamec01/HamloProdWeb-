@@ -23,7 +23,7 @@ export function LoyaltyPurchasePanel({
   locale: Locale;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState<LoyaltyStatus>({ points: 0, discountPercent: 0, nextThreshold: 2 });
+  const [status, setStatus] = useState<LoyaltyStatus>({ points: 0, discountPercent: 0, nextThreshold: 100 });
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -33,16 +33,16 @@ export function LoyaltyPurchasePanel({
       locale === "ru"
         ? {
             heading: "Loyalty points",
-            pointsLabel: "Твои баллы",
+            pointsLabel: "Твои поинты",
             discountLabel: "Скидка сейчас",
             nextLabel: "Следующая скидка",
-            loginHint: "Баллы и скидки доступны после входа.",
-            buyAction: "Подтвердить покупку",
+            loginHint: "Поинты доступны после входа.",
+            buyAction: "Открыть заявку",
             buying: "Обработка",
-            success: "Покупка сохранена. Балл начислен.",
+            success: "Заявка открыта. Поинты начисляются после подтверждения оплаты.",
             failed: "Не удалось оформить покупку.",
-            threshold2: "2 балла = 50% OFF",
-            threshold4: "4 балла = 100% OFF",
+            threshold2: "25 поинтов за оплаченную покупку",
+            threshold4: "100 поинтов = один бесплатный бит",
             finalPrice: "Цена с учётом скидки",
           }
         : {
@@ -51,12 +51,12 @@ export function LoyaltyPurchasePanel({
             discountLabel: "Current discount",
             nextLabel: "Next discount",
             loginHint: "Points and discounts are available after login.",
-            buyAction: "Confirm purchase",
+            buyAction: "Open request",
             buying: "Processing",
-            success: "Purchase saved. Point earned.",
+            success: "Request opened. Points are awarded after payment confirmation.",
             failed: "Failed to complete purchase.",
-            threshold2: "2 points = 50% OFF",
-            threshold4: "4 points = 100% OFF",
+            threshold2: "25 points per paid purchase",
+            threshold4: "100 points = one free beat",
             finalPrice: "Discounted price",
           },
     [locale],
@@ -96,10 +96,11 @@ export function LoyaltyPurchasePanel({
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/beats/${beatId}/purchase`, { method: "POST" });
+      const response = await fetch(`/api/beats/${beatId}/inquiry`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reserve: false }) });
       const payload = (await response.json().catch(() => null)) as
         | {
             error?: string;
+            url?: string;
             pointsAfter?: number;
             discountPercent?: number;
             finalPriceUsd?: number;
@@ -111,8 +112,7 @@ export function LoyaltyPurchasePanel({
         return;
       }
 
-      setMessage(copy.success);
-      await loadStatus();
+      if (payload?.url) router.push(payload.url);
     } finally {
       setIsSubmitting(false);
     }
