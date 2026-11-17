@@ -2,10 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PaymentCreatePanel } from "@/components/checkout/payment-create-panel";
-import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
-import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { getOrderForPayment } from "@/lib/payments/create";
 import { formatMarketMoney } from "@/lib/market";
@@ -27,15 +25,6 @@ export default async function CheckoutPaymentPage({
     redirect(`/auth?next=${encodeURIComponent(`/checkout/payment/${orderId}`)}`);
   }
 
-  if (!isPaidCheckoutEnabled()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Payment" title={locale === "ru" ? "Оплата" : "Payment"} />
-        <PaymentsDisabledNotice locale={locale} />
-      </section>
-    );
-  }
-
   let paymentData: Awaited<ReturnType<typeof getOrderForPayment>>;
   try {
     paymentData = await getOrderForPayment(orderId);
@@ -44,6 +33,13 @@ export default async function CheckoutPaymentPage({
   }
 
   const { order, beat, contractSnapshotExists } = paymentData;
+  if (order.provider === "contact") {
+    return <section className="case-panel p-6 space-y-5">
+      <SectionHeading eyebrow="HamloProd" title={locale === "ru" ? "Заявка на лицензию сохранена" : "License Request Saved"} description={locale === "ru" ? "Напишите в Telegram или VK и сообщите номер заказа. После подтверждения оплаты PDF появится в вашем профиле." : "Contact us via Telegram or VK and include your order number. Your license PDF will appear in your profile after payment is confirmed."} />
+      <p>{beat.title}</p><p className="break-all text-sm">{locale === "ru" ? "Номер заказа" : "Order number"}: {order.id}</p>
+      <div className="flex flex-wrap gap-4"><a className="underline" href="https://t.me/Andrei91S" target="_blank" rel="noreferrer">Telegram</a><a className="underline" href="https://vk.ru/hamloproduction" target="_blank" rel="noreferrer">VK</a><Link className="underline" href="/profile">{locale === "ru" ? "Мои покупки" : "My Purchases"}</Link></div>
+    </section>;
+  }
   const currency = resolveOrderCurrency(order);
   const basePrice = resolveOrderBasePrice(order);
   const finalPrice = resolveOrderFinalPrice(order);
@@ -64,8 +60,8 @@ export default async function CheckoutPaymentPage({
         title={locale === "ru" ? "Проверка заказа перед созданием платежа" : "Review Order Before Creating Payment"}
         description={
           locale === "ru"
-            ? "Платёж создаётся только на сервере: заказ и snapshot договора проверяются до запроса в Lava."
-            : "Payment is created server-side only: the order and contract snapshot are validated before any Lava request."
+            ? "Платёж создаётся на сервере после проверки заказа и snapshot договора."
+            : "Payment is created server-side after validating the order and contract snapshot."
         }
       />
 
@@ -77,7 +73,7 @@ export default async function CheckoutPaymentPage({
           <div className="mt-4 space-y-3 text-sm text-[var(--color-paper-200)]">
             <p><span className="text-[var(--color-paper-400)]">Beat:</span> {beat.title}</p>
             <p><span className="text-[var(--color-paper-400)]">Email:</span> {order.buyer_email}</p>
-            <p><span className="text-[var(--color-paper-400)]">Transfer:</span> {locale === "ru" ? "Полное отчуждение прав" : "Full rights transfer"}</p>
+            <p><span className="text-[var(--color-paper-400)]">License:</span> {locale === "ru" ? "Эксклюзивная лицензия, один покупатель" : "One-time exclusive license"}</p>
             <p><span className="text-[var(--color-paper-400)]">Base:</span> {formatMarketMoney(basePrice, currency, locale as "ru" | "en")}</p>
             <p><span className="text-[var(--color-paper-400)]">Discount:</span> {order.discount_percent}%</p>
             <p><span className="text-[var(--color-paper-400)]">Final:</span> {formatMarketMoney(finalPrice, currency, locale as "ru" | "en")}</p>

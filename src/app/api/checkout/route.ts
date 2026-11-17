@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
-import { isPaidCheckoutEnabled, paidCheckoutDisabledResponse } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { getMarketContext } from "@/lib/market";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
@@ -17,12 +16,6 @@ export async function POST(request: NextRequest) {
   const guard = await requireBuyer(request);
   if (!guard.ok) return guard.response;
 
-  // Paid checkout is off → never create or change an Order.
-  if (!isPaidCheckoutEnabled()) {
-    const d = paidCheckoutDisabledResponse();
-    return NextResponse.json(d.body, { status: d.status });
-  }
-
   const parsed = checkoutFormSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 });
@@ -31,6 +24,7 @@ export async function POST(request: NextRequest) {
   const {
     beat_id,
     buyer_name,
+    buyer_stage_name,
     buyer_email,
     buyer_country,
     buyer_city,
@@ -42,6 +36,7 @@ export async function POST(request: NextRequest) {
 
   const locale = await getLocale();
   const market = getMarketContext(locale);
+  const contactCheckout = market.market === "ru" || !process.env.STRIPE_SECRET_KEY?.trim();
 
   const beat = await prisma.beat.findUnique({
     where: { id: beat_id },
@@ -67,11 +62,15 @@ export async function POST(request: NextRequest) {
     buyerUserId: guard.context.userId,
     buyerEmail: buyer_email,
     buyerName: buyer_name,
+    buyerFullName: buyer_name,
+    buyerStageName: buyer_stage_name || null,
     buyerCountry: buyer_country,
     buyerCity: buyer_city,
     buyerPhone: buyer_phone,
     licenseType: license_type,
     contractLanguage: contract_language,
+    termsAcceptedAt: new Date(),
+    personalDataConsentAt: new Date(),
     basePrice,
     finalPrice,
     basePriceUsd: basePrice,
@@ -79,8 +78,8 @@ export async function POST(request: NextRequest) {
     discountPercent,
     market: market.market,
     currency: market.currency,
-    provider: market.paymentProvider,
-    paymentProvider: market.paymentProvider,
+    provider: contactCheckout ? "contact" : market.paymentProvider,
+    paymentProvider: contactCheckout ? "contact" : market.paymentProvider,
     status: "draft" as const,
   };
 
@@ -91,7 +90,8 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingDraft) {
-    await prisma.order.update({ where: { id: existingDraft.id }, data });
+    const updated = await prisma.order.updateMany({ where: { id: existingDraft.id, status: "draft" }, data });
+    if (!updated.count) return err("Order is already being paid. Please reload checkout.", 409);
     return NextResponse.json({ orderId: existingDraft.id }, { status: 200 });
   }
 

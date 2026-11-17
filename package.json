@@ -30,7 +30,9 @@
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "@sparticuz/chromium": "^147.0.2",
+    "nunjucks": "^3.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -42,6 +44,7 @@
     "prisma": "6.19.3",
     "tailwindcss": "^4",
     "tsx": "4.23.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@types/nunjucks": "^3.2.6"
   }
 }

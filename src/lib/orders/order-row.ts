@@ -32,6 +32,8 @@ export type OrderRow = {
   status: string;
   license_type: "basic" | "exclusive";
   contract_language: "ru" | "en";
+  terms_accepted_at: string | null;
+  personal_data_consent_at: string | null;
   rights_form_status: "not_started" | "deferred" | "completed_partial" | null;
   contract_pdf_key: string | null;
   contract_template_type: string | null;
@@ -65,6 +67,8 @@ export function toOrderRow(o: PrismaOrder): OrderRow {
     status: o.status,
     license_type: o.licenseType as "basic" | "exclusive",
     contract_language: o.contractLanguage as "ru" | "en",
+    terms_accepted_at: o.termsAcceptedAt?.toISOString() ?? null,
+    personal_data_consent_at: o.personalDataConsentAt?.toISOString() ?? null,
     rights_form_status: o.rightsFormStatus as OrderRow["rights_form_status"],
     contract_pdf_key: o.contractPdfKey,
     contract_template_type: o.contractTemplateType,

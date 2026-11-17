@@ -3,7 +3,7 @@ import type { Locale } from "@/lib/i18n";
 
 export type Market = "global" | "ru";
 export type CurrencyCode = "USD" | "RUB";
-export type PaymentProvider = "paypal" | "lava";
+export type PaymentProvider = "paypal" | "lava" | "stripe" | "contact";
 export type SectorKey = "beats" | "vst" | "ham" | "artists";
 
 export type MarketContext = {
@@ -24,7 +24,7 @@ export function getMarketContext(locale: Locale): MarketContext {
       locale,
       market: "ru",
       currency: "RUB",
-      paymentProvider: "lava",
+      paymentProvider: "contact",
       defaultBeatPrice: 2500,
     };
   }
@@ -33,7 +33,7 @@ export function getMarketContext(locale: Locale): MarketContext {
     locale,
     market: "global",
     currency: "USD",
-    paymentProvider: "paypal",
+    paymentProvider: "stripe",
     defaultBeatPrice: 100,
   };
 }

@@ -29,18 +29,18 @@ const copy = {
     pointsHint: "Вы можете оставить баллы на потом и оплатить заказ без скидки.",
     final: "Итого к оплате",
     personal: "Персональные данные",
-    buyerName: "Полное имя / ФИО",
+    buyerName: "Полное имя / ФИО для лицензии",
+    buyerStageName: "Псевдоним артиста (необязательно)",
     buyerEmail: "Email",
     buyerCountry: "Страна",
     buyerCity: "Город",
     buyerPhone: "Телефон",
     licenseType: "Тип лицензии",
-    licenseBasic: "Базовая",
-    licenseExclusive: "Эксклюзивная",
+    licenseExclusive: "Эксклюзивная — один покупатель",
     contractLang: "Язык договора",
     langRu: "Русский",
     langEn: "English",
-    acceptLabel: "Я принимаю условия договора об отчуждении исключительных прав",
+    acceptLabel: "Я принимаю условия договора об эксклюзивной лицензии на один бит",
     personalDataLabel: "Я даю согласие на обработку персональных данных",
     submit: "Оформить заказ",
     generatingPreview: "Формируем договор...",
@@ -56,18 +56,18 @@ const copy = {
     pointsHint: "You can keep your points for later and pay full price now.",
     final: "Total due",
     personal: "Personal Details",
-    buyerName: "Full Name",
+    buyerName: "Full Name for the License",
+    buyerStageName: "Artist Name (optional)",
     buyerEmail: "Email",
     buyerCountry: "Country",
     buyerCity: "City",
     buyerPhone: "Phone",
     licenseType: "License Type",
-    licenseBasic: "Basic",
-    licenseExclusive: "Exclusive",
+    licenseExclusive: "One-time exclusive license",
     contractLang: "Contract Language",
     langRu: "Russian",
     langEn: "English",
-    acceptLabel: "I accept the exclusive rights transfer agreement terms",
+    acceptLabel: "I accept the one-time exclusive beat license terms",
     personalDataLabel: "I consent to the processing of my personal data",
     submit: "Place Order",
     generatingPreview: "Generating contract...",
@@ -124,7 +124,7 @@ export function CheckoutForm({
     defaultValues: {
       beat_id: beatId,
       buyer_email: prefillEmail,
-      license_type: "basic",
+      license_type: "exclusive",
       contract_language: locale,
       use_loyalty_points: false,
     },
@@ -135,8 +135,8 @@ export function CheckoutForm({
     return useLoyaltyPoints ? discountPercent : 0;
   }, [discountPercent, useLoyaltyPoints]);
   const payableNow = useMemo(() => {
-    return Math.max(0, Math.round((basePriceUsd * (100 - appliedDiscountPercent)) / 100));
-  }, [appliedDiscountPercent, basePriceUsd]);
+    return useLoyaltyPoints ? finalPriceUsd : basePriceUsd;
+  }, [basePriceUsd, finalPriceUsd, useLoyaltyPoints]);
 
   const onSubmit = async (values: CheckoutFormValues) => {
     setServerError(null);
@@ -227,6 +227,11 @@ export function CheckoutForm({
             {errors.buyer_name && <p className="mt-1 text-xs text-red-400">{errors.buyer_name.message}</p>}
           </div>
 
+          <label>
+            <span className={labelClass()}>{t.buyerStageName}</span>
+            <input {...register("buyer_stage_name")} className={fieldClass(!!errors.buyer_stage_name)} maxLength={120} />
+          </label>
+
           <div>
             <label className={labelClass()}>{t.buyerEmail}</label>
             <input {...register("buyer_email")} type="email" className={fieldClass(!!errors.buyer_email)} placeholder="-" />
@@ -256,7 +261,6 @@ export function CheckoutForm({
           <div>
             <label className={labelClass()}>{t.licenseType}</label>
             <select {...register("license_type")} className={fieldClass(!!errors.license_type)}>
-              <option value="basic">{t.licenseBasic}</option>
               <option value="exclusive">{t.licenseExclusive}</option>
             </select>
           </div>

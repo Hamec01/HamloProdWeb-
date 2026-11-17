@@ -1,24 +1,14 @@
 import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { getSellerIdentity } from "@/lib/contracts/seller";
-import { renderExclusiveRightsRuTemplate } from "@/lib/contracts/templates/exclusive-rights-ru";
+import { renderExclusiveLicenseBilingual } from "@/lib/contracts/templates/exclusive-license-bilingual";
 import { formatMarketMoney, type CurrencyCode } from "@/lib/market";
 import { toContractRow, toOrderRow, type ContractRow, type OrderRow } from "@/lib/orders/order-row";
 
 const CONTRACT_DRAFT_PLACEHOLDER = "<p>Contract draft placeholder.</p>";
 
-export type ContractTemplateName = "exclusive-rights-ru";
-
 function getContractNumber(orderId: string) {
-  return `HP-${orderId.slice(0, 8).toUpperCase()}`;
-}
-
-function getCurrentDate() {
-  return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date());
-}
-
-export function resolveContractTemplate(_: "ru" | "en"): ContractTemplateName {
-  return "exclusive-rights-ru";
+  return `HP-${orderId.toUpperCase()}`;
 }
 
 function resolvePreviewCurrency(order: Pick<OrderRow, "currency" | "market" | "contract_language">): CurrencyCode {
@@ -55,22 +45,22 @@ async function requireBuyerUserId(): Promise<string> {
   return session.userId;
 }
 
-export async function getOrderForPreview(orderId: string): Promise<{ order: OrderRow; beat: { id: string; title: string; slug: string } }> {
+export async function getOrderForPreview(orderId: string): Promise<{ order: OrderRow; beat: { id: string; title: string; slug: string; caseNumber: string } }> {
   const userId = await requireBuyerUserId();
 
   const order = await prisma.order.findFirst({ where: { id: orderId, buyerUserId: userId } });
   if (!order) throw new Error("ORDER_NOT_FOUND");
 
-  const beat = await prisma.beat.findUnique({ where: { id: order.beatId }, select: { id: true, title: true, slug: true } });
+  const beat = await prisma.beat.findUnique({ where: { id: order.beatId }, select: { id: true, title: true, slug: true, caseNumber: true } });
   if (!beat) throw new Error("BEAT_NOT_FOUND");
 
   return { order: toOrderRow(order), beat };
 }
 
 export async function getOrCreateContractDraft(orderId: string): Promise<ContractRow> {
-  await requireBuyerUserId();
+  const userId = await requireBuyerUserId();
 
-  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true, beatId: true, buyerEmail: true } });
+  const order = await prisma.order.findFirst({ where: { id: orderId, buyerUserId: userId }, select: { id: true, beatId: true, buyerEmail: true } });
   if (!order) throw new Error("ORDER_NOT_FOUND");
 
   const existing = await prisma.contract.findUnique({ where: { orderId } });
@@ -89,38 +79,47 @@ export async function getOrCreateContractDraft(orderId: string): Promise<Contrac
 }
 
 export async function getContractByOrderId(orderId: string): Promise<ContractRow | null> {
-  await requireBuyerUserId();
-  const contract = await prisma.contract.findUnique({ where: { orderId } });
+  const userId = await requireBuyerUserId();
+  const contract = await prisma.contract.findFirst({ where: { orderId, order: { buyerUserId: userId } } });
   return contract ? toContractRow(contract) : null;
 }
 
-export async function renderContractHtml(order: OrderRow, beat: { title: string }, _: ContractTemplateName) {
+export async function renderContractHtml(order: OrderRow, beat: { title: string; caseNumber?: string }) {
   validatePreviewPayload(order, beat);
 
-  const seller = await getSellerIdentity({ strict: false, includeSignature: false });
   const currency = resolvePreviewCurrency(order);
   const finalPrice = resolvePreviewAmount(order);
 
-  return renderExclusiveRightsRuTemplate({
+  const [seller, date_en] = await Promise.all([
+    getSellerIdentity(),
+    new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(order.created_at)),
+  ]);
+  return renderExclusiveLicenseBilingual({
     contract_number: getContractNumber(order.id),
-    current_date: getCurrentDate(),
+    date_ru: new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" }).format(new Date(order.created_at)),
+    date_en,
     beat_title: beat.title,
+    beat_catalog_number: beat.caseNumber || "",
+    canonical_beat_id: order.beat_id,
     price: formatMarketMoney(finalPrice, currency, currency === "RUB" ? "ru" : "en"),
     currency,
     ...seller,
-    buyer_full_name: order.buyer_name,
+    buyer_full_name: order.buyer_full_name ?? order.buyer_name,
     buyer_city: order.buyer_city,
-    buyer_stage_name: null,
-    mode: "deferred",
-    revealSellerPassport: false,
+    buyer_country: order.buyer_country,
+    buyer_email: order.buyer_email,
+    buyer_stage_name: order.buyer_stage_name,
+    buyer_acceptance_at: order.terms_accepted_at,
+    payment_method: order.provider || "Online payment",
+    mode: "partial",
   });
 }
 
 export async function saveContractSnapshot(contractId: string, html: string): Promise<ContractRow> {
-  await requireBuyerUserId();
+  const userId = await requireBuyerUserId();
   try {
     const saved = await prisma.contract.update({
-      where: { id: contractId },
+      where: { id: contractId, order: { buyerUserId: userId, status: "draft" } },
       data: { htmlSnapshot: html, issuedAt: new Date() },
     });
     return toContractRow(saved);
@@ -132,8 +131,11 @@ export async function saveContractSnapshot(contractId: string, html: string): Pr
 export async function generateAndSaveContractSnapshot(orderId: string) {
   const [{ order, beat }, contract] = await Promise.all([getOrderForPreview(orderId), getOrCreateContractDraft(orderId)]);
 
-  const template = resolveContractTemplate(order.contract_language);
-  const html = await renderContractHtml(order, beat, template);
+  if (order.status !== "draft") {
+    if (contract.html_snapshot === CONTRACT_DRAFT_PLACEHOLDER) throw new Error("CONTRACT_SNAPSHOT_MISSING");
+    return { order, beat, contract, html: contract.html_snapshot, previewUrl: `/checkout/preview/${order.id}` };
+  }
+  const html = await renderContractHtml(order, beat);
   const saved = await saveContractSnapshot(contract.id, html);
 
   return { order, beat, contract: saved, html, previewUrl: `/checkout/preview/${order.id}` };

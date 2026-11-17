@@ -1,0 +1,247 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
+import type { AdminBeat } from "@/types/beat";
+
+type ManualSale = {
+  id: string;
+  beatTitle: string;
+  buyerName: string;
+  buyerEmail: string;
+  amount: number;
+  currency: "RUB" | "USD";
+  createdAt: string;
+  hasPdf: boolean;
+};
+
+type Props = {
+  beats: AdminBeat[];
+  sales: ManualSale[];
+  canCreateSales: boolean;
+};
+
+const fieldClass = "w-full border border-[var(--color-line)] bg-[rgba(0,0,0,0.24)] px-3 py-2 text-sm text-[var(--color-paper-100)] outline-none";
+const labelClass = "space-y-2 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-300)]";
+
+export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
+  const router = useRouter();
+  const availableBeats = beats.filter((beat) => beat.status === "available" || beat.status === "reserved");
+  const [message, setMessage] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+
+  async function createLicense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setMessage(null);
+    setDownloadUrl(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(event.currentTarget);
+    const payload = {
+      beatId: String(formData.get("beatId") ?? ""),
+      buyerName: String(formData.get("buyerName") ?? ""),
+      buyerEmail: String(formData.get("buyerEmail") ?? ""),
+      buyerCountry: String(formData.get("buyerCountry") ?? ""),
+      buyerCity: String(formData.get("buyerCity") ?? ""),
+      buyerStageName: String(formData.get("buyerStageName") ?? ""),
+      buyerPhone: String(formData.get("buyerPhone") ?? ""),
+      amount: Number(formData.get("amount")),
+      currency: String(formData.get("currency")),
+      contractLanguage: String(formData.get("contractLanguage")),
+      buyerAcceptedTerms: formData.get("buyerAcceptedTerms") === "on",
+      buyerConsentedToData: formData.get("buyerConsentedToData") === "on",
+    };
+
+    try {
+      const response = await fetch("/api/admin/licenses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as {
+        orderId?: string;
+        downloadUrl?: string | null;
+        pdfReady?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !result.orderId) {
+        setMessage(result.error ?? "Не удалось создать лицензию.");
+        return;
+      }
+
+      setMessage(result.pdfReady
+        ? "Сделка записана, бит помечен как SOLD, лицензия сформирована."
+        : "Сделка записана и бит помечен как SOLD, но PDF не сформирован. Создайте документ из списка ниже.");
+      setDownloadUrl(result.downloadUrl ?? null);
+      form.reset();
+      router.refresh();
+    } catch {
+      setMessage("Не удалось связаться с сервером.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function getLicensePdf(orderId: string) {
+    setPdfLoadingId(orderId);
+    setMessage(null);
+    setDownloadUrl(null);
+    try {
+      const response = await fetch(`/api/admin/licenses/${orderId}/pdf`, { method: "POST" });
+      const result = await response.json() as { downloadUrl?: string; error?: string };
+      if (!response.ok || !result.downloadUrl) {
+        setMessage(result.error ?? "Не удалось подготовить PDF.");
+        return;
+      }
+      setDownloadUrl(result.downloadUrl);
+    } catch {
+      setMessage("Не удалось связаться с сервером.");
+    } finally {
+      setPdfLoadingId(null);
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      {message ? <p className="case-panel p-4 text-sm" role="status">{message}</p> : null}
+      {downloadUrl ? <a className="inline-block text-sm underline" href={downloadUrl} target="_blank" rel="noreferrer">Скачать PDF лицензии</a> : null}
+      {canCreateSales ? (
+        <section className="case-panel p-6">
+          <h2 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">
+            Ручная продажа / Manual Sale
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--color-paper-200)]">
+            Для сделок через Telegram/VK. Отметьте оплату и согласия только после подтверждения покупателя.
+            После сохранения бит нельзя продать повторно.
+          </p>
+
+          <form onSubmit={createLicense} className="mt-6 space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClass}>
+                Бит
+                <select className={fieldClass} name="beatId" required defaultValue="">
+                  <option value="" disabled>Выберите доступный бит</option>
+                  {availableBeats.map((beat) => (
+                    <option key={beat.id} value={beat.id}>CASE #{beat.caseNumber} — {beat.title}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={labelClass}>
+                Цена
+                <input className={fieldClass} name="amount" type="number" min="1" step="1" required />
+              </label>
+              <label className={labelClass}>
+                Валюта
+                <select className={fieldClass} name="currency" defaultValue="RUB">
+                  <option value="RUB">RUB</option>
+                  <option value="USD">USD</option>
+                </select>
+              </label>
+              <label className={labelClass}>
+                Язык договора
+                <select className={fieldClass} name="contractLanguage" defaultValue="ru">
+                  <option value="ru">Русский (RU + EN PDF)</option>
+                  <option value="en">English (RU + EN PDF)</option>
+                </select>
+              </label>
+              <label className={labelClass}>
+                ФИО / Полное имя
+                <input className={fieldClass} name="buyerName" autoComplete="name" required minLength={2} maxLength={180} />
+              </label>
+              <label className={labelClass}>
+                Псевдоним артиста
+                <input className={fieldClass} name="buyerStageName" required maxLength={120} />
+              </label>
+              <label className={labelClass}>
+                Email
+                <input className={fieldClass} name="buyerEmail" type="email" autoComplete="email" required />
+              </label>
+              <label className={labelClass}>
+                Телефон (необязательно)
+                <input className={fieldClass} name="buyerPhone" type="tel" maxLength={60} />
+              </label>
+              <label className={labelClass}>
+                Страна
+                <input className={fieldClass} name="buyerCountry" required maxLength={120} />
+              </label>
+              <label className={labelClass}>
+                Город
+                <input className={fieldClass} name="buyerCity" required maxLength={120} />
+              </label>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 text-sm text-[var(--color-paper-200)]">
+                <input className="mt-1 accent-[var(--color-paper-200)]" type="checkbox" name="buyerAcceptedTerms" required />
+                <span>Оплата получена, покупатель подтвердил согласие с условиями эксклюзивной лицензии.</span>
+              </label>
+              <label className="flex items-start gap-3 text-sm text-[var(--color-paper-200)]">
+                <input className="mt-1 accent-[var(--color-paper-200)]" type="checkbox" name="buyerConsentedToData" required />
+                <span>Покупатель согласился на обработку данных, необходимых для договора.</span>
+              </label>
+            </div>
+
+            {availableBeats.length === 0 ? <p className="text-sm text-amber-300">Нет доступных битов для продажи.</p> : null}
+            <button
+              type="submit"
+              disabled={isSubmitting || availableBeats.length === 0}
+              className="border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-5 py-3 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] disabled:opacity-50"
+            >
+              {isSubmitting ? "Сохраняем..." : "Создать лицензию и отметить бит SOLD"}
+            </button>
+          </form>
+        </section>
+      ) : (
+        <p className="case-panel p-5 text-sm text-[var(--color-paper-200)]">
+          Создавать ручные продажи может только администратор.
+        </p>
+      )}
+
+      <section className="case-panel overflow-hidden">
+        <div className="border-b border-[var(--color-line)] p-5">
+          <h2 className="font-sans text-3xl uppercase tracking-[0.05em] text-[var(--color-paper-100)]">Выданные лицензии</h2>
+          <p className="mt-2 text-sm text-[var(--color-paper-200)]">Последние 50 оплаченных заказов: сайт и ручные продажи.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm text-[var(--color-paper-200)]">
+            <thead className="text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
+              <tr>
+                <th className="px-5 py-3">Бит</th>
+                <th className="px-5 py-3">Покупатель</th>
+                <th className="px-5 py-3">Сумма</th>
+                <th className="px-5 py-3">PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sales.map((sale) => (
+                <tr key={sale.id} className="border-t border-[var(--color-line)]">
+                  <td className="px-5 py-4">{sale.beatTitle}<br /><span className="text-xs text-[var(--color-paper-400)]">{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" }).format(new Date(sale.createdAt))}</span></td>
+                  <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span></td>
+                  <td className="px-5 py-4">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: sale.currency, maximumFractionDigits: 0 }).format(sale.amount)}</td>
+                  <td className="px-5 py-4">
+                    <button
+                      type="button"
+                      onClick={() => void getLicensePdf(sale.id)}
+                      disabled={pdfLoadingId === sale.id}
+                      className="underline decoration-dotted disabled:opacity-50"
+                    >
+                      {pdfLoadingId === sale.id ? "Готовим..." : sale.hasPdf ? "Скачать / обновить ссылку" : "Сформировать PDF"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {sales.length === 0 ? (
+                <tr><td className="px-5 py-5 text-[var(--color-paper-400)]" colSpan={4}>Пока нет ручных продаж.</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}

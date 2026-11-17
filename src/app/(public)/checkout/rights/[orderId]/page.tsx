@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { RightsFormPanel } from "@/components/checkout/rights-form-panel";
 import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
@@ -56,8 +55,8 @@ export default async function CheckoutRightsPage({
         title={locale === "ru" ? "Передача прав по заказу" : "Rights Transfer for Order"}
         description={
           locale === "ru"
-            ? `Бит: ${beat.title}. Выберите: заполнить форму сейчас или сформировать шаблон и заполнить позже.`
-            : `Beat: ${beat.title}. Choose to fill now or generate a template and fill later.`
+            ? `Бит: ${beat.title}. Лицензия оформлена по данным вашего заказа.`
+            : `Beat: ${beat.title}. Your license uses the details from your order.`
         }
       />
 
@@ -68,13 +67,9 @@ export default async function CheckoutRightsPage({
             : "Payment is not confirmed by webhook yet. Order status must become paid (or pending_free_checkout for free case)."}
         </article>
       ) : (
-        <RightsFormPanel
-          orderId={order.id}
-          locale={locale as "ru" | "en"}
-          defaultFullName={order.buyer_name ?? ""}
-          defaultCity={order.buyer_city ?? ""}
-          defaultStageName={""}
-        />
+        <a className="inline-block border border-[var(--color-line)] px-5 py-3 text-sm uppercase tracking-[0.12em]" href={`/api/contracts/${order.id}/download`}>
+          {locale === "ru" ? "Скачать лицензию PDF" : "Download License PDF"}
+        </a>
       )}
     </section>
   );

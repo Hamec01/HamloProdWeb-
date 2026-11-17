@@ -4,6 +4,7 @@ import { AdminLogoutButton } from "@/components/admin/admin-logout-button";
 const adminNavigation = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/beats", label: "Beats CRUD" },
+  { href: "/admin/licenses", label: "Beat Licenses" },
   { href: "/admin/tracks", label: "Tracks (синглы)" },
   { href: "/admin/releases", label: "Releases (альбомы)" },
   { href: "/admin/artists", label: "Artists CRUD" },

@@ -39,8 +39,8 @@ const copy = {
     cta: "Создать платёж",
     retry: "Повторить",
     zeroAmount: "Заказ со 100% скидкой переведён в отдельную backend-ветку pending_free_checkout. Автозавершение с клиента отключено.",
-    missingUrl: "Платёж создан, но URL для редиректа не получен. Проверь конфигурацию Lava и ответ API.",
-    fallbackError: "Не удалось подготовить оплату. Проверьте состояние заказа и конфигурацию Lava.",
+    missingUrl: "Платёж создан, но URL для редиректа не получен. Проверьте конфигурацию платёжного провайдера и ответ API.",
+    fallbackError: "Не удалось подготовить оплату. Проверьте состояние заказа и конфигурацию платёжного провайдера.",
   },
   en: {
     idle: "Preparing a safe server-side payment creation step.",
@@ -48,8 +48,8 @@ const copy = {
     cta: "Create Payment",
     retry: "Retry",
     zeroAmount: "This 100%-discount order was moved into a separate backend-controlled pending_free_checkout path. Client-side auto-completion is disabled.",
-    missingUrl: "Payment was prepared, but no redirect URL was returned. Check Lava configuration and API response.",
-    fallbackError: "Failed to prepare payment. Check order state and Lava configuration.",
+    missingUrl: "Payment was prepared, but no redirect URL was returned. Check the payment provider configuration and API response.",
+    fallbackError: "Failed to prepare payment. Check the order state and payment provider configuration.",
   },
 };
 

@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: { "/*": ["./LICENSEMAKER/assets/default_signature.png"] },
   // Native / server-only modules that must not be bundled for the client or Edge.
-  serverExternalPackages: ["argon2", "@prisma/client"],
+  serverExternalPackages: ["argon2", "@prisma/client", "@sparticuz/chromium", "nunjucks"],
   images: {
     localPatterns: [{ pathname: "/api/beats/*/cover" }, { pathname: "/**", search: "" }],
     qualities: [60, 75],

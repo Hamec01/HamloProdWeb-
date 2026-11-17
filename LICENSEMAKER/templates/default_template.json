@@ -1,0 +1,275 @@
+{
+  "name": "HamloProd Exclusive Licence (One-Time Sale)",
+  "version": "2.2",
+  "is_default": true,
+  "language_note_ru": "Настоящий Договор составлен на английском и русском языках. В соответствии с п. 10.4 при расхождениях преимущественную силу имеет английская редакция (English — controlling version).",
+  "language_note_en": "This Agreement is executed in both English and Russian. In accordance with Section 10.4, the English version shall prevail in case of any discrepancy.",
+  "sections_en": [
+    {
+      "title": "DEAL SUMMARY",
+      "paragraphs": [
+        "Producer: {{ seller_full_name }} ({{ seller_alias }}) • Artist: {{ buyer_full_name }}{% if buyer_alias %} ({{ buyer_alias }}){% endif %}",
+        "Beat: «{{ beat_title }}»{% if beat_catalog_number %} (Catalog: {{ beat_catalog_number }}){% endif %} • Fee: {{ price_display_en }}",
+        "Scope: Exclusive commercial licence for ONE new vocal song{{ '; existing instrumental releases reserved' if retain_original_instrumental else ' (unreleased beat)' }} • Territory: {{ territory }}",
+        "Effectiveness: Only upon verified execution by both Parties and confirmation of full payment receipt by Producer."
+      ]
+    },
+    {
+      "title": "1. PARTIES AND SUBJECT MATTER",
+      "paragraphs": [
+        "1.1. Licensor: {{ seller_full_name }}, residing at: {{ seller_country }}{% if seller_city %}, {{ seller_city }}{% endif %}{% if seller_address %}, {{ seller_address }}{% endif %}{% if seller_document_number %}, ID: {{ seller_document_number }}{% endif %}{% if seller_email %}, email: {{ seller_email }}{% endif %}, professionally known as HamloProd (the “Producer”). Licensee: {{ buyer_full_name }}{% if buyer_alias %} (artist alias: “{{ buyer_alias }}”){% endif %}, residing at: {{ buyer_country }}{% if buyer_city %}, {{ buyer_city }}{% endif %}{% if buyer_address %}, {{ buyer_address }}{% endif %}{% if buyer_document_number %}, ID/Passport: {{ buyer_document_number }}{% endif %}{% if buyer_email %}, email: {{ buyer_email }}{% endif %} (the “Artist”). Together, the “Parties”.",
+        "1.2. “Beat” means the underlying musical composition and, separately, the original instrumental sound recording identified in Schedule A. “New Song” means one new song/version incorporating the Beat and new vocals or other creative contributions by the Artist. “New Master” means the resulting distinguishable sound recording of the New Song.",
+        "1.3. The Producer licenses only rights actually controlled by the Producer. Third-party samples, co-writers, publishers, and restrictions must be disclosed in Schedule A before signing."
+      ]
+    },
+    {
+      "title": "{{ '2. LIMITED EXCLUSIVITY AND EXISTING RELEASE RESERVATION' if retain_original_instrumental else '2. LIMITED EXCLUSIVITY FOR UNRELEASED BEAT' }}",
+      "paragraphs": [
+        "2.1. Once effective, the Producer grants the Artist an exclusive, worldwide commercial licence for the duration of the relevant rights to exploit the Beat solely as part of one New Song and its New Master, within Section 3. Within this precisely defined field, the Producer shall not grant new third-party licences or release a new competing vocal song using the Beat.",
+        "{% if retain_original_instrumental %}2.2. EXPRESS CARVE-OUT: The Producer retains the unrestricted right to own, keep in catalogue, promote, redeliver through distributors and monetize the Producer’s own previously released instrumental Beat recording, including existing Spotify, Apple Music and other releases specified in Schedule A. The Artist may not demand takedown of those releases or diversion of their revenue. The Producer may change distributors while maintaining the identity of that instrumental release.{% else %}2.2. DISTRIBUTION STATUS: The Producer confirms that the instrumental has not been previously released on digital distribution platforms (Spotify, Apple Music, etc.), and the Producer has no retained instrumental releases in digital distribution. The exclusive licence is granted in respect of an unreleased beat.{% endif %}",
+        "2.3. Any previously granted third-party licences must be disclosed in Schedule A and are not automatically terminated. Exclusivity is subject to those prior rights. The Artist may decline to contract if the resulting limitation is unacceptable. The Producer confirms there are no undisclosed agreements incompatible with the stated exclusivity.",
+        "2.4. An exclusive licence does not transfer authorship or full ownership of the underlying composition or instrumental recording."
+      ]
+    },
+    {
+      "title": "3. PERMITTED EXPLOITATION",
+      "paragraphs": [
+        "3.1. The Artist may record vocals and original material over the Beat; make reasonable arrangement, tempo and structural edits for the New Song; mix and master the New Master; reproduce, distribute, sell, stream and publicly perform the New Song; post it to social platforms and YouTube; create music videos and promote it; engage ordinary non-exclusive distributors and give platforms necessary technical sublicences.",
+        "3.2. Territory: {{ territory }}. Services include Spotify, Apple Music, YouTube Music, Yandex Music, VK Music, and any lawful DSP. No caps on streams or digital sales.",
+        "3.3. Placement in films, third-party advertisements, games or other standalone synchronization projects requires the Producer’s separate written consent. The New Song’s own music videos, promotional snippets, short social videos and visualizers are allowed.",
+        "3.4. No standalone resale, relicensing or re-upload of the original Beat as an instrumental under the Artist’s name; no distribution of stems/project files, sample-library submission, or AI-model training on the Beat without separate permission."
+      ]
+    },
+    {
+      "title": "4. NEW MASTER OWNERSHIP AND REVENUE",
+      "paragraphs": [
+        "4.1. Subject to the Artist validly owning or controlling all added performances and materials, rights in the Artist’s original additions and in the New Master as between the Parties vest in the Artist, subject always to the Producer’s underlying Beat rights. No standalone rights in the original instrumental master are transferred.",
+        "4.2. The Artist retains 100% of net recording/master receipts credited to the Artist by its distributor or label for the New Master, after ordinary distribution fees, withholdings, taxes and legally due payments. The Producer claims no additional master royalty share under this agreement.",
+        "{% if retain_original_instrumental %}4.3. The Producer retains 100% of receipts from the Producer’s own instrumental master.{% else %}4.3. As the instrumental was not distributed separately, all master revenue under this agreement is generated by the Artist's New Master pursuant to Clause 4.2.{% endif %}",
+        "4.4. Composition-related publishing, public performance, mechanical and comparable royalties are NOT master receipts. Writer/publisher splits for the New Song must be recorded separately in Schedule B. This contract does not override mandatory law, collective-management rules or third-party entitlements.",
+        "4.5. Until Schedule B is completed and signed, the Artist may not claim 100% sole composition authorship or register unilateral writer splits; the Parties must agree accurate release metadata and splits before release."
+      ]
+    },
+    {
+      "title": "5. CREDITS AND REGISTRATIONS",
+      "paragraphs": [
+        "5.1. The Producer must be credited as a writer/composer of the music in delivery metadata and supported credits fields in accordance with Schedule B. Public-facing “{{ attribution_text }}” credit is recommended but does not replace accurate songwriter metadata.",
+        "5.2. The Artist may not claim sole authorship of the Beat, reuse the existing instrumental ISRC as the identifier for the New Master, or register ownership of the original instrumental. A separate ISRC shall be assigned to the New Master where required.",
+        "5.3. Parties will provide reasonable evidence of rights to each other for distributor/platform review."
+      ]
+    },
+    {
+      "title": "6. CONTENT ID AND AUTOMATED CLAIMS",
+      "paragraphs": [
+        "6.1. The Artist shall not enroll the New Master in YouTube Content ID, Meta Rights Manager or comparable automated claiming systems absent the Producer’s prior written approval and verification of platform eligibility. Exclusivity of the New Song licence does not equal exclusive ownership of all embedded instrumental content.",
+        "6.2. The Producer must disclose any known active automated-rights registrations for the Beat in Schedule A. Should an automated claim wrongly affect the Artist’s authorized release, the Parties shall cooperate in good faith to seek release/whitelisting where technically available, without guaranteeing a platform outcome.",
+        "6.3. The Artist may monetize normal streams of the New Master and videos to the extent permitted by the relevant platform even if Content ID enrollment is not authorized."
+      ]
+    },
+    {
+      "title": "7. FEE, PAYMENT AND COMMENCEMENT",
+      "paragraphs": [
+        "7.1. One-time licence fee: {{ price_display_en }}. Payment method: {{ payment_method }}. Applicable taxes: included unless otherwise specified.",
+        "7.2. The licence and exclusivity take effect only after (a) execution by both Parties and (b) receipt by the Producer of the entire agreed fee.",
+        "7.3. Once effective, the licence runs for {{ term_years }} subject to compliance. The flat fee does not waive any mandatory entitlement to appropriate and proportionate remuneration under applicable statutory law.",
+        "7.4. For a material breach not cured within 30 calendar days after written notice, the non-breaching Party may seek termination to the extent permitted by law and available remedies."
+      ]
+    },
+    {
+      "title": "8. REPRESENTATIONS, LIMITATIONS AND LIABILITY",
+      "paragraphs": [
+        "8.1. To the Producer’s knowledge, subject to Schedule A disclosures, the Producer may grant the licensed rights. The Artist warrants clearances for added vocals, lyrics, guests, performances, images and other material.",
+        "8.2. Neither Party guarantees distributor acceptance, absence of algorithmic matches or any level of revenue.",
+        "8.3. A breaching Party is liable for evidenced direct losses in accordance with applicable law. No liability limitation applies where prohibited by mandatory law.",
+        "8.4. Parties will promptly notify each other of third-party claims and cooperate without admitting liability on another Party’s behalf without consent."
+      ]
+    },
+    {
+      "title": "9. TERMINATION, EXISTING RELEASES, CONSEQUENCES",
+      "paragraphs": [
+        "9.1. The Producer cannot arbitrarily revoke a properly effective licence. Material breach is governed by Clause 7.4 and mandatory law.",
+        "9.2. Following a valid termination, the Artist must cease new exploitation and take reasonable takedown measures where legally required; accrued payments remain payable.",
+        "9.3. The Producer retains the lawful instrumental releases reserved in Clause 2.2 regardless of the New Song’s status.",
+        "9.4. Previously valid licensees disclosed in Schedule A are not stripped of their rights."
+      ]
+    },
+    {
+      "title": "10. GENERAL PROVISIONS AND GOVERNING LAW",
+      "paragraphs": [
+        "10.1. This agreement and its schedules are the entire agreement regarding its subject. Amendments require written agreement of both Parties; electronic signatures are accepted to the extent permitted by law.",
+        "10.2. Formal communications shall be sent to the emails stated in Section 1.",
+        "10.3. {{ governing_law }} governs subject to mandatory laws applicable irrespective of choice. Disputes shall be handled by {{ dispute_jurisdiction }} unless mandatory jurisdiction rules require otherwise.",
+        "10.4. English and Russian versions form one agreement. In case of inconsistency, the English text prevails, unless otherwise agreed in writing.",
+        "10.5. Invalidity of a clause does not affect the remaining clauses to the maximum lawful extent."
+      ]
+    },
+    {
+      "title": "SCHEDULE A — BEAT IDENTITY AND EXISTING RIGHTS",
+      "paragraphs": [
+        "Beat Title: «{{ beat_title }}» (International: «{{ beat_title_en }}») • Producer: {{ seller_alias }}",
+        "Original YouTube URL: {{ original_youtube_url if original_youtube_url else 'None declared' }}",
+        "Canonical Beat ID: {{ canonical_beat_id }} • ISWC: {{ original_iswc }} • Existing Master ISRC: {{ original_instrumental_isrc }}",
+        "Existing Instrumental DSPs: {{ existing_releases_text_en }}",
+        "Third-party samples status: {{ samples_status_en }}",
+        "Prior third-party licences status: {{ prior_licences_status_en }}",
+        "Known Content ID status: {{ content_id_status_en }}",
+        "Delivery Formats: {{ delivery_formats }} (delivered within {{ delivery_period_days }} days after payment confirmation)."
+      ]
+    },
+    {
+      "title": "SCHEDULE B — COMPOSITION WRITER AND PUBLISHER SPLITS",
+      "paragraphs": [
+        "Music Composer(s): {{ composer_name }} — {{ composer_share }} share",
+        "Buyer: {{ lyrics_writer_name }} — {{ lyrics_writer_share }} share",
+        "Other Co-writers: {{ other_cowriters }} • Total Writer Split: {{ total_writer_split }} (must equal 100%)",
+        "PRO/CMO Society: {{ pro_society }} • Publishing / Publisher: {{ publisher_info }}",
+        "New Song Release Title: {{ new_song_title }}",
+        "New Master Owner: {{ buyer_full_name }} • New Master ISRC: {{ new_master_isrc }}",
+        "Note: Writer splits must reflect actual contributions and applicable registration rules before delivery to any DSP. Publishing rights and neighbouring rights must not be confused with master receipts."
+      ]
+    },
+    {
+      "title": "SCHEDULE C — SIGNATURES AND EXECUTION",
+      "paragraphs": [
+        "Producer: {{ seller_full_name }} (HamloProd) • Email: {{ seller_email }} • City/Date: {{ seller_city_signing }}, {{ contract_date_en }}",
+        "Artist: {{ buyer_full_name }} • Email: {{ buyer_email }} • City/Date: {{ buyer_city_signing if buyer_city_signing else 'Online' }}, {{ contract_date_en }}",
+        "Agreed Fee: {{ price_display_en }} • Payment Method: {{ payment_method }}{% if receipt_reference and receipt_reference != '—' %} • Receipt Ref: {{ receipt_reference }}{% endif %}",
+        "Both parties acknowledge that each language version and Schedules A–C are integral parts of this agreement."
+      ]
+    }
+  ],
+  "sections_ru": [
+    {
+      "title": "ОСНОВНЫЕ УСЛОВИЯ СДЕЛКИ",
+      "paragraphs": [
+        "Продюсер: {{ seller_full_name }} ({{ seller_alias }}) • Артист: {{ buyer_full_name }}{% if buyer_alias %} ({{ buyer_alias }}){% endif %}",
+        "Бит: «{{ beat_title }}»{% if beat_catalog_number %} (Каталожный номер: {{ beat_catalog_number }}){% endif %} • Стоимость: {{ price_display_ru }}",
+        "Объём: Эксклюзивная коммерческая лицензия на ОДНУ новую песню{{ '; оригинальный инструментал сохраняется' if retain_original_instrumental else ' (ранее не опубликован)' }} • Территория: {{ territory }}",
+        "Вступление в силу: Исключительно после подтвержденного подписания обеими Сторонами и зачисления полной оплаты на счет Продюсера."
+      ]
+    },
+    {
+      "title": "1. СТОРОНЫ И ПРЕДМЕТ ДОГОВОРА",
+      "paragraphs": [
+        "1.1. Лицензиар: {{ seller_full_name }}, проживающий по адресу: {{ seller_country }}{% if seller_city %}, г. {{ seller_city }}{% endif %}{% if seller_address %}, {{ seller_address }}{% endif %}{% if seller_document_number %}, документ: {{ seller_document_number }}{% endif %}{% if seller_email %}, e-mail: {{ seller_email }}{% endif %}, профессиональное имя HamloProd (далее «Продюсер»). Лицензиат: {{ buyer_full_name }}{% if buyer_alias %} (творческий псевдоним: «{{ buyer_alias }}»){% endif %}, проживающий по адресу: {{ buyer_country }}{% if buyer_city %}, г. {{ buyer_city }}{% endif %}{% if buyer_address %}, {{ buyer_address }}{% endif %}{% if buyer_document_number %}, документ: {{ buyer_document_number }}{% endif %}{% if buyer_email %}, e-mail: {{ buyer_email }}{% endif %} (далее «Артист»). Совместно — «Стороны».",
+        "1.2. «Бит» — музыкальное произведение (композиция) и, отдельно, оригинальная инструментальная звукозапись, указанные в Приложении A. «Новая песня» — одна новая музыкальная композиция/версия, содержащая Бит и новые вокальные или иные творческие элементы Артиста; «Новый мастер» — итоговая отличимая фонограмма Новой песни.",
+        "1.3. Продюсер лицензирует лишь те права, которыми фактически располагает. Если присутствуют сторонние сэмплы, соавторы, издатели или ограничения, они раскрываются в Приложении A до подписания."
+      ]
+    },
+    {
+      "title": "{{ '2. ЭКСКЛЮЗИВНОСТЬ С СОХРАНЕНИЕМ СУЩЕСТВУЮЩЕГО РЕЛИЗА' if retain_original_instrumental else '2. ЭКСКЛЮЗИВНОСТЬ В ОТНОШЕНИИ НЕОПУБЛИКОВАННОГО БИТА' }}",
+      "paragraphs": [
+        "2.1. После вступления лицензии в силу Продюсер предоставляет Артисту исключительную, всемирную, действующую в течение срока охраны соответствующих прав коммерческую лицензию использовать Бит только в составе одной Новой песни и её Нового мастера, в пределах раздела 3. В этой специально определённой области Продюсер не создаёт лицензии новым третьим лицам и не выпускает новую конкурирующую вокальную песню на том же Бите.",
+        "{% if retain_original_instrumental %}2.2. ПРЯМОЕ ИСКЛЮЧЕНИЕ: Продюсер без ограничений сохраняет право владеть, сохранять в каталоге, продвигать, повторно доставлять через дистрибьюторов и монетизировать собственную ранее выпущенную инструментальную запись Бита, включая её существующие релизы на Spotify, Apple Music и иных площадках, перечисленных в Приложении A. Артист не вправе требовать снятия этих релизов или перенаправления их дохода. Продюсер вправе менять дистрибьютора при сохранении идентичности инструментального релиза.{% else %}2.2. СТАТУС ДИСТРИБУЦИИ: Продюсер подтверждает, что инструментал ранее не выпускался на площадках цифровой дистрибуции (Spotify, Apple Music и др.), и у Продюсера отсутствуют сохраненные релизы инструментала в дистрибьюции. Эксклюзивная лицензия передается в отношении ранее неопубликованного бита.{% endif %}",
+        "2.3. Если до подписания существовали выданные третьим лицам лицензии, они указываются в Приложении A и не прекращаются данным договором автоматически. При наличии таких прав эксклюзивность ограничена ими; при неприемлемом ограничении Артист вправе не заключать договор. Продюсер подтверждает отсутствие нераскрытых договоров, препятствующих указанной эксклюзивности.",
+        "2.4. Исключительная лицензия не означает уступку авторства или полной собственности на исходную композицию либо инструментальную запись."
+      ]
+    },
+    {
+      "title": "3. РАЗРЕШЁННЫЕ СПОСОБЫ ИСПОЛЬЗОВАНИЯ",
+      "paragraphs": [
+        "3.1. Артист может: записать вокал и оригинальные элементы поверх Бита; разумно редактировать аранжировку, темп и структуру для Новой песни; сводить и мастерить Новый мастер; воспроизводить, выпускать, продавать, стримить и публично исполнять Новую песню; размещать её в социальных сетях, на YouTube и в музыкальных видеоклипах; рекламировать её; заключать стандартные неисключительные договоры дистрибуции и предоставлять платформам необходимые технические лицензии.",
+        "3.2. Территория — {{ territory }}. Площадки — Spotify, Apple Music, YouTube Music, Яндекс Музыка, VK Музыка и любые законные DSP. Количество стримов и цифровых продаж не ограничено.",
+        "3.3. Использование Новой песни в фильмах, рекламе третьих лиц, играх или иных самостоятельных синхронизационных проектах требует отдельного письменного согласия Продюсера; обычные музыкальные клипы, проморолики самой песни, короткие социальные видео и визуализаторы разрешены.",
+        "3.4. Не разрешены: самостоятельная перепродажа, выдача лицензий, повторная публикация исходного Бита как самостоятельного инструментала под именем Артиста, распространение stems/проектных файлов, загрузка Бита в библиотеки сэмплов или обучение моделей ИИ на Бите без отдельного согласия."
+      ]
+    },
+    {
+      "title": "4. ПРАВА НА НОВЫЙ МАСТЕР И ДЕНЕЖНЫЕ ПОСТУПЛЕНИЯ",
+      "paragraphs": [
+        "4.1. При условии, что Артист законно обладает правами на все добавленные исполнения и элементы, права на его оригинальные добавления и Новый мастер в отношениях Сторон принадлежат Артисту, с сохранением лежащих в основе прав Продюсера на Бит. Это положение не передаёт Артисту отдельные права на исходный инструментальный мастер.",
+        "4.2. Артист получает 100% чистых поступлений, которые его дистрибьютор или лейбл начисляет ему как владельцу/уполномоченному лицу по Новому мастеру, после стандартных комиссий, удержаний, налогов и законных выплат. Продюсер не требует дополнительного процента от этих master-доходов на основании настоящего договора.",
+        "{% if retain_original_instrumental %}4.3. Продюсер сохраняет 100% поступлений от собственной инструментальной фонограммы.{% else %}4.3. Поскольку инструментал не выпускался отдельно в дистрибьюции, все доходы от звукозаписи (master receipts) по настоящему договору формируются от Нового мастера Артиста согласно п. 4.2.{% endif %}",
+        "4.4. Вознаграждения за авторские права на композицию (publishing, performance, mechanical и аналогичные сборы) НЕ входят в понятие master-доходов. Доли авторов Новой песни фиксируются отдельно в Приложении B; обязательные по закону, правилам обществ коллективного управления или правам третьих лиц выплаты настоящим договором не отменяются.",
+        "4.5. Если Приложение B не заполнено и не подписано, договор не даёт Артисту права заявлять 100% авторства композиции или регистрировать единоличные авторские доли; до релиза Стороны обязаны согласовать соответствующие metadata/splits."
+      ]
+    },
+    {
+      "title": "5. АТРИБУЦИЯ И РЕГИСТРАЦИЯ",
+      "paragraphs": [
+        "5.1. Имя Продюсера как автора/композитора музыки указывается в данных релиза и там, где платформа поддерживает такие поля, согласно Приложению B. Дополнительный публичный кредит «{{ attribution_text }}» рекомендован, но не заменяет официальную запись авторства.",
+        "5.2. Артист не указывает себя единственным автором Бита, не присваивает ISRC уже опубликованного инструментала Новому мастеру и не заявляет исходную инструментальную запись своей собственностью. Для Нового мастера используется новый ISRC, если этого требуют правила учёта.",
+        "5.3. Стороны предоставляют друг другу разумно необходимые подтверждения прав для дистрибьюторов и площадок."
+      ]
+    },
+    {
+      "title": "6. CONTENT ID И АВТОМАТИЧЕСКИЕ ПРЕТЕНЗИИ",
+      "paragraphs": [
+        "6.1. Артист не передаёт Новый мастер в YouTube Content ID, Meta Rights Manager или аналогичные системы автоматического предъявления прав без предварительного письменного согласования с Продюсером и подтверждения соответствия правилам платформы. Исключительность лицензии на Новую песню не означает исключительное владение всей включённой инструментальной записью.",
+        "6.2. Продюсер раскрывает известную ему действующую регистрацию исходного Бита в автоматических системах в Приложении A. Если автоматическая претензия ошибочно затронет законный релиз Артиста, Стороны добросовестно содействуют её снятию/whitelist при наличии технической возможности; никто не гарантирует решение платформы.",
+        "6.3. Артист вправе монетизировать обычные стримы Нового мастера и видео в рамках правил платформ, даже если активация Content ID ему не разрешена."
+      ]
+    },
+    {
+      "title": "7. ЦЕНА, ПЛАТЕЖИ И НАЧАЛО ЛИЦЕНЗИИ",
+      "paragraphs": [
+        "7.1. Единовременная цена: {{ price_display_ru }}. Способ оплаты: {{ payment_method }}. Применимые налоги: включены, если иное прямо не оговорено.",
+        "7.2. Лицензия и эксклюзивность вступают в силу лишь после (a) подписания договора обеими Сторонами и (b) получения Продюсером всей согласованной оплаты.",
+        "7.3. После наступления условий п. 7.2 лицензия действует в течение {{ term_years }} при соблюдении договора; фиксированная оплата не отменяет права на предусмотренное императивными нормами справедливое и соразмерное вознаграждение.",
+        "7.4. При существенном нарушении, не устранённом в течение 30 календарных дней после письменного уведомления, невиновная Сторона может потребовать прекращения лицензии в пределах, допускаемых законом, и применить средства защиты."
+      ]
+    },
+    {
+      "title": "8. ГАРАНТИИ, ОГРАНИЧЕНИЯ И ОТВЕТСТВЕННОСТЬ",
+      "paragraphs": [
+        "8.1. Продюсер заявляет, что, насколько ему известно и за исключением раскрытий в Приложении A, он вправе предоставить указанные лицензируемые права. Артист гарантирует наличие разрешений для собственного вокала, текстов, гостей, исполнителей, изображений и иных добавленных материалов.",
+        "8.2. Никакая Сторона не гарантирует принятия релиза дистрибьютором, отсутствия алгоритмических совпадений или конкретного размера дохода.",
+        "8.3. Сторона, допустившая нарушение, отвечает за документально подтверждённые прямые убытки по применимому закону. Ограничения ответственности не действуют в случаях, где это запрещено обязательными нормами.",
+        "8.4. При претензии третьего лица Стороны незамедлительно уведомляют друг друга и сотрудничают, не признавая за другую Сторону ответственность без её согласия."
+      ]
+    },
+    {
+      "title": "9. ПРЕКРАЩЕНИЕ, СУЩЕСТВУЮЩИЕ РЕЛИЗЫ И ПОСЛЕДСТВИЯ",
+      "paragraphs": [
+        "9.1. Правомерно действующая лицензия не может быть произвольно отозвана Продюсером. При существенном нарушении действуют п. 7.4 и обязательные нормы закона.",
+        "9.2. По прекращении лицензии вследствие действительного расторжения Артист прекращает новые распространения и принимает разумные меры к снятию Нового мастера там, где это юридически требуется; расчёты за уже возникшие выплаты сохраняются.",
+        "9.3. Независимо от судьбы Новой песни Продюсер сохраняет правомерные инструментальные релизы, указанные в п. 2.2.",
+        "9.4. Договор не изменяет права ранее надлежаще лицензированных лиц из Приложения A."
+      ]
+    },
+    {
+      "title": "10. ПРОЧИЕ УСЛОВИЯ И ПРИМЕНИМОЕ ПРАВО",
+      "paragraphs": [
+        "10.1. Договор и приложения представляют полное соглашение по его предмету. Изменения — письменно, с подтверждением обеих Сторон; электронные подписи допустимы в пределах применимого закона.",
+        "10.2. Юридически значимые сообщения направляются на e-mail, указанные в разделе 1.",
+        "10.3. Применяется {{ governing_law }}, с учётом обязательных норм, применимых независимо от выбора права. Споры рассматриваются {{ dispute_jurisdiction }}, если обязательные правила о подсудности не устанавливают иного.",
+        "10.4. Русский и английский тексты отражают одно соглашение. При расхождении преимущественную силу имеет английская редакция; Стороны вправе письменно выбрать другую.",
+        "10.5. Если отдельное условие недействительно, остальные положения сохраняют силу в максимально допустимой степени."
+      ]
+    },
+    {
+      "title": "ПРИЛОЖЕНИЕ A — ИДЕНТИФИКАЦИЯ БИТА И СУЩЕСТВУЮЩИХ ПРАВ",
+      "paragraphs": [
+        "Название Бита: «{{ beat_title }}» (Международное: «{{ beat_title_en }}») • Псевдоним: {{ seller_alias }}",
+        "Ссылка на YouTube: {{ original_youtube_url if original_youtube_url else 'Не заявлена / отсутствует' }}",
+        "Канонический ID бита: {{ canonical_beat_id }} • ISWC: {{ original_iswc }} • Существующий ISRC инструментала: {{ original_instrumental_isrc }}",
+        "Существующие площадки инструментала: {{ existing_releases_text_ru }}",
+        "Сторонние права / сэмплы: {{ samples_status_ru }}",
+        "Ранее выданные лицензии третьим лицам: {{ prior_licences_status_ru }}",
+        "Статус в Content ID: {{ content_id_status_ru }}",
+        "Передаваемые файлы: {{ delivery_formats }} (передаются в течение {{ delivery_period_days }} дней с момента подтверждения оплаты)."
+      ]
+    },
+    {
+      "title": "ПРИЛОЖЕНИЕ B — ДОЛИ АВТОРСТВА И ИЗДАТЕЛЬСКИХ ПРАВ",
+      "paragraphs": [
+        "Композитор(ы) музыки: {{ composer_name }} — доля {{ composer_share }}",
+        "Покупатель: {{ lyrics_writer_name }} — доля {{ lyrics_writer_share }}",
+        "Другие соавторы: {{ other_cowriters }} • Сумма авторских долей: {{ total_writer_split }} (строго 100%)",
+        "Общество по коллективному управлению (PRO): {{ pro_society }} • Издатель / паблишинг: {{ publisher_info }}",
+        "Название Новой песни: {{ new_song_title }}",
+        "Владелец нового мастера: {{ buyer_full_name }} • Новый ISRC нового мастера: {{ new_master_isrc }}",
+        "Примечание: Авторские доли должны соответствовать реальному творческому вкладу Сторон и правилам регистрации до загрузки на платформы. Издательские и смежные права не смешиваются с master-поступлениями."
+      ]
+    },
+    {
+      "title": "ПРИЛОЖЕНИЕ C — ПОДПИСИ И ВСТУПЛЕНИЕ В СИЛУ",
+      "paragraphs": [
+        "Продюсер: {{ seller_full_name }} (HamloProd) • E-mail: {{ seller_email }} • Город/дата: г. {{ seller_city_signing }}, {{ contract_date }}",
+        "Артист: {{ buyer_full_name }} • E-mail: {{ buyer_email }} • Город/дата: г. {{ buyer_city_signing if buyer_city_signing else 'Электронный обмен' }}, {{ contract_date }}",
+        "Согласованная цена: {{ price_display_ru }} • Способ оплаты: {{ payment_method }}{% if receipt_reference and receipt_reference != '—' %} • Идентификатор платежа: {{ receipt_reference }}{% endif %}",
+        "Стороны подтверждают, что обе языковые версии и Приложения A–C являются неотъемлемыми частями единого договора."
+      ]
+    }
+  ]
+}

@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { PaymentsDisabledNotice } from "@/components/checkout/payments-disabled-notice";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicSessionState } from "@/lib/auth/public-session";
-import { isPaidCheckoutEnabled } from "@/lib/checkout/config";
 import {
   generateAndSaveContractSnapshot,
   getContractByOrderId,
@@ -26,15 +24,6 @@ export default async function ContractPreviewPage({
   const session = await getPublicSessionState();
   if (!session.isAuthenticated || !session.userId) {
     redirect(`/auth?next=${encodeURIComponent(`/checkout/preview/${orderId}`)}`);
-  }
-
-  if (!isPaidCheckoutEnabled()) {
-    return (
-      <section className="space-y-6">
-        <SectionHeading eyebrow="Contract" title={locale === "ru" ? "Превью договора" : "Contract Preview"} />
-        <PaymentsDisabledNotice locale={locale} />
-      </section>
-    );
   }
 
   try {
@@ -79,7 +68,7 @@ export default async function ContractPreviewPage({
         <SectionHeading
           eyebrow={locale === "ru" ? "Договор" : "Contract"}
           title={locale === "ru" ? "Проверьте договор перед оплатой" : "Review Contract Before Payment"}
-          description={locale === "ru" ? "Это сохраненный серверный snapshot из таблицы contracts." : "This is a saved server-side snapshot from the contracts table."}
+          description={locale === "ru" ? "Проверьте данные покупателя. После оплаты этот договор будет доступен для скачивания в PDF." : "Check the buyer details. After payment, you can download this agreement as a PDF."}
         />
 
         <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
@@ -94,7 +83,7 @@ export default async function ContractPreviewPage({
               <span className="text-[var(--color-paper-400)]">Beat:</span> {beat.title}
             </p>
             <p>
-              <span className="text-[var(--color-paper-400)]">Transfer:</span> {locale === "ru" ? "Полное отчуждение прав" : "Full rights transfer"}
+              <span className="text-[var(--color-paper-400)]">License:</span> {locale === "ru" ? "Эксклюзивная лицензия, один покупатель" : "One-time exclusive license"}
             </p>
             <p>
               <span className="text-[var(--color-paper-400)]">Total:</span> {formatMarketMoney(resolveOrderFinalPrice(order), resolveOrderCurrency(order), locale)}

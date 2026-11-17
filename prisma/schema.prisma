@@ -305,6 +305,14 @@ model Post {
   @@map("posts")
 }
 
+model LicenseSellerSetting {
+  id        String   @id @default("default")
+  identity  Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("license_seller_settings")
+}
+
 model SiteSetting {
   key                String   @id
   title              String
@@ -388,11 +396,13 @@ model Order {
   discountPercent      Int       @default(0) @map("discount_percent")
   currency             String    @default("USD")
   market               String    @default("global")
-  provider             String    @default("paypal")
+  provider             String    @default("stripe")
   paymentProvider      String?   @map("payment_provider")
   status               String    @default("draft")
-  licenseType          String    @default("basic") @map("license_type")
+  licenseType          String    @default("exclusive") @map("license_type")
   contractLanguage     String    @default("ru") @map("contract_language")
+  termsAcceptedAt      DateTime? @map("terms_accepted_at") @db.Timestamptz(6)
+  personalDataConsentAt DateTime? @map("personal_data_consent_at") @db.Timestamptz(6)
   rightsFormStatus     String    @default("not_started") @map("rights_form_status")
   contractTemplateType String?   @map("contract_template_type")
   /// Object-storage key of the generated rights PDF (private bucket). Never a URL.

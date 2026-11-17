@@ -27,7 +27,7 @@ export function resolveOrderMarket(order: LegacyPriceShape): Market {
 }
 
 export function resolveOrderProvider(order: LegacyPriceShape): PaymentProvider | "internal" {
-  if (order.provider === "lava" || order.provider === "internal") {
+  if (order.provider === "lava" || order.provider === "internal" || order.provider === "stripe" || order.provider === "contact") {
     return order.provider;
   }
 

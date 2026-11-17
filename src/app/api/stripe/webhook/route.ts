@@ -1,3 +1,4 @@
+import { handleBeatStripeWebhook } from "@/lib/payments/beat-stripe-webhook";
 import { NextResponse } from "next/server";
 import { buildKeyEmail, getMailConfig, sendEmail } from "@/lib/hpdg/key-email";
 import { createStripeWebhookPorts, hpdgPaymentLinkIds } from "@/lib/hpdg/postgres";
@@ -5,6 +6,7 @@ import { handleStripeEvent, type StripeEvent } from "@/lib/hpdg/stripe-webhook";
 import { verifyStripeSignature } from "@/lib/stripe/webhook-signature";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 export const dynamic = "force-dynamic";
 
 /**
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  const beatRequest = request.clone();
   const paymentLinkIds = hpdgPaymentLinkIds();
   const payload = await request.text();
 
@@ -28,6 +31,9 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "invalid JSON" }, { status: 400 });
   }
+  const object = (event as unknown as { data?: { object?: { metadata?: { orderId?: unknown } } } }).data?.object;
+  if (typeof object?.metadata?.orderId === "string") return handleBeatStripeWebhook(beatRequest);
+
   if (event.type === "checkout.session.completed" && paymentLinkIds.length === 0) {
     return NextResponse.json({ error: "HPDG_STRIPE_PAYMENT_LINK_IDS is not set" }, { status: 503 });
   }

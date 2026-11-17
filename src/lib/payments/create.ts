@@ -1,7 +1,9 @@
+import { ensureOrderLicense } from "@/lib/contracts/issue";
 import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { createLavaInvoice } from "@/lib/payments/lava";
+import { createStripeCheckoutSession } from "@/lib/payments/stripe";
 import { toOrderRow, type OrderRow } from "@/lib/orders/order-row";
 
 type BeatPaymentRow = { id: string; title: string; slug: string; price_rub: number | null; price_usd: number };
@@ -53,35 +55,48 @@ export async function getOrderForPayment(orderId: string): Promise<{
   };
 }
 
-async function persistRecalculatedOrderAmount(orderId: string, basePrice: number, finalPrice: number, currency: string) {
+async function markFreeOrderPending(orderId: string, beatId: string) {
   try {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { basePrice, finalPrice, basePriceUsd: basePrice, finalPriceUsd: finalPrice, currency },
+    await prisma.$transaction(async (tx) => {
+      const beat = await tx.beat.updateMany({
+        where: { id: beatId, status: { in: ["available", "reserved"] } },
+        data: { status: "sold", availableForDownload: false },
+      });
+      if (beat.count !== 1) throw new Error("BEAT_ALREADY_SOLD");
+
+      const order = await tx.order.updateMany({
+        where: { id: orderId, status: "draft" },
+        data: {
+          status: "pending_free_checkout",
+          paymentProvider: "internal",
+          provider: "internal",
+          paymentExternalId: null,
+          paymentUrl: null,
+        },
+      });
+      if (order.count !== 1) throw new Error("ORDER_NOT_DRAFT");
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && (error.message === "BEAT_ALREADY_SOLD" || error.message === "ORDER_NOT_DRAFT")) {
+      throw new Error("FREE_ORDER_FINALIZATION_FAILED");
+    }
+    console.error("[checkout] free order finalization failed", {
+      orderId,
+      error: error instanceof Error ? error.message : "unknown",
+    });
     throw new Error("ORDER_UPDATE_FAILED");
   }
 }
 
-async function markFreeOrderPending(orderId: string) {
+async function markPaidOrderPending(orderId: string, provider: "lava" | "stripe", externalId: string, paymentUrl: string) {
   try {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "pending_free_checkout", paymentProvider: "internal", provider: "internal", paymentExternalId: null, paymentUrl: null },
+    const updated = await prisma.order.updateMany({
+      where: { id: orderId, status: "draft" },
+      data: { status: "pending_payment", paymentProvider: provider, provider, paymentExternalId: externalId, paymentUrl },
     });
-  } catch {
-    throw new Error("ORDER_UPDATE_FAILED");
-  }
-}
-
-async function markPaidOrderPending(orderId: string, externalId: string | null, paymentUrl: string) {
-  try {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "pending_payment", paymentProvider: "lava", provider: "lava", paymentExternalId: externalId, paymentUrl },
-    });
-  } catch {
+    if (updated.count !== 1) throw new Error("ORDER_NOT_DRAFT");
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_DRAFT") throw error;
     throw new Error("ORDER_UPDATE_FAILED");
   }
 }
@@ -112,34 +127,62 @@ async function createLavaPayment(order: OrderRow, beat: BeatPaymentRow): Promise
   return { paymentUrl: lava.paymentUrl, externalId: lava.externalId };
 }
 
+async function createStripePayment(order: OrderRow, beat: BeatPaymentRow): Promise<{ paymentUrl: string; externalId: string }> {
+  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!secretKey) throw new Error("STRIPE_NOT_CONFIGURED");
+
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://hamloprod.org").replace(/\/$/, "");
+  const stripe = await createStripeCheckoutSession({
+    secretKey,
+    orderId: order.id,
+    beatTitle: beat.title,
+    buyerEmail: order.buyer_email,
+    amountUsd: resolveOrderFinalPrice(order),
+    successUrl: `${siteUrl}/profile?payment=success`,
+    cancelUrl: `${siteUrl}/checkout/payment/${order.id}`,
+  });
+
+  return { paymentUrl: stripe.paymentUrl, externalId: stripe.sessionId };
+}
+
 export async function preparePaymentCreation(orderId: string): Promise<PaymentPreparationResult> {
   const { order, beat, contractSnapshotExists } = await getOrderForPayment(orderId);
+  if (order.status === "pending_free_checkout") {
+    await ensureOrderLicense(order.id);
+    return { kind: "free", orderId: order.id, status: "pending_free_checkout", paymentUrl: null };
+  }
 
   if (order.status !== "draft") throw new Error("ORDER_NOT_DRAFT");
   if (!contractSnapshotExists) throw new Error("CONTRACT_SNAPSHOT_MISSING");
-  if (order.market !== "ru") throw new Error("MARKET_NOT_SUPPORTED");
-  if (order.provider !== "lava") throw new Error("PROVIDER_NOT_SUPPORTED");
+  if (!order.terms_accepted_at || !order.personal_data_consent_at) throw new Error("CHECKOUT_ACCEPTANCE_MISSING");
+  if (order.market !== "ru" && order.market !== "global") throw new Error("MARKET_NOT_SUPPORTED");
+  if ((order.market === "ru" && order.provider !== "lava") || (order.market === "global" && order.provider !== "stripe")) {
+    throw new Error("PROVIDER_NOT_SUPPORTED");
+  }
 
   const currentBasePrice = resolveOrderBasePrice(order);
   const currentFinalPrice = resolveOrderFinalPrice(order);
   const currentCurrency = resolveOrderCurrency(order);
-  const marketBasePrice = beat.price_rub ?? currentBasePrice;
+  const currency = order.market === "ru" ? "RUB" : "USD";
+  const marketBasePrice = order.market === "ru" ? beat.price_rub ?? currentBasePrice : beat.price_usd;
   const recalculatedFinalAmount = recalculateFinalAmount(marketBasePrice, order.discount_percent);
 
-  if (marketBasePrice !== currentBasePrice || recalculatedFinalAmount !== currentFinalPrice || currentCurrency !== "RUB") {
-    await persistRecalculatedOrderAmount(order.id, marketBasePrice, recalculatedFinalAmount, "RUB");
+  if (marketBasePrice !== currentBasePrice || recalculatedFinalAmount !== currentFinalPrice || currentCurrency !== currency) {
+    throw new Error("ORDER_PRICE_CHANGED");
   }
 
   if (recalculatedFinalAmount === 0) {
-    await markFreeOrderPending(order.id);
+    await markFreeOrderPending(order.id, beat.id);
+    await ensureOrderLicense(order.id);
     return { kind: "free", orderId: order.id, status: "pending_free_checkout", paymentUrl: null };
   }
 
-  const lavaPayment = await createLavaPayment(
-    { ...order, final_price: recalculatedFinalAmount, final_price_usd: recalculatedFinalAmount },
-    beat,
-  );
+  const paymentOrder = { ...order, final_price: recalculatedFinalAmount, final_price_usd: recalculatedFinalAmount };
+  const payment = order.market === "ru"
+    ? await createLavaPayment(paymentOrder, beat)
+    : await createStripePayment(paymentOrder, beat);
 
-  await markPaidOrderPending(order.id, lavaPayment.externalId, lavaPayment.paymentUrl);
-  return { kind: "paid", orderId: order.id, status: "pending_payment", paymentUrl: lavaPayment.paymentUrl };
+  if (!payment.externalId) throw new Error(order.market === "ru" ? "LAVA_RESPONSE_INVALID" : "STRIPE_REQUEST_FAILED");
+  await markPaidOrderPending(order.id, order.market === "ru" ? "lava" : "stripe", payment.externalId, payment.paymentUrl);
+  return { kind: "paid", orderId: order.id, status: "pending_payment", paymentUrl: payment.paymentUrl };
 }
