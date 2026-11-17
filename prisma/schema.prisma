@@ -430,6 +430,7 @@ model Order {
   buyerLastReadAt DateTime? @map("buyer_last_read_at") @db.Timestamptz(6)
   adminLastReadAt DateTime? @map("admin_last_read_at") @db.Timestamptz(6)
   loyaltyPointsSpent Int @default(0) @map("loyalty_points_spent")
+  deliveryMp3Url String? @map("delivery_mp3_url")
 
   @@index([beatId])
   @@index([buyerUserId])

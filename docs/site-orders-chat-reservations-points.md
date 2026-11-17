@@ -41,3 +41,12 @@ covered the full Russian contact-request flow, both sides of the chat, a weekly
 hold, legal details, producer payment confirmation, PDF access, +25 points and a
 100-point exchange with zero additional reward. Foreign-account reads/writes and
 role spoofing were rejected. No real buyers were messaged for QA.
+
+The customer profile is a persistent archive with pagination rather than a
+50-order cutoff. Each completed purchase can show its PDF, producer-provided
+MP3/download URL and the order conversation; points stay attached to the account.
+The producer sets a persistent HTTPS MP3/share URL in the paid order conversation.
+Only the administrator can edit delivery, and the link is returned only to that
+purchase's buyer or an administrator after payment confirmation. No external
+URL is fetched by the server. Migration `20261118020000_order_mp3_delivery` adds
+the delivery field. Delivery URL validation rejects executable/invalid links.

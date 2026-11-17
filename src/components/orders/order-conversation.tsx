@@ -17,6 +17,9 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
   const [connectionError, setConnectionError] = useState("");
   const [paymentReceived, setPaymentReceived] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
+  const [deliveryInput, setDeliveryInput] = useState(initial.order.deliveryMp3Url || "");
+  const [deliverySaved, setDeliverySaved] = useState(false);
+  const deliveryDirty = useRef(false);
   const nonce = useRef<{ text: string; id: string } | null>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
@@ -46,6 +49,8 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
   }, [refresh]);
   useEffect(() => { if (atBottom.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [data.messages.length]);
 
+  useEffect(() => { if (!deliveryDirty.current) setDeliveryInput(data.order.deliveryMp3Url || ""); }, [data.order.deliveryMp3Url]);
+
   async function send(event: FormEvent) {
     event.preventDefault(); if (!text.trim()) return;
     setBusy("message"); setError("");
@@ -59,14 +64,15 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
     } catch { setError(ru ? "Сообщение не отправлено. Повторите попытку." : "Message not sent. Please retry."); }
     finally { setBusy(""); }
   }
-  async function action(kind: "reserve" | "release" | "confirm" | "redeem" | "pdf") {
+  async function action(kind: "reserve" | "release" | "confirm" | "redeem" | "pdf" | "delivery") {
     setBusy(kind); setError("");
-    const path = kind === "confirm" || kind === "pdf" ? `/api/admin/licenses/${orderId}/${kind}` : `/api/orders/${orderId}/${kind === "reserve" || kind === "release" ? "reservation" : "redeem"}`;
+    const path = kind === "confirm" || kind === "pdf" || kind === "delivery" ? `/api/admin/licenses/${orderId}/${kind}` : `/api/orders/${orderId}/${kind === "reserve" || kind === "release" ? "reservation" : "redeem"}`;
     try {
-      const response = await fetch(path, { method: kind === "release" ? "DELETE" : "POST", headers: { "Content-Type": "application/json" }, ...(kind === "confirm" ? { body: JSON.stringify({ paymentReceived }) } : {}) });
-      const result = await response.json() as { error?: string; downloadUrl?: string };
+      const response = await fetch(path, { method: kind === "release" ? "DELETE" : kind === "delivery" ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, ...(kind === "confirm" ? { body: JSON.stringify({ paymentReceived }) } : kind === "delivery" ? { body: JSON.stringify({ url: deliveryInput }) } : {}) });
+      const result = await response.json() as { error?: string; downloadUrl?: string; deliveryMp3Url?: string | null };
       if (!response.ok) { setError(result.error || "Действие не выполнено."); return; }
       if (result.downloadUrl) setPdfUrl(result.downloadUrl);
+      if (kind === "delivery") { deliveryDirty.current = false; setDeliveryInput(result.deliveryMp3Url || ""); setDeliverySaved(true); }
       await refresh();
     } catch { setError(ru ? "Не удалось связаться с сервером." : "Could not reach the server."); }
     finally { setBusy(""); }
@@ -110,6 +116,16 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       {order.status === "paid" || order.status === "pending_free_checkout" ? <div className="flex flex-wrap gap-3">
         {role === "buyer" ? <a href={`/api/contracts/${orderId}/download`} className={buttonClass} target="_blank" rel="noreferrer">{ru ? "Скачать лицензию PDF" : "Download license PDF"}</a> : <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("pdf")}>{ru ? "Подготовить PDF" : "Prepare PDF"}</button>}
         {pdfUrl ? <a className={buttonClass} href={pdfUrl} target="_blank" rel="noreferrer">{ru ? "Скачать PDF" : "Download PDF"}</a> : null}
+      </div> : null}
+      {order.status === "paid" || order.status === "pending_free_checkout" ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
+        {order.deliveryMp3Url ? <a className={buttonClass} href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer">{ru ? "Скачать MP3 / открыть файл бита" : "Download MP3 / Open beat file"}</a> : <p className="text-sm text-[var(--color-paper-300)]">{ru ? "Ссылка на MP3 появится здесь, когда продавец выдаст файл." : "Your MP3 link will appear here when the producer delivers the file."}</p>}
+        {role === "admin" ? <div className="space-y-3">
+          <label htmlFor="delivery-mp3" className="block text-sm">Ссылка MP3 для покупателя</label>
+          <input id="delivery-mp3" name="deliveryMp3Url" type="url" maxLength={4000} value={deliveryInput} onChange={(event) => { deliveryDirty.current = true; setDeliveryInput(event.target.value); setDeliverySaved(false); }} placeholder="https://…" className="w-full border border-stone-600 bg-black/40 px-3 py-3 text-base text-stone-100" />
+          <p className="text-xs text-stone-400">Укажите постоянную ссылку на MP3 или страницу скачивания. Её увидит только покупатель этого заказа и администратор.</p>
+          <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("delivery")}>Сохранить ссылку MP3</button>
+          {deliverySaved ? <p role="status" className="text-sm text-amber-200">Ссылка сохранена в кабинете покупателя.</p> : null}
+        </div> : null}
       </div> : null}
       {order.sold && order.status === "draft" ? <p className="text-red-300">{ru ? "Бит уже продан. Обсудите с продавцом другие варианты." : "The beat is sold. Contact the producer for alternatives."}</p> : null}
     </section>

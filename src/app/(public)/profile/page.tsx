@@ -22,7 +22,7 @@ function formatDate(value: string, locale: string) {
   }).format(new Date(value));
 }
 
-export default async function ProfilePage() {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
   const t = dictionary[locale];
 
@@ -30,9 +30,14 @@ export default async function ProfilePage() {
     redirect(`/auth?next=${encodeURIComponent("/profile")}`);
   }
 
+  const query = await searchParams;
+  const requested = Number(query.page);
+  const count = await prisma.order.count({ where: { buyerUserId: session.userId } });
+  const pages = Math.max(1, Math.ceil(count / 20));
+  const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, pages) : 1;
   const [loyaltyRow, orderRows, ratingRows] = await Promise.all([
     prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
-    prisma.order.findMany({ where: { buyerUserId: session.userId }, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.order.findMany({ where: { buyerUserId: session.userId }, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
     prisma.contentRating.findMany({
       where: { userId: session.userId, contentType: "beat" },
       orderBy: { createdAt: "desc" },
@@ -45,7 +50,7 @@ export default async function ProfilePage() {
   const freeBeats = Math.floor(points / 100);
   const pointsRemaining = Math.max(0, 100 - points);
 
-  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId, newMessage: Boolean(o.messages[0] && (!o.buyerLastReadAt || o.messages[0].createdAt > o.buyerLastReadAt)) }));
+  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId, deliveryMp3Url: ["paid", "pending_free_checkout"].includes(o.status) ? o.deliveryMp3Url : null, newMessage: Boolean(o.messages[0] && (!o.buyerLastReadAt || o.messages[0].createdAt > o.buyerLastReadAt)) }));
 
   const beatIds = [...new Set([...orders.map((o) => o.beat_id), ...ratingRows.map((r) => r.contentId)])];
   const beatRows = beatIds.length
@@ -82,7 +87,7 @@ export default async function ProfilePage() {
       </article>
 
       <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
-        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.profilePurchasesTitle}</h3>
+        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? "Мои биты и заявки" : "My Beats and Requests"}</h3>
         <div className="mt-4 space-y-3">
           {orders.length === 0 ? <p className="text-sm text-[var(--color-paper-300)]">{t.profileNoPurchases}</p> : null}
           {orders.map((order) => {
@@ -102,7 +107,7 @@ export default async function ProfilePage() {
                     ) : (
                       <p className="text-sm uppercase tracking-[0.08em] text-[var(--color-paper-100)]">{order.beat_id}</p>
                     )}
-                    <p className={`mt-1 text-[10px] uppercase tracking-[0.22em] ${statusColor}`}>{order.status}</p>
+                    <p className={`mt-1 text-[10px] uppercase tracking-[0.22em] ${statusColor}`}>{order.status === "paid" || order.status === "pending_free_checkout" ? (locale === "ru" ? "Куплено" : "Purchased") : order.status === "draft" ? (locale === "ru" ? "Заявка" : "Request") : order.status}</p>
                   </div>
                   <p className="text-xs text-[var(--color-paper-300)]">
                     {t.profilePurchasedAt}: {formatDate(order.created_at, locale)}
@@ -112,6 +117,7 @@ export default async function ProfilePage() {
                   <span>{formatOrderMoney(basePrice, currency, locale)}</span>
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
                   <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
+                  {(order.status === "paid" || order.status === "pending_free_checkout") && order.deliveryMp3Url ? <a href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer" className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{locale === "ru" ? "Скачать MP3" : "Download MP3"}</a> : null}
                   <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "эксклюзивная лицензия" : "exclusive license"}</span>
                   {order.provider === "contact" || order.payment_provider === "internal" ? <Link href={`/orders/${order.id}`} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{order.newMessage ? (locale === "ru" ? "Новое сообщение — открыть заявку" : "New message — open request") : locale === "ru" ? "Заявка / сообщения / бронь" : "Request / Messages / Reservation"}</Link> : null}
                   {order.license_type === "exclusive" && (order.status === "paid" || order.status === "pending_free_checkout") && (
@@ -127,6 +133,11 @@ export default async function ProfilePage() {
             );
           })}
         </div>
+        {pages > 1 ? <nav aria-label={locale === "ru" ? "История покупок" : "Purchase history"} className="mt-6 flex flex-wrap items-center gap-4 text-sm">
+          {page > 1 ? <Link className="underline" href={`/profile?page=${page - 1}`}>{locale === "ru" ? "Новые заказы" : "Newer orders"}</Link> : null}
+          <span>{page} / {pages}</span>
+          {page < pages ? <Link className="underline" href={`/profile?page=${page + 1}`}>{locale === "ru" ? "Предыдущие покупки" : "Older purchases"}</Link> : null}
+        </nav> : null}
       </article>
 
       <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">

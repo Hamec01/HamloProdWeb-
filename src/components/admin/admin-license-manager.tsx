@@ -239,7 +239,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
               {sales.map((sale) => (
                 <tr key={sale.id} className="border-t border-[var(--color-line)]">
                   <td className="px-5 py-4">{sale.beatTitle}<br /><span className="text-xs text-[var(--color-paper-400)]">{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" }).format(new Date(sale.createdAt))}</span></td>
-                  <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span><br /><Link className="mt-2 inline-block underline" href={`/orders/${sale.id}`}>{sale.newMessage ? "Новое сообщение — открыть чат" : "Переписка по покупке"}</Link></td>
+                  <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span><br /><Link className="mt-2 inline-block underline" href={`/orders/${sale.id}`}>{sale.newMessage ? "Новое сообщение — открыть чат" : "Переписка / выдать MP3"}</Link></td>
                   <td className="px-5 py-4">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: sale.currency, maximumFractionDigits: 0 }).format(sale.amount)}</td>
                   <td className="px-5 py-4">
                     <button
