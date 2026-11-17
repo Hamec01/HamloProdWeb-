@@ -110,7 +110,7 @@ export async function renderContractHtml(order: OrderRow, beat: { title: string;
     buyer_email: order.buyer_email,
     buyer_stage_name: order.buyer_stage_name,
     buyer_acceptance_at: order.terms_accepted_at,
-    payment_method: order.provider || "Online payment",
+    payment_method: order.discount_percent === 100 && finalPrice === 0 ? "Обмен 100 поинтов / 100 loyalty points" : order.provider || "Online payment",
     mode: "partial",
   });
 }

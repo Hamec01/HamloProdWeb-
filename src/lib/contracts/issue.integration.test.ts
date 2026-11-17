@@ -46,7 +46,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   const manual = await createManualExclusiveLicense({ ...buyer, beatId: manualBeat.id });
   assert.equal(manual.pdfReady, true);
   assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: manual.orderId } })).buyerUserId, user.id);
-  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 1);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 25);
   await assert.rejects(prisma.beat.update({ where: { id: manualBeat.id }, data: { status: "available" } }), /sold beat cannot be reactivated/);
   await prisma.beat.update({ where: { id: manualBeat.id }, data: { availableForDownload: true } });
   assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: manualBeat.id } })).availableForDownload, false);
@@ -56,7 +56,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   const second = await ensureOrderLicense(manual.orderId);
   assert.equal(first.key, second.key);
   await confirmManualOrder(manual.orderId);
-  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 1);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 25);
   const download = await fetch(second.downloadUrl);
   assert.equal(download.status, 200);
   const bytes = Buffer.from(await download.arrayBuffer());
@@ -105,12 +105,12 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   const confirmed = await confirmManualOrder(contactOrder.id);
   assert.equal(confirmed.pdfReady, true);
   const contactPdf = await ensureOrderLicense(contactOrder.id);
-  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 3);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 75);
   assert.equal((await confirmManualOrder(contactOrder.id)).pdfReady, true);
   assert.equal((await ensureOrderLicense(contactOrder.id)).key, contactPdf.key);
   assert.equal((await prisma.contract.findUniqueOrThrow({ where: { orderId: contactOrder.id } })).htmlSnapshot, acceptedHtml);
 
-  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 3);
+  assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 75);
   assert.equal(await prisma.beatPurchase.count({ where: { userId: user.id } }), 3);
 
   const draftBeat = await makeBeat();

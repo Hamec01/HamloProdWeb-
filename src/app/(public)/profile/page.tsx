@@ -11,30 +11,6 @@ import { toOrderRow } from "@/lib/orders/order-row";
 
 type BeatLookupRow = { id: string; title: string; slug: string; case_number: string };
 
-function getDiscountPercent(points: number) {
-  if (points >= 4) {
-    return 100;
-  }
-
-  if (points >= 2) {
-    return 50;
-  }
-
-  return 0;
-}
-
-function getNextThreshold(points: number) {
-  if (points < 2) {
-    return 2;
-  }
-
-  if (points < 4) {
-    return 4;
-  }
-
-  return null;
-}
-
 function formatOrderMoney(value: number, currency: "USD" | "RUB", locale: string) {
   return formatMarketMoney(value, currency, locale === "ru" ? "ru" : "en");
 }
@@ -56,7 +32,7 @@ export default async function ProfilePage() {
 
   const [loyaltyRow, orderRows, ratingRows] = await Promise.all([
     prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
-    prisma.order.findMany({ where: { buyerUserId: session.userId }, orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.order.findMany({ where: { buyerUserId: session.userId }, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
     prisma.contentRating.findMany({
       where: { userId: session.userId, contentType: "beat" },
       orderBy: { createdAt: "desc" },
@@ -66,10 +42,10 @@ export default async function ProfilePage() {
   ]);
 
   const points = loyaltyRow?.points ?? 0;
-  const discountPercent = getDiscountPercent(points);
-  const nextThreshold = getNextThreshold(points);
+  const freeBeats = Math.floor(points / 100);
+  const pointsRemaining = Math.max(0, 100 - points);
 
-  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId }));
+  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId, newMessage: Boolean(o.messages[0] && (!o.buyerLastReadAt || o.messages[0].createdAt > o.buyerLastReadAt)) }));
 
   const beatIds = [...new Set([...orders.map((o) => o.beat_id), ...ratingRows.map((r) => r.contentId)])];
   const beatRows = beatIds.length
@@ -86,20 +62,20 @@ export default async function ProfilePage() {
       <SectionHeading eyebrow={t.buyerAccount} title={t.profileTitle} description={t.profileDesc} />
 
       <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
-        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.profilePointsTitle}</h3>
+        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? "Поинты: 25 за покупку, 100 за бесплатный бит" : "Points: 25 per purchase, 100 per free beat"}</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
             <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--color-paper-400)]">{t.profileCurrentPoints}</p>
             <p className="mt-2 text-3xl font-semibold text-[var(--color-paper-100)]">{points}</p>
           </div>
           <div className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
-            <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--color-paper-400)]">{t.profileCurrentDiscount}</p>
-            <p className="mt-2 text-3xl font-semibold text-[var(--color-paper-100)]">{discountPercent}%</p>
+            <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--color-paper-400)]">{locale === "ru" ? "Бесплатных битов доступно" : "Free beats available"}</p>
+            <p className="mt-2 text-3xl font-semibold text-[var(--color-paper-100)]">{freeBeats}</p>
           </div>
           <div className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
-            <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--color-paper-400)]">{t.profileNextDiscount}</p>
+            <p className="text-[10px] uppercase tracking-[0.26em] text-[var(--color-paper-400)]">{locale === "ru" ? "Поинтов до бесплатного бита" : "Points until a free beat"}</p>
             <p className="mt-2 text-3xl font-semibold text-[var(--color-paper-100)]">
-              {nextThreshold ? nextThreshold : t.profileMaxDiscount}
+              {pointsRemaining}
             </p>
           </div>
         </div>
@@ -137,6 +113,7 @@ export default async function ProfilePage() {
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
                   <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
                   <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "эксклюзивная лицензия" : "exclusive license"}</span>
+                  {order.provider === "contact" || order.payment_provider === "internal" ? <Link href={`/orders/${order.id}`} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{order.newMessage ? (locale === "ru" ? "Новое сообщение — открыть заявку" : "New message — open request") : locale === "ru" ? "Заявка / сообщения / бронь" : "Request / Messages / Reservation"}</Link> : null}
                   {order.license_type === "exclusive" && (order.status === "paid" || order.status === "pending_free_checkout") && (
                     <a
                       href={`/api/contracts/${order.id}/download`}

@@ -105,7 +105,7 @@ export async function handleBeatStripeWebhook(request: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findFirst({
         where: { id: current.id, provider: "stripe", paymentExternalId: sessionId },
-        select: { id: true, beatId: true, status: true },
+        select: { id: true, beatId: true, buyerUserId: true, status: true },
       });
       if (!order) return "not_found" as const;
 
@@ -119,7 +119,7 @@ export async function handleBeatStripeWebhook(request: Request) {
       }
       if (order.status !== "pending_payment") return "conflict" as const;
 
-      if (!await lockBeatForExclusiveSale(tx, order.beatId)) return "conflict" as const;
+      if (!await lockBeatForExclusiveSale(tx, order.beatId, order.buyerUserId)) return "conflict" as const;
 
       const updated = await tx.order.updateMany({
         where: { id: order.id, status: "pending_payment", provider: "stripe", paymentExternalId: sessionId },

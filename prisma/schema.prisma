@@ -118,6 +118,8 @@ model User {
   comments         ContentComment[]
   ratings          ContentRating[]
   loyalty          LoyaltyPoint?
+  orderMessages OrderMessage[]
+  heldBeats Beat[] @relation("HeldBeatBuyer")
   authoredComments Comment[]
   favorites        Favorite[]
 
@@ -224,6 +226,12 @@ model Beat {
   publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  reservationOrderId String? @map("reservation_order_id") @db.Uuid
+  reservationBuyerId String? @map("reservation_buyer_id") @db.Uuid
+  reservationExpiresAt DateTime? @map("reservation_expires_at") @db.Timestamptz(6)
+  reservationOrder Order? @relation("HeldBeatOrder", fields: [reservationOrderId], references: [id], onDelete: SetNull)
+  reservationBuyer User? @relation("HeldBeatBuyer", fields: [reservationBuyerId], references: [id], onDelete: SetNull)
 
   orders    Order[]
   contracts Contract[]
@@ -417,6 +425,11 @@ model Order {
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   contract Contract?
+  messages OrderMessage[]
+  heldBeats Beat[] @relation("HeldBeatOrder")
+  buyerLastReadAt DateTime? @map("buyer_last_read_at") @db.Timestamptz(6)
+  adminLastReadAt DateTime? @map("admin_last_read_at") @db.Timestamptz(6)
+  loyaltyPointsSpent Int @default(0) @map("loyalty_points_spent")
 
   @@index([beatId])
   @@index([buyerUserId])
@@ -715,4 +728,21 @@ model Hpdg808Contact {
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("hpdg808_contacts")
+}
+
+
+model OrderMessage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorUserId String? @map("author_user_id") @db.Uuid
+  author User? @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+  authorRole String @map("author_role")
+  text String
+  clientMessageId String? @map("client_message_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([orderId, authorUserId, clientMessageId])
+  @@index([orderId, createdAt, id])
+  @@map("order_messages")
 }

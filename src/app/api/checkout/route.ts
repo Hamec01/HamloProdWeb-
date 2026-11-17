@@ -1,3 +1,5 @@
+import { checkBeatForBuyer } from "@/lib/orders/reservations";
+import { orderError } from "@/lib/orders/access";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
   const points = loyalty?.points ?? 0;
   const discountPercent = use_loyalty_points ? getDiscountPercent(points) : 0;
 
-  const basePrice = market.currency === "RUB" ? beat.priceRub || 2500 : beat.priceUsd;
+  const basePrice = market.currency === "RUB" ? beat.priceRub ?? 2500 : beat.priceUsd;
   const finalPrice = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
 
   const data = {
@@ -74,8 +76,8 @@ export async function POST(request: NextRequest) {
     personalDataConsentAt: new Date(),
     basePrice,
     finalPrice,
-    basePriceUsd: basePrice,
-    finalPriceUsd: finalPrice,
+    basePriceUsd: market.currency === "USD" ? basePrice : 0,
+    finalPriceUsd: market.currency === "USD" ? finalPrice : 0,
     discountPercent,
     market: market.market,
     currency: market.currency,
@@ -84,18 +86,19 @@ export async function POST(request: NextRequest) {
     status: "draft" as const,
   };
 
-  const existingDraft = await prisma.order.findFirst({
-    where: { buyerUserId: guard.context.userId, beatId: beat_id, status: "draft" },
-    orderBy: { createdAt: "desc" },
-    select: { id: true },
-  });
+  try {
+    const orderId = await prisma.$transaction(async (tx) => {
+      await checkBeatForBuyer(tx, beat_id, guard.context.userId);
+      const existingDraft = await tx.order.findFirst({ where: { buyerUserId: guard.context.userId, beatId: beat_id, status: "draft" }, orderBy: { createdAt: "desc" }, select: { id: true } });
+      if (existingDraft) {
+        const updated = await tx.order.updateMany({ where: { id: existingDraft.id, status: "draft" }, data });
+        if (!updated.count) throw new Error("ORDER_NOT_READY");
+        await tx.contract.updateMany({ where: { orderId: existingDraft.id }, data: { htmlSnapshot: "<p>Contract draft placeholder.</p>", pdfKey: null } });
+        return existingDraft.id;
+      }
+      return (await tx.order.create({ data, select: { id: true } })).id;
+    });
+    return NextResponse.json({ orderId }, { status: 201 });
+  } catch (error) { return orderError(error); }
 
-  if (existingDraft) {
-    const updated = await prisma.order.updateMany({ where: { id: existingDraft.id, status: "draft" }, data });
-    if (!updated.count) return err("Order is already being paid. Please reload checkout.", 409);
-    return NextResponse.json({ orderId: existingDraft.id }, { status: 200 });
-  }
-
-  const created = await prisma.order.create({ data, select: { id: true } });
-  return NextResponse.json({ orderId: created.id }, { status: 201 });
 }

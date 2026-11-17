@@ -24,9 +24,9 @@ const copy = {
     orderSummary: "Заказ",
     base: "Базовая цена",
     discount: "Скидка (лояльность)",
-    usePoints: "Использовать баллы лояльности для этой покупки",
-    pointsAvailable: "Доступно баллов",
-    pointsHint: "Вы можете оставить баллы на потом и оплатить заказ без скидки.",
+    usePoints: "Обменять 100 поинтов на этот бит",
+    pointsAvailable: "Доступно поинтов",
+    pointsHint: "Будут списаны 100 поинтов. За бесплатный бит новые поинты не начисляются.",
     final: "Итого к оплате",
     personal: "Персональные данные",
     buyerName: "Полное имя / ФИО для лицензии",
@@ -51,9 +51,9 @@ const copy = {
     orderSummary: "Order Summary",
     base: "Base price",
     discount: "Discount (loyalty)",
-    usePoints: "Use loyalty points for this purchase",
+    usePoints: "Exchange 100 points for this beat",
     pointsAvailable: "Points available",
-    pointsHint: "You can keep your points for later and pay full price now.",
+    pointsHint: "100 points will be deducted. Free beats do not earn points.",
     final: "Total due",
     personal: "Personal Details",
     buyerName: "Full Name for the License",
@@ -182,6 +182,7 @@ export function CheckoutForm({
         <p className="mt-3 text-2xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">
           CASE #{beatCaseNumber} - {beatTitle}
         </p>
+        <p className="mt-4 text-sm text-[var(--color-paper-200)]">{locale === "ru" ? "25 поинтов за оплаченную покупку. 100 поинтов можно обменять на один бесплатный бит." : "Earn 25 points per paid purchase. Exchange 100 points for one free beat."}</p>
         <div className="mt-4 space-y-2 text-sm text-[var(--color-paper-300)]">
           <div className="flex justify-between">
             <span className="uppercase tracking-[0.12em]">{t.base}</span>

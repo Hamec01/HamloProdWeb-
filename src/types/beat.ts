@@ -23,6 +23,7 @@ export type BeatRecord = {
   priceRub: number;
   featured: boolean;
   availableForDownload: boolean;
+  reservationExpiresAt?: string | null;
   coverKey: string | null;
   previewKey: string | null;
   masterKey: string | null;
@@ -59,6 +60,7 @@ export type Beat = {
   priceRub: number;
   featured: boolean;
   availableForDownload: boolean;
+  reservationExpiresAt?: string | null;
   createdAt: string;
 };
 

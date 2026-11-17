@@ -40,6 +40,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
     if (reason === "BUYER_NOT_FOUND" || reason === "BUYER_EMAIL_MISMATCH") return noStore({ error: "Проверьте выбранный аккаунт и email покупателя." }, 400);
+    if (reason === "RESERVED_ORDER_EXISTS") return noStore({ error: "По этому биту есть бронь. Откройте заявку покупателя и подтвердите продажу в ней." }, 409);
     if (reason === "BEAT_NOT_FOUND") return noStore({ error: "Beat not found." }, 404);
     if (reason === "BEAT_NOT_AVAILABLE") return noStore({ error: "This beat is no longer available for an exclusive sale." }, 409);
     if (reason.startsWith("SELLER_CONFIG_MISSING") || reason.startsWith("SELLER_SIGNATURE_MISSING")) {

@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findFirst({
         where: { id: current.id, paymentExternalId: externalId, provider: "lava" },
-        select: { id: true, beatId: true, status: true },
+        select: { id: true, beatId: true, buyerUserId: true, status: true },
       });
       if (!order) return "not_found" as const;
       if (order.status === "paid" && nextStatus === "failed") return "duplicate" as const;
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         return "applied" as const;
       }
 
-      if (!await lockBeatForExclusiveSale(tx, order.beatId)) return "conflict" as const;
+      if (!await lockBeatForExclusiveSale(tx, order.beatId, order.buyerUserId)) return "conflict" as const;
       const updated = await tx.order.updateMany({
         where: { id: order.id, status: "pending_payment", provider: "lava", paymentExternalId: externalId },
         data: { status: "paid", paidAt: new Date(), rightsFormStatus: "not_started" },

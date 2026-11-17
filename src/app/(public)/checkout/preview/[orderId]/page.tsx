@@ -60,7 +60,7 @@ export default async function ContractPreviewPage({
             href={`/checkout/payment/${order.id}?start=1`}
             className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
           >
-            {locale === "ru" ? "Перейти к оплате" : "Proceed to Payment"}
+            {order.provider === "contact" ? (locale === "ru" ? "Открыть заявку и переписку" : "Open request and messages") : locale === "ru" ? "Перейти к оплате" : "Proceed to Payment"}
             <ArrowRight size={14} />
           </Link>
         </div>

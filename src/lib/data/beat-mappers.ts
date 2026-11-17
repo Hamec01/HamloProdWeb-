@@ -49,6 +49,7 @@ export function toBeatRecord(row: PrismaBeat): BeatRecord {
     previewFileName: row.previewFileName,
     previewMimeType: row.previewMimeType,
     previewSizeBytes: row.previewSizeBytes,
+    reservationExpiresAt: row.reservationExpiresAt?.toISOString() ?? null,
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -76,6 +77,7 @@ export function toPublicBeat(record: BeatRecord, resolvePublicUrl: PublicUrlReso
     priceRub: record.priceRub,
     featured: record.featured,
     availableForDownload: record.status !== "sold" && record.availableForDownload,
+    reservationExpiresAt: record.reservationExpiresAt ?? null,
     createdAt: record.createdAt,
   };
 }

@@ -2,6 +2,7 @@
 
 import { RegisteredBuyerPicker, type RegisteredBuyer } from "@/components/admin/registered-buyer-picker";
 import { useId, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import type { AdminBeat } from "@/types/beat";
@@ -15,6 +16,7 @@ type ManualSale = {
   currency: "RUB" | "USD";
   createdAt: string;
   hasPdf: boolean;
+  newMessage?: boolean;
 };
 
 type Props = {
@@ -33,7 +35,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
   const [selectedBeatId, setSelectedBeatId] = useState("");
   const [selectedBuyer, setSelectedBuyer] = useState<RegisteredBuyer | null>(null);
   const [buyerEmail, setBuyerEmail] = useState("");
-  const availableBeats = beats.filter((beat) => beat.status === "available" || beat.status === "reserved");
+  const availableBeats = beats.filter((beat) => beat.status === "available" || (beat.status === "reserved" && !beat.reservationExpiresAt));
   const matchingBeats = availableBeats.filter((beat) => beat.id === selectedBeatId || `${beat.caseNumber} ${beat.title}`.toLocaleLowerCase().includes(beatQuery.trim().toLocaleLowerCase()));
   const [message, setMessage] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
       setMessage(result.pdfReady
         ? "Сделка записана, бит помечен как SOLD, лицензия сформирована."
         : "Сделка записана и бит помечен как SOLD, но PDF не сформирован. Создайте документ из списка ниже.");
-      if (result.buyerLinked) setMessage((message) => `${message} Покупка привязана к аккаунту, начислен 1 балл.`);
+      if (result.buyerLinked) setMessage((message) => `${message} Покупка привязана к аккаунту, начислено 25 поинтов.`);
       setDownloadUrl(result.downloadUrl ?? null);
       form.reset();
       setSelectedBeatId(""); setBeatQuery(""); setSelectedBuyer(null); setBuyerEmail("");
@@ -237,7 +239,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
               {sales.map((sale) => (
                 <tr key={sale.id} className="border-t border-[var(--color-line)]">
                   <td className="px-5 py-4">{sale.beatTitle}<br /><span className="text-xs text-[var(--color-paper-400)]">{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" }).format(new Date(sale.createdAt))}</span></td>
-                  <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span></td>
+                  <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span><br /><Link className="mt-2 inline-block underline" href={`/orders/${sale.id}`}>{sale.newMessage ? "Новое сообщение — открыть чат" : "Переписка по покупке"}</Link></td>
                   <td className="px-5 py-4">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: sale.currency, maximumFractionDigits: 0 }).format(sale.amount)}</td>
                   <td className="px-5 py-4">
                     <button

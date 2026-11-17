@@ -178,6 +178,7 @@ export class BeatService {
     if (existing.status === "sold" && ((values.status !== undefined && values.status !== "sold") || values.availableForDownload === true)) {
       return fail(409, "Проданный бит нельзя вернуть в продажу или открыть для скачивания.", "SOLD_LOCKED");
     }
+    if (existing.reservationExpiresAt && new Date(existing.reservationExpiresAt) > new Date() && values.status !== undefined && values.status !== "reserved" && values.status !== "sold") return fail(409, "Сначала снимите бронь в заявке покупателя.", "RESERVATION_LOCKED");
     if (values.status === "available" && (!existing.coverKey || !existing.previewKey)) return fail(409, "Attach a cover and preview before publishing.", "MISSING_REQUIRED_ASSETS");
     const input: BeatUpdateInput = {};
 

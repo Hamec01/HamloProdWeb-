@@ -1,3 +1,5 @@
+import { checkBeatForBuyer } from "@/lib/orders/reservations";
+import { redeemBeatOrder } from "@/lib/loyalty/redeem-order";
 import { ensureOrderLicense } from "@/lib/contracts/issue";
 import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
@@ -9,7 +11,7 @@ import { toOrderRow, type OrderRow } from "@/lib/orders/order-row";
 type BeatPaymentRow = { id: string; title: string; slug: string; price_rub: number | null; price_usd: number };
 type ContractPaymentRow = { id: string; html_snapshot: string };
 
-type FreeOrderResult = { kind: "free"; orderId: string; status: "pending_free_checkout"; paymentUrl: null };
+type FreeOrderResult = { kind: "free"; orderId: string; status: "pending_free_checkout" | "paid"; paymentUrl: null };
 type PaidOrderResult = { kind: "paid"; orderId: string; status: "pending_payment"; paymentUrl: string };
 export type PaymentPreparationResult = FreeOrderResult | PaidOrderResult;
 
@@ -55,46 +57,14 @@ export async function getOrderForPayment(orderId: string): Promise<{
   };
 }
 
-async function markFreeOrderPending(orderId: string, beatId: string) {
-  try {
-    await prisma.$transaction(async (tx) => {
-      const beat = await tx.beat.updateMany({
-        where: { id: beatId, status: { in: ["available", "reserved"] } },
-        data: { status: "sold", availableForDownload: false },
-      });
-      if (beat.count !== 1) throw new Error("BEAT_ALREADY_SOLD");
-
-      const order = await tx.order.updateMany({
-        where: { id: orderId, status: "draft" },
-        data: {
-          status: "pending_free_checkout",
-          paymentProvider: "internal",
-          provider: "internal",
-          paymentExternalId: null,
-          paymentUrl: null,
-        },
-      });
-      if (order.count !== 1) throw new Error("ORDER_NOT_DRAFT");
-    });
-  } catch (error) {
-    if (error instanceof Error && (error.message === "BEAT_ALREADY_SOLD" || error.message === "ORDER_NOT_DRAFT")) {
-      throw new Error("FREE_ORDER_FINALIZATION_FAILED");
-    }
-    console.error("[checkout] free order finalization failed", {
-      orderId,
-      error: error instanceof Error ? error.message : "unknown",
-    });
-    throw new Error("ORDER_UPDATE_FAILED");
-  }
-}
-
 async function markPaidOrderPending(orderId: string, provider: "lava" | "stripe", externalId: string, paymentUrl: string) {
   try {
-    const updated = await prisma.order.updateMany({
-      where: { id: orderId, status: "draft" },
-      data: { status: "pending_payment", paymentProvider: provider, provider, paymentExternalId: externalId, paymentUrl },
+    await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, select: { beatId: true, buyerUserId: true } });
+      await checkBeatForBuyer(tx, order.beatId, order.buyerUserId);
+      const updated = await tx.order.updateMany({ where: { id: orderId, status: "draft" }, data: { status: "pending_payment", paymentProvider: provider, provider, paymentExternalId: externalId, paymentUrl } });
+      if (updated.count !== 1) throw new Error("ORDER_NOT_DRAFT");
     });
-    if (updated.count !== 1) throw new Error("ORDER_NOT_DRAFT");
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_DRAFT") throw error;
     throw new Error("ORDER_UPDATE_FAILED");
@@ -156,6 +126,11 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
   if (!contractSnapshotExists) throw new Error("CONTRACT_SNAPSHOT_MISSING");
   if (!order.terms_accepted_at || !order.personal_data_consent_at) throw new Error("CHECKOUT_ACCEPTANCE_MISSING");
   if (order.market !== "ru" && order.market !== "global") throw new Error("MARKET_NOT_SUPPORTED");
+  if (order.final_price === 0 && order.discount_percent === 100) {
+    const userId = await requireBuyerUserId();
+    await redeemBeatOrder(order.id, userId);
+    return { kind: "free", orderId: order.id, status: "paid", paymentUrl: null };
+  }
   if ((order.market === "ru" && order.provider !== "lava") || (order.market === "global" && order.provider !== "stripe")) {
     throw new Error("PROVIDER_NOT_SUPPORTED");
   }
@@ -171,12 +146,7 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
     throw new Error("ORDER_PRICE_CHANGED");
   }
 
-  if (recalculatedFinalAmount === 0) {
-    await markFreeOrderPending(order.id, beat.id);
-    await ensureOrderLicense(order.id);
-    return { kind: "free", orderId: order.id, status: "pending_free_checkout", paymentUrl: null };
-  }
-
+  await prisma.$transaction((tx) => checkBeatForBuyer(tx, order.beat_id, order.buyer_user_id));
   const paymentOrder = { ...order, final_price: recalculatedFinalAmount, final_price_usd: recalculatedFinalAmount };
   const payment = order.market === "ru"
     ? await createLavaPayment(paymentOrder, beat)

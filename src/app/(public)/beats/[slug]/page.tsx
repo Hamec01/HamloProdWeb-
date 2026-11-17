@@ -8,6 +8,7 @@ import { PlayBeatButton } from "@/components/beats/play-beat-button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
+import { BeatInquiryActions } from "@/components/beats/beat-inquiry-actions";
 import { getBeatCheckoutProvider } from "@/lib/checkout/config";
 import { getLocale } from "@/lib/i18n-server";
 import { localizeBeats } from "@/lib/localize-content";
@@ -130,41 +131,8 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               <span className="text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.currentPrice}</span>
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{priceLabel}</span>
             </div>
-            {beat.status !== "private" ? <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.12em]">
-              {locale === "ru" ? "Заполнить данные для лицензии" : "Fill License Details"}
-            </Link> : null}
-            {getBeatCheckoutProvider(locale) === "contact" ? (
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="https://t.me/Andrei91S"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
-                >
-                  {locale === "ru" ? "Написать в Telegram" : "Buy via Telegram"}
-                  <ArrowRight size={14} />
-                </a>
-                <a
-                  href="https://vk.ru/hamloproduction"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-                >
-                  {locale === "ru" ? "Написать в VK" : "Buy via VK"}
-                  <ArrowRight size={14} />
-                </a>
-              </div>
-            ) : (
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href={buyLicenseHref}
-                  className="inline-flex items-center gap-2 border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] transition-colors hover:bg-[rgba(185,149,90,0.2)]"
-                >
-                  {t.buyLicense}
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            )}
+            {getBeatCheckoutProvider(locale) === "contact" ? <BeatInquiryActions beatId={beat.id} beatSlug={beat.slug} isAuthenticated={session.isAuthenticated} locale={locale} /> : <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm">{t.buyLicense}</Link>}
+            {beat.reservationExpiresAt ? <p className="mt-4 text-sm text-amber-200">{locale === "ru" ? "Бронь до" : "Reserved until"} {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Helsinki" }).format(new Date(beat.reservationExpiresAt))} ({locale === "ru" ? "Хельсинки" : "Helsinki"})</p> : null}
             </>}
           </section>
 

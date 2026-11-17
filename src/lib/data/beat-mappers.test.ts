@@ -21,6 +21,7 @@ const row: PrismaBeat = {
   priceRub: 9000,
   featured: true,
   availableForDownload: false,
+  reservationOrderId: null, reservationBuyerId: null, reservationExpiresAt: null,
   coverKey: "beats/b1/cover/c.png",
   previewKey: "beats/b1/preview/p.mp3",
   masterKey: "beats/b1/master/m.wav",

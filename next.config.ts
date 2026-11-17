@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     "/*": ["./LICENSEMAKER/assets/default_signature.png"],
     "/api/admin/licenses": ["./node_modules/@sparticuz/chromium/**/*"],
     "/api/admin/licenses/**": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/orders/*/redeem": ["./node_modules/@sparticuz/chromium/**/*"],
     "/api/contracts/**": ["./node_modules/@sparticuz/chromium/**/*"],
     "/api/stripe/webhook": ["./node_modules/@sparticuz/chromium/**/*"],
     "/api/lava/webhook": ["./node_modules/@sparticuz/chromium/**/*"],

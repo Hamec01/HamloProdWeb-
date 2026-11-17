@@ -33,13 +33,7 @@ export default async function CheckoutPaymentPage({
   }
 
   const { order, beat, contractSnapshotExists } = paymentData;
-  if (order.provider === "contact") {
-    return <section className="case-panel p-6 space-y-5">
-      <SectionHeading eyebrow="HamloProd" title={locale === "ru" ? "Заявка на лицензию сохранена" : "License Request Saved"} description={locale === "ru" ? "Напишите в Telegram или VK и сообщите номер заказа. После подтверждения оплаты PDF появится в вашем профиле." : "Contact us via Telegram or VK and include your order number. Your license PDF will appear in your profile after payment is confirmed."} />
-      <p>{beat.title}</p><p className="break-all text-sm">{locale === "ru" ? "Номер заказа" : "Order number"}: {order.id}</p>
-      <div className="flex flex-wrap gap-4"><a className="underline" href="https://t.me/Andrei91S" target="_blank" rel="noreferrer">Telegram</a><a className="underline" href="https://vk.ru/hamloproduction" target="_blank" rel="noreferrer">VK</a><Link className="underline" href="/profile">{locale === "ru" ? "Мои покупки" : "My Purchases"}</Link></div>
-    </section>;
-  }
+  if (order.provider === "contact") redirect(`/orders/${order.id}`);
   const currency = resolveOrderCurrency(order);
   const basePrice = resolveOrderBasePrice(order);
   const finalPrice = resolveOrderFinalPrice(order);

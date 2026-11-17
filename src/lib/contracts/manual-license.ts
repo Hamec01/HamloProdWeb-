@@ -22,9 +22,10 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
 
   const beat = await prisma.beat.findUnique({
     where: { id: input.beatId },
-    select: { id: true, slug: true, title: true, caseNumber: true, status: true },
+    select: { id: true, slug: true, title: true, caseNumber: true, status: true, reservationOrderId: true },
   });
   if (!beat) throw new Error("BEAT_NOT_FOUND");
+  if (beat.reservationOrderId) throw new Error("RESERVED_ORDER_EXISTS");
   if (beat.status !== "available" && beat.status !== "reserved") throw new Error("BEAT_NOT_AVAILABLE");
 
   const buyer = await prisma.user.findFirst({ where: input.buyerUserId ? { id: input.buyerUserId } : { email: { equals: input.buyerEmail, mode: "insensitive" } }, select: { id: true, email: true } });
@@ -53,7 +54,7 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
 
   try {
     await prisma.$transaction(async (tx) => {
-      if (!await lockBeatForExclusiveSale(tx, beat.id)) throw new Error("BEAT_NOT_AVAILABLE");
+      if (!await lockBeatForExclusiveSale(tx, beat.id, buyer?.id)) throw new Error("BEAT_NOT_AVAILABLE");
 
       await tx.order.create({
         data: {

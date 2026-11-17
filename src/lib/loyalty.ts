@@ -1,11 +1,6 @@
+export const POINTS_PER_PURCHASE = 25;
+export const POINTS_PER_FREE_BEAT = 100;
+
 export function getDiscountPercent(points: number) {
-  if (points >= 4) {
-    return 100;
-  }
-
-  if (points >= 2) {
-    return 50;
-  }
-
-  return 0;
+  return points >= POINTS_PER_FREE_BEAT ? 100 : 0;
 }

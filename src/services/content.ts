@@ -1,3 +1,4 @@
+import { releaseExpiredReservations } from "@/lib/orders/reservations";
 import { siteSettings } from "@/services/mock-data";
 import type { Artist, ArtistPost, Beat, Comment, Post, Release, SiteSettings, Track, TrackDownloadLog } from "@/types";
 import { BeatService } from "@/lib/beats/service";
@@ -134,15 +135,18 @@ export async function getSiteSettings() {
 // ── Beats: PostgreSQL only (BeatService). No Supabase, no mock fallback. ──────
 
 export async function getBeats(): Promise<Beat[]> {
+  await releaseExpiredReservations();
   return beatService.listPublic({ limit: 100 });
 }
 
 export async function getFeaturedBeats(): Promise<Beat[]> {
+  await releaseExpiredReservations();
   const beats = await beatService.listPublic({ limit: 100 });
   return beats.filter((beat) => beat.featured);
 }
 
 export async function getBeatBySlug(slug: string): Promise<Beat | null> {
+  await releaseExpiredReservations();
   const direct = await beatService.getPublicBySlug(slug);
   if (direct) {
     return direct;
@@ -263,6 +267,7 @@ export async function getPosts(section?: Post["section"]) {
 }
 
 export async function getAdminBeats() {
+  await releaseExpiredReservations();
   const { items } = await beatService.listAdmin({ limit: 100 });
   return items;
 }

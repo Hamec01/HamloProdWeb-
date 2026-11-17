@@ -1,3 +1,4 @@
+import { releaseExpiredReservations } from "@/lib/orders/reservations";
 import { prisma } from "@/lib/db/client";
 import type { Prisma } from "@prisma/client";
 import { toBeatRecord, toPublicBeat } from "@/lib/data/beat-mappers";
@@ -8,6 +9,7 @@ import { BEATS_PER_PAGE, CAROUSEL_BEATS, beatPagination, type BeatReactionStats 
 const publicWhere = { publishedAt: { not: null }, status: { in: ["available", "reserved", "sold"] } } satisfies Prisma.BeatWhereInput;
 
 export async function getBeatCatalog(rawPage?: string, genre?: BeatGenre) {
+  await releaseExpiredReservations();
   const where = { ...publicWhere, ...(genre ? { genre } : {}) };
   const total = await prisma.beat.count({ where });
   const pagination = beatPagination(rawPage, total);
