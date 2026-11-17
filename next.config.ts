@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  outputFileTracingIncludes: { "/*": ["./LICENSEMAKER/assets/default_signature.png"] },
+  outputFileTracingIncludes: {
+    "/*": ["./LICENSEMAKER/assets/default_signature.png"],
+    "/api/admin/licenses": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/admin/licenses/**": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/contracts/**": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/stripe/webhook": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/lava/webhook": ["./node_modules/@sparticuz/chromium/**/*"],
+    "/api/payments/create": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
   // Native / server-only modules that must not be bundled for the client or Edge.
   serverExternalPackages: ["argon2", "@prisma/client", "@sparticuz/chromium", "nunjucks"],
   images: {
