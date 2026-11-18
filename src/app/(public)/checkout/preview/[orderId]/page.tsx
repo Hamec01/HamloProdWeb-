@@ -49,7 +49,7 @@ export default async function ContractPreviewPage({
       <section className="space-y-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
-            href={`/checkout/${beat.slug}`}
+            href={`/checkout/${beat.slug}?payment=${order.provider === "stripe" ? "stripe" : "contact"}`}
             className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
           >
             <ArrowLeft size={14} />

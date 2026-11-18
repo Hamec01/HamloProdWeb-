@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
 import { getLocale } from "@/lib/i18n-server";
 import { getMarketContext } from "@/lib/market";
-import { getBeatCheckoutProvider, isBeatStripeReady } from "@/lib/checkout/config";
+import { isBeatStripeReady } from "@/lib/checkout/config";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
 import { getDiscountPercent } from "@/lib/loyalty";
 import { refreshExpiredStripeHold } from "@/lib/payments/stripe-checkout";
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   } = parsed.data;
 
   const locale = await getLocale();
-  const provider = parsed.data.payment_method ?? getBeatCheckoutProvider(locale);
+  const provider = parsed.data.payment_method ?? "contact";
   if (provider === "stripe" && !isBeatStripeReady()) return err("Оплата Stripe пока недоступна.", 503);
   const market = getMarketContext(provider === "stripe" ? "en" : locale);
 

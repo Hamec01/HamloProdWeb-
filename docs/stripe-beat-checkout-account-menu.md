@@ -64,3 +64,14 @@ The opt-in deployment check (`STRIPE_CONNECTION_CHECK=true`) creates one
 unadvertised unpaid Checkout Session using the real deployment credential,
 retrieves it and immediately expires it. No purchase is marked paid and no money
 is charged. It prints only a success/failure code, never a key or checkout URL.
+
+The real-key deployment probe passed on staged deployment
+`dpl_4bGF7WU5ukgrBpCtYhrePBS61KTb`: checkout creation, retrieval and expiry all
+succeeded and no payment was taken. The probe did not create an application
+order or send a customer license/email. Subsequent source changes only preserve
+the explicitly chosen manual/Stripe method on license edit links and let old
+unqualified checkout links fall back to manual requests when no delivery is set.
+Stripe remains explicitly selectable in Russian and English independently of
+those defaults. The full regression suite was rerun after these changes: 263
+passed, zero failed, one optional skip. The additive migration was applied to
+the primary database and all four runtime CRUD privileges were confirmed.

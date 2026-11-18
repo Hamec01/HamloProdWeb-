@@ -117,7 +117,7 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       </div> : null}
       {order.status === "draft" && !order.sold ? <div className="flex flex-wrap gap-3">
         {!order.reservationExpiresAt ? <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("reserve")}>{ru ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button> : null}
-        {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}`}>{ru ? "Заполнить данные для лицензии / использовать поинты" : "License details / Use points"}</Link> : null}
+        {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=contact`}>{ru ? "Заполнить данные для лицензии / использовать поинты" : "License details / Use points"}</Link> : null}
         {role === "buyer" && order.stripeAvailable ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=stripe`}>{ru ? "Купить через Stripe (USD)" : "Buy with Stripe (USD)"}</Link> : null}
         {order.hasContract && role === "buyer" ? <Link className={buttonClass} href={`/checkout/preview/${order.id}`}>{ru ? "Просмотреть договор" : "Review agreement"}</Link> : null}
       </div> : null}

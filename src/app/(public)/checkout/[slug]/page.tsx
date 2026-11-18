@@ -43,8 +43,12 @@ export default async function CheckoutPage({
     redirect(`/${locale}/beats/${slug}`);
   }
 
-  const provider = payment === "stripe" ? "stripe" : payment === "contact" ? "contact" : getBeatCheckoutProvider(locale);
+  let provider = payment === "stripe" ? "stripe" : payment === "contact" ? "contact" : getBeatCheckoutProvider(locale);
   if (provider === "stripe" && !isBeatStripeReady()) redirect(`/beats/${slug}`);
+  if (provider === "stripe" && !await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } })) {
+    if (payment === "stripe") redirect(`/beats/${slug}`);
+    provider = "contact";
+  }
   const market = getMarketContext(provider === "stripe" ? "en" : locale);
   const basePrice = market.currency === "RUB" ? beat.priceRub ?? 2500 : beat.priceUsd;
 
