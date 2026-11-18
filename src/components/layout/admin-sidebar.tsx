@@ -5,6 +5,7 @@ const adminNavigation = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/beats", label: "Beats CRUD" },
   { href: "/admin/licenses", label: "Продажи / сообщения" },
+  { href: "/admin/users", label: "Пользователи" },
   { href: "/admin/tracks", label: "Tracks (синглы)" },
   { href: "/admin/releases", label: "Releases (альбомы)" },
   { href: "/admin/artists", label: "Artists CRUD" },

@@ -8,6 +8,7 @@ import { getLocale } from "@/lib/i18n-server";
 import { formatMarketMoney } from "@/lib/market";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { toOrderRow } from "@/lib/orders/order-row";
+import { unreadProducerMessage } from "@/lib/users/service";
 
 type BeatLookupRow = { id: string; title: string; slug: string; case_number: string };
 
@@ -22,7 +23,7 @@ function formatDate(value: string, locale: string) {
   }).format(new Date(value));
 }
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string; grantsPage?: string }> }) {
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
   const t = dictionary[locale];
 
@@ -35,7 +36,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const count = await prisma.order.count({ where: { buyerUserId: session.userId } });
   const pages = Math.max(1, Math.ceil(count / 20));
   const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, pages) : 1;
-  const [loyaltyRow, orderRows, ratingRows] = await Promise.all([
+  const grantCount = await prisma.loyaltyGrant.count({ where: { userId: session.userId } });
+  const grantPages = Math.max(1, Math.ceil(grantCount / 20));
+  const grantRequested = Number(query.grantsPage);
+  const grantPage = Number.isSafeInteger(grantRequested) && grantRequested > 0 ? Math.min(grantRequested, grantPages) : 1;
+  const [loyaltyRow, orderRows, ratingRows, thread, grants] = await Promise.all([
     prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
     prisma.order.findMany({ where: { buyerUserId: session.userId }, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
     prisma.contentRating.findMany({
@@ -44,6 +49,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       take: 50,
       select: { contentId: true, rating: true, createdAt: true },
     }),
+    prisma.userConversation.findUnique({ where: { userId: session.userId }, select: { lastAdminAt: true, buyerLastReadAt: true } }),
+    prisma.loyaltyGrant.findMany({ where: { userId: session.userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (grantPage - 1) * 20, take: 20, select: { id: true, amount: true, reason: true, createdAt: true } }),
   ]);
 
   const points = loyaltyRow?.points ?? 0;
@@ -67,6 +74,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <SectionHeading eyebrow={t.buyerAccount} title={t.profileTitle} description={t.profileDesc} />
 
       <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+        <h3 className="text-xl">{locale === "ru" ? "Переписка с HaM" : "Messages with HaM"}</h3>
+        {unreadProducerMessage(thread) ? <p className="mt-3 text-sm text-amber-200">{locale === "ru" ? "У тебя новое сообщение от HaM." : "You have a new message from HaM."}</p> : null}
+        <Link href="/profile/messages" className="mt-4 inline-block border border-stone-600 px-4 py-3 text-sm underline">{locale === "ru" ? "Открыть личную переписку" : "Open private messages"}</Link>
+      </article>
+
+      <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? "Поинты: 25 за покупку, 100 за бесплатный бит" : "Points: 25 per purchase, 100 per free beat"}</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
@@ -84,6 +97,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </p>
           </div>
         </div>
+        {grants.length ? <div className="mt-6 space-y-3">
+          <h4 className="text-sm uppercase tracking-wider">{locale === "ru" ? "Дополнительные начисления от HaM" : "Bonus points from HaM"}</h4>
+          {grants.map((grant) => <div key={grant.id} className="border border-stone-700 p-4 text-sm"><p className="text-amber-200">+{grant.amount} · {formatDate(grant.createdAt.toISOString(), locale)}</p><p className="mt-2 whitespace-pre-wrap break-words">{grant.reason}</p></div>)}
+          {grantPages > 1 ? <nav aria-label={locale === "ru" ? "История начислений" : "Bonus history"} className="flex gap-4 text-sm">{grantPage > 1 ? <Link className="underline" href={`/profile?page=${page}&grantsPage=${grantPage - 1}`}>{locale === "ru" ? "Новые начисления" : "Newer bonuses"}</Link> : null}<span>{grantPage} / {grantPages}</span>{grantPage < grantPages ? <Link className="underline" href={`/profile?page=${page}&grantsPage=${grantPage + 1}`}>{locale === "ru" ? "Ранние начисления" : "Older bonuses"}</Link> : null}</nav> : null}
+        </div> : null}
       </article>
 
       <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">

@@ -122,6 +122,12 @@ model User {
   heldBeats Beat[] @relation("HeldBeatBuyer")
   authoredComments Comment[]
   favorites        Favorite[]
+  conversation UserConversation?
+  directMessages UserMessage[] @relation("DirectMessageAuthor")
+  adminNotes AdminUserNote[] @relation("NotedUser")
+  authoredNotes AdminUserNote[] @relation("NoteAuthor")
+  pointGrants LoyaltyGrant[] @relation("GrantRecipient")
+  awardedGrants LoyaltyGrant[] @relation("GrantAuthor")
 
   @@index([artistId])
   @@map("users")
@@ -746,4 +752,58 @@ model OrderMessage {
   @@unique([orderId, authorUserId, clientMessageId])
   @@index([orderId, createdAt, id])
   @@map("order_messages")
+}
+
+/// One general producer/customer conversation, independent of beat orders.
+model UserConversation {
+  userId String @id @map("user_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  buyerLastReadAt DateTime? @map("buyer_last_read_at") @db.Timestamptz(6)
+  adminLastReadAt DateTime? @map("admin_last_read_at") @db.Timestamptz(6)
+  lastBuyerAt DateTime? @map("last_buyer_at") @db.Timestamptz(6)
+  lastAdminAt DateTime? @map("last_admin_at") @db.Timestamptz(6)
+  messages UserMessage[]
+  @@map("user_conversations")
+}
+
+model UserMessage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  conversation UserConversation @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  authorId String @map("author_id") @db.Uuid
+  author User @relation("DirectMessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorRole String @map("author_role")
+  text String
+  clientMessageId String @map("client_message_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([userId, authorId, clientMessageId])
+  @@index([userId, createdAt, id])
+  @@map("user_messages")
+}
+
+/// Private producer notes. Never returned through customer endpoints.
+model AdminUserNote {
+  id String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user User @relation("NotedUser", fields: [userId], references: [id], onDelete: Cascade)
+  authorId String @map("author_id") @db.Uuid
+  author User @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  text String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@index([userId, createdAt, id])
+  @@map("admin_user_notes")
+}
+
+/// Audited, idempotent manual point credits; purchase awards remain on orders.
+model LoyaltyGrant {
+  id String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user User @relation("GrantRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  authorId String @map("author_id") @db.Uuid
+  author User @relation("GrantAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  amount Int
+  reason String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@index([userId, createdAt, id])
+  @@map("loyalty_grants")
 }
