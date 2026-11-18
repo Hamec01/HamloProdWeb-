@@ -43,3 +43,20 @@ Payment links in order messages are clickable and message HTML remains escaped.
 
 The additive `20261118170000_buyer_license_profiles` migration creates a private
 profile table keyed by user UUID. Existing orders and profile data are retained.
+
+## Production release
+
+Application commit `848c036` was staged and published as
+`dpl_5H42RuUkMZwJvf2AXFoY4SWcqCnF`
+(`https://hamlo-prod-pffq68ywi-inkeritm-4372s-projects.vercel.app`). The primary
+migration succeeded and all four runtime CRUD privileges on the profile table
+were individually verified. Both production alias mappings completed.
+
+After READY, staged checks passed for the new manual-purchase button, protected
+profile page and mutation endpoint, HPDG808 1.0.1 and unsigned webhook rejection.
+Canonical production checks confirmed the new chooser and private-profile
+protections. The deployment error/fatal runtime-log query returned no rows.
+
+The local QA server was stopped, its one real test PDF was deleted successfully,
+and `hamloprod_license_test` was dropped. Primary accounts, orders and points
+were not fabricated for this verification.
