@@ -50,3 +50,23 @@ delivery. No production link or purchase was fabricated and no charge was made.
 The additive `20261118160000_admin_request_archive` migration adds a nullable
 archive timestamp and listing index on orders; it was tested on the isolated
 database before production. This release changes no Stripe credentials.
+
+## Publication
+
+Application commit `d4ff8a0` was published as production deployment
+`dpl_BcUPjCSvV1SQecDdu12VDBQwxv1g`
+(`https://hamlo-prod-pc763ycnr-inkeritm-4372s-projects.vercel.app`). Both
+`hamloprod.org` and the project production alias completed promotion. The primary
+migration applied successfully and runtime SELECT/UPDATE privileges on the new
+column were verified; existing requests remained active.
+
+After READY, staged checks passed for the actual catalogue, beat purchase
+chooser, HPDG808 version 1.0.1, unsigned webhook rejection, unauthenticated
+account-summary denial and archive API denial. The preview hostname's Origin
+correctly received 403; with the canonical site Origin the unauthenticated
+archive call correctly received 401. Canonical production page/API checks also
+passed after promotion. The deployment error/fatal log query returned no rows.
+
+All local QA processes were stopped. Remaining QA PDF references were checked
+(zero objects left) and `hamloprod_license_test` was dropped. No production
+customer, message, purchase, point award or real charge was created for QA.
