@@ -37,3 +37,22 @@ checkout, including during the upload cleanup sweep.
 
 Migration `20261118180000_order_zip_delivery` adds a nullable private archive
 snapshot column and an index on orders. Existing data is retained.
+
+## Publication
+
+Published application commit `eddc6f8` as production deployment
+`dpl_BnDXDrzKDjKuKbKtX3rFtkX6DNKV`
+(`https://hamlo-prod-7u0meb8iv-inkeritm-4372s-projects.vercel.app`). The primary
+migration succeeded and runtime SELECT/UPDATE privileges on the archive snapshot
+column were confirmed. Both production alias mappings completed.
+
+After READY, staged checks passed for purchase choices, protected profile page
+and mutation, HPDG808 1.0.1, unsigned webhook rejection and anonymous ZIP download
+denial. Canonical production checks also passed. The error/fatal runtime-log
+query returned no rows.
+
+The QA server was stopped. Three actual QA PDF objects and three private ZIP
+objects were deleted successfully, then `hamloprod_license_test` was dropped.
+The unsigned object-access assertion accepts storage's 401 or 403 denial; the
+complete browser scenario passed after correcting that expected status range.
+No production account, message, sale or point award was created for QA.
