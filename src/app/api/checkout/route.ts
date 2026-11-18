@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     license_type,
     contract_language,
     use_loyalty_points,
+    save_profile,
   } = parsed.data;
 
   const locale = await getLocale();
@@ -88,12 +89,17 @@ export async function POST(request: NextRequest) {
     provider: provider,
     paymentProvider: provider,
     status: "draft" as const,
+    adminArchivedAt: null,
   };
 
   try {
     await refreshExpiredStripeHold(beat_id);
     const orderId = await prisma.$transaction(async (tx) => {
       await checkBeatForBuyer(tx, beat_id, guard.context.userId);
+      if (save_profile) {
+        const profile = { fullName: buyer_name, stageName: buyer_stage_name || "", email: buyer_email, country: buyer_country, city: buyer_city, phone: buyer_phone };
+        await tx.buyerLicenseProfile.upsert({ where: { userId: guard.context.userId }, create: { userId: guard.context.userId, ...profile }, update: profile });
+      }
       const existingDraft = await tx.order.findFirst({ where: { buyerUserId: guard.context.userId, beatId: beat_id, status: "draft" }, orderBy: { createdAt: "desc" }, select: { id: true } });
       if (existingDraft) {
         const updated = await tx.order.updateMany({ where: { id: existingDraft.id, status: "draft" }, data });

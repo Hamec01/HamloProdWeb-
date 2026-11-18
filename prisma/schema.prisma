@@ -128,9 +128,25 @@ model User {
   authoredNotes AdminUserNote[] @relation("NoteAuthor")
   pointGrants LoyaltyGrant[] @relation("GrantRecipient")
   awardedGrants LoyaltyGrant[] @relation("GrantAuthor")
+  licenseProfile BuyerLicenseProfile?
 
   @@index([artistId])
   @@map("users")
+}
+
+/// Private reusable contact details. Accepted order snapshots remain independent.
+model BuyerLicenseProfile {
+  userId String @id @map("user_id") @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName String @map("full_name")
+  stageName String @default("") @map("stage_name")
+  email String
+  country String
+  city String
+  phone String @default("")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("buyer_license_profiles")
 }
 
 model Artist {

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { BuyerCheckoutLink } from "@/components/orders/buyer-checkout-link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-type OrderRequest = { id: string; beatTitle: string; buyerName: string; buyerEmail: string; amount: number; currency: string; hasContract: boolean; newMessage: boolean; reservationExpiresAt: string | null };
+type OrderRequest = { id: string; beatTitle: string; beatSlug: string; buyerName: string; buyerEmail: string; amount: number; currency: string; hasContract: boolean; newMessage: boolean; reservationExpiresAt: string | null };
 
 export function ManualLicenseRequests({ orders, archived = false }: { orders: OrderRequest[]; archived?: boolean }) {
   const router = useRouter();
@@ -46,8 +47,9 @@ export function ManualLicenseRequests({ orders, archived = false }: { orders: Or
       <Link className="inline-block border border-amber-700 bg-amber-950/20 px-4 py-2 text-sm text-amber-100" href={`/orders/${order.id}`}>Открыть заявку и переписку</Link>
       <button type="button" disabled={busy !== null} onClick={() => void archive(order.id)} className="ml-3 border border-stone-600 px-4 py-2 text-sm disabled:opacity-50">{busy === order.id ? "Сохраняем…" : archived ? "Вернуть в активные" : "Убрать из списка"}</button>
       {order.reservationExpiresAt ? <p className="text-sm text-amber-200">Бронь до {new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Helsinki" }).format(new Date(order.reservationExpiresAt))} (Хельсинки)</p> : null}
-      {!order.hasContract ? <p className="text-sm text-[var(--color-paper-300)]">Покупатель ещё не заполнил данные для лицензии. Обсудите покупку в чате.</p> : null}
-      {!archived ? <><label className="flex gap-3 text-sm"><input type="checkbox" name="paymentReceived" required disabled={!order.hasContract} />Оплата получена по этому заказу</label>
+      {!order.hasContract ? <p className="text-sm text-[var(--color-paper-300)]">Покупателю нужно заполнить данные для PDF и принять договор. Отправьте ему ссылку на форму ниже.</p> : null}
+      {!order.hasContract && !archived ? <BuyerCheckoutLink beatSlug={order.beatSlug} /> : null}
+      {!archived ? <><label className="flex gap-3 text-sm"><input type="checkbox" name="paymentReceived" required />Оплата получена по этому заказу</label>
       <button type="submit" disabled={busy !== null || !order.hasContract} className="border border-[var(--color-line)] px-4 py-2 text-sm disabled:opacity-50">{busy === order.id ? "Оформляем..." : "Подтвердить оплату и выдать PDF"}</button></> : null}
     </form>)}{orders.length === 0 ? <p className="text-sm text-[var(--color-paper-400)]">{archived ? "Архив пуст." : "Новых заявок нет."}</p> : null}</div>
   </section>;

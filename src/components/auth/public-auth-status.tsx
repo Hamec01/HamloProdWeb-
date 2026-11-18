@@ -67,6 +67,7 @@ export function PublicAuthStatus({ email, locale }: { email: string; locale: Loc
   const links = [
     { href: "/beats", label: ru ? "Каталог битов" : "Beat catalogue", icon: Headphones, count: null },
     { href: "/profile", label: ru ? "Мой профиль" : "My profile", icon: UserRound, count: null },
+    { href: "/profile?tab=details", label: ru ? "Данные для лицензии" : "License details", icon: UserRound, count: null },
     { href: "/profile?tab=purchases", label: ru ? "Купленные биты" : "Purchased beats", icon: Headphones, count: summary?.purchases },
     { href: "/profile?tab=requests", label: ru ? "Заявки и оплата" : "Requests and payments", icon: FileClock, count: summary?.requests },
     { href: "/profile/messages", label: ru ? "Сообщения" : "Messages", icon: Mail, count: summary?.unread },

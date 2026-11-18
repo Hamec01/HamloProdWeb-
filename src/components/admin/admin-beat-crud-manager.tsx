@@ -368,7 +368,6 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
   return (
     <div className="space-y-6">
-      {editingId ? <BeatDeliveryForm key={editingId} beatId={editingId} /> : null}
       <section className="case-panel p-6">
         <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Catalogue management</p>
         <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Beats Admin</h1>
@@ -462,6 +461,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
             <input type="checkbox" {...register("featured")} className="h-4 w-4" />
             <span>Featured</span>
           </label>
+          {editingId ? <div className="md:col-span-2"><BeatDeliveryForm key={editingId} beatId={editingId} /></div> : null}
           <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <input type="checkbox" {...register("availableForDownload")} className="h-4 w-4" />
             <span>Allow MP3 download</span>

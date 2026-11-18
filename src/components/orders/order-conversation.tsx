@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { BuyerCheckoutLink } from "./buyer-checkout-link";
+import { MessageText } from "./message-text";
 import { StripePurchaseOption } from "@/components/beats/stripe-purchase-option";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { getConversation } from "@/lib/orders/conversation";
@@ -123,14 +125,15 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       </section> : null}
       {order.status === "draft" && !order.sold ? <div className="flex flex-wrap gap-3">
         {!order.reservationExpiresAt ? <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("reserve")}>{ru ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button> : null}
-        {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=contact`}>{ru ? "Заполнить данные для лицензии / использовать поинты" : "License details / Use points"}</Link> : null}
+        {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=contact`}>{ru ? "Купить бит через сайт / заполнить данные" : "License details / Use points"}</Link> : null}
         {order.hasContract && role === "buyer" ? <Link className={buttonClass} href={`/checkout/preview/${order.id}`}>{ru ? "Просмотреть договор" : "Review agreement"}</Link> : null}
       </div> : null}
       {!order.hasContract && order.status === "draft" ? <p className="text-sm text-amber-200">{ru ? "Для выдачи лицензии покупателю нужно заполнить данные и принять условия договора." : "The buyer must complete their details and accept the agreement before a license can be issued."}</p> : null}
       {role === "buyer" && order.status === "draft" && order.hasContract && order.redeemable && !order.sold ? <button className={buttonClass} disabled={Boolean(busy) || order.points < 100} onClick={() => void action("redeem")}>{ru ? "Получить бит за 100 поинтов" : "Get beat for 100 points"}</button> : null}
-      {role === "admin" && order.provider === "contact" && order.status === "draft" && order.hasContract && !order.sold ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
-        <label className="flex gap-3 text-sm"><input type="checkbox" checked={paymentReceived} onChange={(event) => setPaymentReceived(event.target.checked)} />{ru ? "Подтверждаю получение оплаты (или согласованный обмен поинтов)" : "Payment received (or agreed points redemption)"}</label>
-        <button className={buttonClass} disabled={Boolean(busy) || !paymentReceived} onClick={() => void action("confirm")}>{ru ? "Подтвердить покупку и выдать PDF" : "Confirm purchase and issue PDF"}</button>
+      {role === "admin" && order.provider === "contact" && order.status === "draft" && !order.sold ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
+        {!order.hasContract ? <BuyerCheckoutLink beatSlug={order.beatSlug} /> : null}
+        <label className="flex gap-3 text-sm"><input type="checkbox" checked={paymentReceived} onChange={(event) => setPaymentReceived(event.target.checked)} />{ru ? "Оплата получена по этому заказу" : "Payment received (or agreed points redemption)"}</label>
+        <button className={buttonClass} disabled={Boolean(busy) || !paymentReceived || !order.hasContract} onClick={() => void action("confirm")}>{ru ? "Подтвердить покупку и выдать PDF" : "Confirm purchase and issue PDF"}</button>
       </div> : null}
       {order.status === "paid" || order.status === "pending_free_checkout" ? <div className="flex flex-wrap gap-3">
         {role === "buyer" ? <a href={`/api/contracts/${orderId}/download`} className={buttonClass} target="_blank" rel="noreferrer">{ru ? "Скачать лицензию PDF" : "Download license PDF"}</a> : <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("pdf")}>{ru ? "Подготовить PDF" : "Prepare PDF"}</button>}
@@ -155,7 +158,7 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       <div ref={scroll} onScroll={(event) => { const el = event.currentTarget; atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }} className="max-h-[30rem] space-y-3 overflow-y-auto" aria-live="polite" role="log" aria-label={ru ? "Сообщения" : "Messages"}>
         {data.messages.map((message) => <div key={message.id} className={`border p-4 ${message.role === "system" ? "border-stone-700 text-stone-300" : message.role === role ? "border-amber-800 bg-amber-950/20" : "border-stone-600 bg-stone-950"}`}>
           <p className="text-xs text-[var(--color-paper-300)]">{message.role === "system" ? (ru ? "Событие" : "Event") : message.role === "admin" ? (ru ? "Продавец" : "Producer") : (ru ? "Покупатель" : "Buyer")} · {date(message.createdAt)}</p>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{message.text}</p>
+          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6"><MessageText text={message.text} /></p>
         </div>)}
         {!data.messages.length ? <p className="text-sm text-[var(--color-paper-300)]">{ru ? "Напишите первое сообщение продавцу." : "Send your first message to the producer."}</p> : null}
       </div>

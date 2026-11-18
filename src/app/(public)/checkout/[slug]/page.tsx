@@ -30,7 +30,7 @@ export default async function CheckoutPage({
   });
 
   if (!session.isAuthenticated || !session.userId) {
-    redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}${payment === "stripe" ? "?payment=stripe" : ""}`)}`);
+    redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}${payment === "stripe" || payment === "contact" ? `?payment=${payment}` : ""}`)}`);
   }
 
   const beat = await getBeatBySlug(slug);
@@ -52,10 +52,11 @@ export default async function CheckoutPage({
   const market = getMarketContext(provider === "stripe" ? "en" : locale);
   const basePrice = market.currency === "RUB" ? beat.priceRub ?? 2500 : beat.priceUsd;
 
-  const loyalty = await prisma.loyaltyPoint.findUnique({
+  const [licenseProfile, loyalty] = await Promise.all([prisma.buyerLicenseProfile.findUnique({ where: { userId: session.userId } }), prisma.loyaltyPoint.findUnique({
     where: { userId: session.userId },
     select: { points: true },
-  });
+  })
+  ]);
   const points = loyalty?.points ?? 0;
   const discountPercent = getDiscountPercent(points);
   const finalPriceUsd = Math.max(0, Math.round((basePrice * (100 - discountPercent)) / 100));
@@ -86,6 +87,7 @@ export default async function CheckoutPage({
           currency={market.currency}
           availablePoints={points}
           prefillEmail={session.email ?? ""}
+          profileDetails={licenseProfile ? { fullName: licenseProfile.fullName, stageName: licenseProfile.stageName, email: licenseProfile.email, country: licenseProfile.country, city: licenseProfile.city, phone: licenseProfile.phone } : undefined}
           locale={locale as "ru" | "en"}
         />
       </div>

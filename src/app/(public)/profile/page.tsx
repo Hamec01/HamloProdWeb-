@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LicenseProfileForm } from "@/components/auth/license-profile-form";
 import type { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -33,7 +34,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   }
 
   const query = await searchParams;
-  const tab = ["purchases", "requests", "points"].includes(query.tab || "") ? query.tab! : "overview";
+  const tab = ["purchases", "requests", "points", "details"].includes(query.tab || "") ? query.tab! : "overview";
   const paidStatuses = ["paid", "pending_free_checkout"];
   const orderWhere: Prisma.OrderWhereInput = { buyerUserId: session.userId, ...(tab === "purchases" ? { status: { in: paidStatuses } } : tab === "requests" ? { status: { notIn: paidStatuses } } : {}) };
   const requested = Number(query.page);
@@ -44,7 +45,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const grantPages = Math.max(1, Math.ceil(grantCount / 20));
   const grantRequested = Number(query.grantsPage);
   const grantPage = Number.isSafeInteger(grantRequested) && grantRequested > 0 ? Math.min(grantRequested, grantPages) : 1;
-  const [loyaltyRow, orderRows, ratingRows, thread, grants] = await Promise.all([
+  const [loyaltyRow, orderRows, ratingRows, thread, grants, licenseProfile] = await Promise.all([
     prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
     prisma.order.findMany({ where: orderWhere, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
     prisma.contentRating.findMany({
@@ -55,6 +56,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     }),
     prisma.userConversation.findUnique({ where: { userId: session.userId }, select: { lastAdminAt: true, buyerLastReadAt: true } }),
     prisma.loyaltyGrant.findMany({ where: { userId: session.userId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (grantPage - 1) * 20, take: 20, select: { id: true, amount: true, reason: true, createdAt: true } }),
+    prisma.buyerLicenseProfile.findUnique({ where: { userId: session.userId } }),
   ]);
 
   const points = loyaltyRow?.points ?? 0;
@@ -77,8 +79,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     <section className="space-y-10">
       <SectionHeading eyebrow={t.buyerAccount} title={t.profileTitle} description={t.profileDesc} />
       <nav aria-label={locale === "ru" ? "Разделы кабинета" : "Account sections"} className="flex flex-wrap gap-3">
-        {[["overview", locale === "ru" ? "Обзор" : "Overview"], ["purchases", locale === "ru" ? "Купленные биты" : "Purchased beats"], ["requests", locale === "ru" ? "Заявки и оплата" : "Requests and payments"], ["points", locale === "ru" ? "Мои поинты" : "My points"]].map(([value, label]) => <Link key={value} href={value === "overview" ? "/profile" : `/profile?tab=${value}`} aria-current={tab === value ? "page" : undefined} className={`border px-4 py-3 text-sm ${tab === value ? "border-amber-500 bg-amber-950/30 text-amber-200" : "border-stone-600 text-stone-300 hover:border-amber-600"}`}>{label}</Link>)}
+        {[["overview", locale === "ru" ? "Обзор" : "Overview"], ["purchases", locale === "ru" ? "Купленные биты" : "Purchased beats"], ["requests", locale === "ru" ? "Заявки и оплата" : "Requests and payments"], ["points", locale === "ru" ? "Мои поинты" : "My points"], ["details", locale === "ru" ? "Данные для лицензии" : "License details"]].map(([value, label]) => <Link key={value} href={value === "overview" ? "/profile" : `/profile?tab=${value}`} aria-current={tab === value ? "page" : undefined} className={`border px-4 py-3 text-sm ${tab === value ? "border-amber-500 bg-amber-950/30 text-amber-200" : "border-stone-600 text-stone-300 hover:border-amber-600"}`}>{label}</Link>)}
       </nav>
+
+      {tab === "details" ? <LicenseProfileForm locale={locale} initial={licenseProfile ? { fullName: licenseProfile.fullName, stageName: licenseProfile.stageName, email: licenseProfile.email, country: licenseProfile.country, city: licenseProfile.city, phone: licenseProfile.phone } : { fullName: "", stageName: "", email: session.email || "", country: "", city: "", phone: "" }} /> : null}
 
       {tab === "overview" ? (<article id="messages" className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <h3 className="text-xl">{locale === "ru" ? "Переписка с HaM" : "Messages with HaM"}</h3>

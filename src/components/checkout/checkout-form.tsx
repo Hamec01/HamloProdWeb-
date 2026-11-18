@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { LicenseProfileDetails } from "@/lib/account/license-profile";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/validations/checkout";
 
 type Props = {
@@ -17,6 +18,7 @@ type Props = {
   currency: "USD" | "RUB";
   availablePoints: number;
   prefillEmail: string;
+  profileDetails?: LicenseProfileDetails;
   locale: "ru" | "en";
 };
 
@@ -35,7 +37,7 @@ const copy = {
     buyerEmail: "Email",
     buyerCountry: "Страна",
     buyerCity: "Город",
-    buyerPhone: "Телефон",
+    buyerPhone: "Телефон (необязательно)",
     licenseType: "Тип лицензии",
     licenseExclusive: "Эксклюзивная — один покупатель",
     contractLang: "Язык договора",
@@ -62,7 +64,7 @@ const copy = {
     buyerEmail: "Email",
     buyerCountry: "Country",
     buyerCity: "City",
-    buyerPhone: "Phone",
+    buyerPhone: "Phone (optional)",
     licenseType: "License Type",
     licenseExclusive: "One-time exclusive license",
     contractLang: "Contract Language",
@@ -110,6 +112,7 @@ export function CheckoutForm({
   currency,
   availablePoints,
   prefillEmail,
+  profileDetails,
   locale,
 }: Props) {
   const t = copy[locale];
@@ -126,7 +129,13 @@ export function CheckoutForm({
     defaultValues: {
       payment_method: paymentMethod,
       beat_id: beatId,
-      buyer_email: prefillEmail,
+      buyer_email: profileDetails?.email || prefillEmail,
+      buyer_name: profileDetails?.fullName || "",
+      buyer_stage_name: profileDetails?.stageName || "",
+      buyer_country: profileDetails?.country || "",
+      buyer_city: profileDetails?.city || "",
+      buyer_phone: profileDetails?.phone || "",
+      save_profile: true,
       license_type: "exclusive",
       contract_language: locale,
       use_loyalty_points: false,
@@ -224,6 +233,7 @@ export function CheckoutForm({
 
       <section className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <p className="mb-4 text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.personal}</p>
+        <p className="mb-4 text-sm text-stone-300">{locale === "ru" ? "Имя и фамилия, email, страна и город нужны для PDF. Паспортные данные не запрашиваются." : "Your full name, email, country and city are used for the PDF. No passport details are requested."}</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -279,6 +289,8 @@ export function CheckoutForm({
           </div>
         </div>
       </section>
+
+      <label className="flex items-start gap-3 text-sm"><input type="checkbox" {...register("save_profile")} className="mt-1" /><span>{locale === "ru" ? "Сохранить эти данные в профиле для следующих покупок" : "Save these details to my profile for future purchases"}</span></label>
 
       <section className="space-y-3 rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <label className="flex cursor-pointer items-start gap-3">

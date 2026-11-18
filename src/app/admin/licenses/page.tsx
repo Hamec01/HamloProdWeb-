@@ -24,7 +24,7 @@ export default async function AdminLicensesPage({ searchParams }: { searchParams
       take: 50,
     }),
     getSellerIdentity({ strict: false }),
-    prisma.order.findMany({ where: { provider: "contact", licenseType: "exclusive", status: "draft", adminArchivedAt: archived ? { not: null } : null }, include: { beat: { select: { title: true, reservationOrderId: true, reservationExpiresAt: true } }, contract: { select: { htmlSnapshot: true } }, messages: { where: { authorRole: "buyer" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
+    prisma.order.findMany({ where: { provider: "contact", licenseType: "exclusive", status: "draft", adminArchivedAt: archived ? { not: null } : null }, include: { beat: { select: { title: true, slug: true, reservationOrderId: true, reservationExpiresAt: true } }, contract: { select: { htmlSnapshot: true } }, messages: { where: { authorRole: "buyer" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: { createdAt: "desc" }, take: 50 }),
     prisma.order.findMany({ where: { provider: "stripe", status: "pending_payment" }, include: { beat: { select: { title: true } } }, orderBy: { createdAt: "desc" }, take: 100 }),
   ]);
 
@@ -55,7 +55,7 @@ export default async function AdminLicensesPage({ searchParams }: { searchParams
         {stripeRequests.map((order) => <div key={order.id} className="flex flex-wrap justify-between gap-3 border border-stone-700 p-4 text-sm"><span>{order.beat.title} · {order.buyerName || order.buyerEmail}</span><Link href={`/orders/${order.id}`} className="text-amber-200 underline">Открыть платёж / проверить статус</Link></div>)}
       </section> : null}
 
-      <ManualLicenseRequests archived={archived} orders={requests.map((order) => ({ id: order.id, beatTitle: order.beat.title, buyerName: order.buyerName || order.buyerEmail, buyerEmail: order.buyerEmail, amount: order.finalPrice, currency: order.currency, hasContract: Boolean(order.termsAcceptedAt && order.personalDataConsentAt && order.contract?.htmlSnapshot.startsWith("<!doctype html>")), newMessage: Boolean(order.messages[0] && (!order.adminLastReadAt || order.messages[0].createdAt > order.adminLastReadAt)), reservationExpiresAt: order.beat.reservationOrderId === order.id ? order.beat.reservationExpiresAt?.toISOString() ?? null : null }))} />
+      <ManualLicenseRequests archived={archived} orders={requests.map((order) => ({ id: order.id, beatTitle: order.beat.title, beatSlug: order.beat.slug, buyerName: order.buyerName || order.buyerEmail, buyerEmail: order.buyerEmail, amount: order.finalPrice, currency: order.currency, hasContract: Boolean(order.termsAcceptedAt && order.personalDataConsentAt && order.contract?.htmlSnapshot.startsWith("<!doctype html>")), newMessage: Boolean(order.messages[0] && (!order.adminLastReadAt || order.messages[0].createdAt > order.adminLastReadAt)), reservationExpiresAt: order.beat.reservationOrderId === order.id ? order.beat.reservationExpiresAt?.toISOString() ?? null : null }))} />
 
       <AdminLicenseManager
         beats={beats}

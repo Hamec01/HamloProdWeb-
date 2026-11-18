@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { StripePurchaseOption } from "./stripe-purchase-option";
 import type { StripeUnavailableReason } from "@/lib/checkout/stripe-availability";
@@ -42,8 +43,8 @@ export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, 
         </section>
         <section className="space-y-3 border border-stone-700 p-4">
           <h3 className="text-lg">{locale === "ru" ? "Через продавца" : "Through the producer"}{manualPrice ? ` · ${manualPrice}` : ""}</h3>
-          <p className="text-xs leading-5 text-stone-300">{locale === "ru" ? "Обсудите оплату прямо на сайте. После подтверждения продавцом покупка сохранится в кабинете." : "Arrange payment through site messages. The producer confirms your purchase and saves it to your account."}</p>
-          <button type="button" disabled={busy} onClick={() => void open(false)} className="min-h-11 border border-stone-600 px-4 py-2 text-sm disabled:opacity-50">{locale === "ru" ? "Купить через переписку" : "Buy through messages"}</button>
+          <p className="text-xs leading-5 text-stone-300">{locale === "ru" ? "Заполните данные для лицензии. Затем продавец пришлёт ссылку на оплату в переписке. После подтверждения оплаты вы получите PDF, файл бита и 25 поинтов." : "Enter your license details, then receive a payment link in site messages. Once the producer confirms payment, your account receives the PDF, beat file and 25 points."}</p>
+          <Link href={`/checkout/${encodeURIComponent(beatSlug)}?payment=contact`} className="inline-flex min-h-11 items-center border border-amber-700 bg-amber-950/20 px-4 py-2 text-sm">{locale === "ru" ? "Купить бит через сайт" : "Buy through the site"}</Link>
         </section>
         <button type="button" disabled={busy} onClick={() => void open(true)} className="min-h-11 w-full border border-stone-600 px-4 py-3 text-sm disabled:opacity-50">{locale === "ru" ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button>
       </div>
