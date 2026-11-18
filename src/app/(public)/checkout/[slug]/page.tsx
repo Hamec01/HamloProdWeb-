@@ -45,7 +45,7 @@ export default async function CheckoutPage({
 
   let provider = payment === "stripe" ? "stripe" : payment === "contact" ? "contact" : getBeatCheckoutProvider(locale);
   if (provider === "stripe" && !isBeatStripeReady()) redirect(`/beats/${slug}`);
-  if (provider === "stripe" && !await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } })) {
+  if (provider === "stripe" && !await prisma.beat.findFirst({ where: { id: beat.id, OR: [{ archiveKey: { not: null } }, { delivery: { isNot: null } }] }, select: { id: true } })) {
     if (payment === "stripe") redirect(`/beats/${slug}`);
     provider = "contact";
   }

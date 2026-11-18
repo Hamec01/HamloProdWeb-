@@ -20,6 +20,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ord
   } catch (error) {
     const reason = error instanceof Error ? error.message : "UNKNOWN";
     if (reason === "ORDER_NOT_FOUND") return NextResponse.json({ error: "Заявка не найдена." }, { status: 404 });
+    if (reason === "BEAT_DELIVERY_MISSING") return NextResponse.json({ error: "Сначала прикрепите к биту ссылку или загрузите ZIP." }, { status: 409 });
     if (reason === "BEAT_NOT_AVAILABLE") return NextResponse.json({ error: "Бит уже продан. Проверьте оплату по этой заявке." }, { status: 409 });
     return NextResponse.json({ error: "Не удалось подтвердить заявку. Проверьте данные и договор." }, { status: 409 });
   }

@@ -1,3 +1,4 @@
+import { preparedBeatDelivery } from "@/lib/delivery/beat-delivery";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { checkBeatForBuyer, lockBeatRow } from "@/lib/orders/reservations";
@@ -41,10 +42,10 @@ export async function startStripeCheckout(orderId: string, buyerId: string, db: 
     if (order.status !== "draft") throw new Error("ORDER_NOT_DRAFT");
     await checkBeatForBuyer(tx, order.beatId, buyerId, false, order.id);
     if (!order.termsAcceptedAt || !order.personalDataConsentAt || !order.contract?.htmlSnapshot.startsWith("<!doctype html>")) throw new Error("CHECKOUT_ACCEPTANCE_MISSING");
-    if (!order.beat.delivery?.url) throw new Error("BEAT_DELIVERY_MISSING");
+    const delivery = await preparedBeatDelivery(tx, order.beatId);
     if (order.finalPrice < 1 || order.discountPercent !== 0 || order.finalPrice !== order.basePrice || order.finalPrice !== order.beat.priceUsd) throw new Error("ORDER_PRICE_CHANGED");
     const expiresAt = new Date(Math.floor(Date.now() / 1000) * 1000 + 60 * 60 * 1000);
-    const pending = await tx.order.update({ where: { id: orderId }, data: { status: "pending_payment", paymentProvider: "stripe", expiresAt, deliveryMp3Url: order.beat.delivery.url } });
+    const pending = await tx.order.update({ where: { id: orderId }, data: { status: "pending_payment", paymentProvider: "stripe", expiresAt, ...delivery } });
     return { order: { ...order, ...pending }, reuse: false };
   });
   if (claim.reuse) return { kind: "paid" as const, orderId, status: "pending_payment" as const, paymentUrl: claim.order.paymentUrl! };

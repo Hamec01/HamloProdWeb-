@@ -1,3 +1,4 @@
+import { preparedBeatDelivery } from "@/lib/delivery/beat-delivery";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { POINTS_PER_FREE_BEAT } from "@/lib/loyalty";
 import { prisma } from "@/lib/db/client";
@@ -25,9 +26,10 @@ export async function redeemBeatOrder(orderId: string, buyerId: string, db: Pris
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { contract: true } });
     if (order.status === "paid" && order.loyaltyPointsSpent === POINTS_PER_FREE_BEAT) return;
     if (order.status !== "draft" || !order.termsAcceptedAt || !order.personalDataConsentAt || !order.contract?.htmlSnapshot.startsWith("<!doctype html>")) throw new Error("ORDER_NOT_READY");
+    const delivery = await preparedBeatDelivery(tx, order.beatId);
     await spendOrderPoints(tx, orderId);
     if (!await lockBeatForExclusiveSale(tx, order.beatId, buyerId)) throw new Error("BEAT_NOT_AVAILABLE");
-    await tx.order.update({ where: { id: orderId }, data: { status: "paid", paidAt: new Date(), paymentProvider: "internal" } });
+    await tx.order.update({ where: { id: orderId }, data: { status: "paid", paidAt: new Date(), paymentProvider: "internal", ...delivery } });
     await tx.orderMessage.create({ data: { orderId, authorRole: "system", text: "Бит получен за 100 поинтов. Лицензия доступна в заказе и профиле." } });
   });
   try { const pdf = await ensureOrderLicense(orderId); return { orderId, pdfReady: true, downloadUrl: pdf.downloadUrl }; }

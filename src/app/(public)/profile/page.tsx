@@ -63,7 +63,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const freeBeats = Math.floor(points / 100);
   const pointsRemaining = Math.max(0, 100 - points);
 
-  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId, deliveryMp3Url: ["paid", "pending_free_checkout"].includes(o.status) ? o.deliveryMp3Url : null, newMessage: Boolean(o.messages[0] && (!o.buyerLastReadAt || o.messages[0].createdAt > o.buyerLastReadAt)) }));
+  const orders = orderRows.map((o) => ({ ...toOrderRow(o), beat_id: o.beatId, deliveryZipUrl: ["paid", "pending_free_checkout"].includes(o.status) && o.deliveryArchiveKey ? `/api/orders/${o.id}/beat-file` : null, deliveryMp3Url: ["paid", "pending_free_checkout"].includes(o.status) ? o.deliveryMp3Url : null, newMessage: Boolean(o.messages[0] && (!o.buyerLastReadAt || o.messages[0].createdAt > o.buyerLastReadAt)) }));
 
   const beatIds = [...new Set([...orders.map((o) => o.beat_id), ...ratingRows.map((r) => r.contentId)])];
   const beatRows = beatIds.length
@@ -146,7 +146,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   <span>{formatOrderMoney(basePrice, currency, locale)}</span>
                   {order.discount_percent > 0 && <span>−{order.discount_percent}%</span>}
                   <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
-                  {(order.status === "paid" || order.status === "pending_free_checkout") && order.deliveryMp3Url ? <a href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer" className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{locale === "ru" ? "Скачать MP3" : "Download MP3"}</a> : null}
+                  {order.deliveryZipUrl ? <a href={order.deliveryZipUrl} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{locale === "ru" ? "Скачать ZIP бита" : "Download beat ZIP"}</a> : null}
+                  {(order.status === "paid" || order.status === "pending_free_checkout") && order.deliveryMp3Url ? <a href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer" className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{locale === "ru" ? "Открыть файл бита" : "Open beat file"}</a> : null}
                   <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "эксклюзивная лицензия" : "exclusive license"}</span>
                   {<Link href={`/orders/${order.id}`} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{order.newMessage ? (locale === "ru" ? "Новое сообщение — открыть заявку" : "New message — open request") : locale === "ru" ? "Заявка / сообщения / бронь" : "Request / Messages / Reservation"}</Link>}
                   {order.license_type === "exclusive" && (order.status === "paid" || order.status === "pending_free_checkout") && (

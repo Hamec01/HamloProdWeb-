@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BeatDeliveryForm } from "@/components/admin/beat-delivery-form";
 import { BuyerCheckoutLink } from "./buyer-checkout-link";
 import { MessageText } from "./message-text";
 import { StripePurchaseOption } from "@/components/beats/stripe-purchase-option";
@@ -131,16 +132,19 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       {!order.hasContract && order.status === "draft" ? <p className="text-sm text-amber-200">{ru ? "Для выдачи лицензии покупателю нужно заполнить данные и принять условия договора." : "The buyer must complete their details and accept the agreement before a license can be issued."}</p> : null}
       {role === "buyer" && order.status === "draft" && order.hasContract && order.redeemable && !order.sold ? <button className={buttonClass} disabled={Boolean(busy) || order.points < 100} onClick={() => void action("redeem")}>{ru ? "Получить бит за 100 поинтов" : "Get beat for 100 points"}</button> : null}
       {role === "admin" && order.provider === "contact" && order.status === "draft" && !order.sold ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
+        <BeatDeliveryForm beatId={order.beatId} onSaved={() => void refresh()} />
+        {!order.deliveryReady ? <p className="text-sm text-amber-200">Сначала сохраните ссылку или загрузите ZIP. После этого можно подтвердить оплату.</p> : null}
         {!order.hasContract ? <BuyerCheckoutLink beatSlug={order.beatSlug} /> : null}
-        <label className="flex gap-3 text-sm"><input type="checkbox" checked={paymentReceived} onChange={(event) => setPaymentReceived(event.target.checked)} />{ru ? "Оплата получена по этому заказу" : "Payment received (or agreed points redemption)"}</label>
-        <button className={buttonClass} disabled={Boolean(busy) || !paymentReceived || !order.hasContract} onClick={() => void action("confirm")}>{ru ? "Подтвердить покупку и выдать PDF" : "Confirm purchase and issue PDF"}</button>
+        <label className="flex gap-3 text-sm"><input type="checkbox" checked={paymentReceived} disabled={!order.deliveryReady} onChange={(event) => setPaymentReceived(event.target.checked)} />{ru ? "Оплата получена по этому заказу" : "Payment received (or agreed points redemption)"}</label>
+        <button className={buttonClass} disabled={Boolean(busy) || !paymentReceived || !order.hasContract || !order.deliveryReady} onClick={() => void action("confirm")}>{ru ? "Подтвердить покупку и выдать PDF" : "Confirm purchase and issue PDF"}</button>
       </div> : null}
       {order.status === "paid" || order.status === "pending_free_checkout" ? <div className="flex flex-wrap gap-3">
         {role === "buyer" ? <a href={`/api/contracts/${orderId}/download`} className={buttonClass} target="_blank" rel="noreferrer">{ru ? "Скачать лицензию PDF" : "Download license PDF"}</a> : <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("pdf")}>{ru ? "Подготовить PDF" : "Prepare PDF"}</button>}
         {pdfUrl ? <a className={buttonClass} href={pdfUrl} target="_blank" rel="noreferrer">{ru ? "Скачать PDF" : "Download PDF"}</a> : null}
       </div> : null}
       {order.status === "paid" || order.status === "pending_free_checkout" ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
-        {order.deliveryMp3Url ? <a className={buttonClass} href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer">{ru ? "Скачать MP3 / открыть файл бита" : "Download MP3 / Open beat file"}</a> : <p className="text-sm text-[var(--color-paper-300)]">{ru ? "Ссылка на MP3 появится здесь, когда продавец выдаст файл." : "Your MP3 link will appear here when the producer delivers the file."}</p>}
+        {order.deliveryZipUrl ? <a className={buttonClass} href={order.deliveryZipUrl}>{ru ? "Скачать ZIP бита" : "Download beat ZIP"}</a> : null}
+        {order.deliveryMp3Url ? <a className={buttonClass} href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer">{ru ? "Открыть файл бита по ссылке" : "Open beat file link"}</a> : !order.deliveryZipUrl ? <p className="text-sm text-[var(--color-paper-300)]">{ru ? "Ссылка на MP3 появится здесь, когда продавец выдаст файл." : "Your MP3 link will appear here when the producer delivers the file."}</p> : null}
         {role === "admin" ? <div className="space-y-3">
           <label htmlFor="delivery-mp3" className="block text-sm">Ссылка MP3 для покупателя</label>
           <input id="delivery-mp3" name="deliveryMp3Url" type="url" maxLength={4000} value={deliveryInput} onChange={(event) => { deliveryDirty.current = true; setDeliveryInput(event.target.value); setDeliverySaved(false); }} placeholder="https://…" className="w-full border border-stone-600 bg-black/40 px-3 py-3 text-base text-stone-100" />

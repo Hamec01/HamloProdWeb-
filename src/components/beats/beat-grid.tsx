@@ -20,8 +20,8 @@ export async function BeatGrid({
   reactions?: Record<string, BeatReactionStats>;
 }) {
   const stripeConfigured = isBeatStripeReady();
-  const readyIds = stripeConfigured && beats.length ? await prisma.beatDelivery.findMany({ where: { beatId: { in: beats.filter((beat) => beat.priceUsd > 0).map((beat) => beat.id) } }, select: { beatId: true } }) : [];
-  const stripeBeats = new Set(readyIds.map((row) => row.beatId));
+  const readyIds = stripeConfigured && beats.length ? await prisma.beat.findMany({ where: { id: { in: beats.filter((beat) => beat.priceUsd > 0).map((beat) => beat.id) }, OR: [{ archiveKey: { not: null } }, { delivery: { isNot: null } }] }, select: { id: true } }) : [];
+  const stripeBeats = new Set(readyIds.map((row) => row.id));
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {beats.map((beat) => (

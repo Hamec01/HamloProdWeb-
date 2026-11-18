@@ -464,11 +464,13 @@ model Order {
   adminArchivedAt DateTime? @map("admin_archived_at") @db.Timestamptz(6)
   loyaltyPointsSpent Int @default(0) @map("loyalty_points_spent")
   deliveryMp3Url String? @map("delivery_mp3_url")
+  deliveryArchiveKey String? @map("delivery_archive_key")
 
   @@index([beatId])
   @@index([buyerUserId])
   @@index([status, createdAt])
   @@index([paymentExternalId])
+  @@index([deliveryArchiveKey])
   @@index([provider, status, adminArchivedAt, createdAt])
   @@map("orders")
 }

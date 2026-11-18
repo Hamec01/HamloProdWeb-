@@ -23,6 +23,7 @@ export async function requireOrderActor(request: Request, mutation: boolean) {
 export function orderError(error: unknown) {
   const reason = error instanceof Error ? error.message : "UNKNOWN";
   const messages: Record<string, string> = {
+    BEAT_DELIVERY_MISSING: "Сначала прикрепите к биту ссылку или загрузите ZIP.",
     ORDER_NOT_FOUND: "Заявка не найдена.", BEAT_NOT_FOUND: "Бит не найден.",
     BEAT_RESERVED: "Бит уже забронирован другим покупателем.", BEAT_NOT_AVAILABLE: "Бит продан или недоступен.",
     BEAT_PAYMENT_PENDING: "По этому биту уже оформляется оплата.", ORDER_NOT_READY: "Сначала заполните данные для лицензии и примите условия.",

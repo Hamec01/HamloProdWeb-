@@ -1,3 +1,4 @@
+import { preparedBeatDelivery } from "@/lib/delivery/beat-delivery";
 import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
@@ -56,6 +57,7 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
     await prisma.$transaction(async (tx) => {
       if (!await lockBeatForExclusiveSale(tx, beat.id, buyer?.id)) throw new Error("BEAT_NOT_AVAILABLE");
 
+      const delivery = await preparedBeatDelivery(tx, beat.id);
       await tx.order.create({
         data: {
           id: orderId,
@@ -86,6 +88,7 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
           contractTemplateType: "manual_bilingual",
           contractPdfKey: null,
           paidAt: acceptedAt,
+          ...delivery,
         },
       });
 
@@ -100,7 +103,7 @@ export async function createManualExclusiveLicense(input: AdminLicenseCreateInpu
       await awardSalePoints(tx, orderId);
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "BEAT_NOT_AVAILABLE") throw error;
+    if (error instanceof Error && ["BEAT_NOT_AVAILABLE", "BEAT_DELIVERY_MISSING"].includes(error.message)) throw error;
     console.error("[admin:licenses] manual sale transaction failed", {
       orderId,
       beatId: beat.id,

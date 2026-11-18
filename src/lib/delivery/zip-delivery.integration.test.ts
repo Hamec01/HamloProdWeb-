@@ -1,0 +1,94 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { randomUUID, createHmac } from "node:crypto";
+import { prisma } from "@/lib/db/client";
+import { confirmManualOrder } from "@/lib/contracts/confirm-manual";
+import { createManualExclusiveLicense } from "@/lib/contracts/manual-license";
+import { POST as stripeWebhook } from "@/app/api/stripe/webhook/route";
+import { redeemBeatOrder } from "@/lib/loyalty/redeem-order";
+import { startStripeCheckout } from "@/lib/payments/stripe-checkout";
+import { getConversation } from "@/lib/orders/conversation";
+import { PrismaUploadIntentRepository } from "@/lib/data/postgres/upload-intent.postgres";
+
+test("delivery requires a saved link OR a ZIP and freezes purchased archives", { skip: process.env.LICENSE_INTEGRATION_TEST !== "1", timeout: 45_000 }, async (t) => {
+  assert.equal(new URL(process.env.DATABASE_URL!).pathname, "/hamloprod_license_test");
+  const tag = randomUUID();
+  const buyer = await prisma.user.create({ data: { email: `zip-${tag}@example.invalid` } });
+  const ids: string[] = [];
+  const originalKey = process.env.STRIPE_SECRET_KEY;
+  const originalWebhook = process.env.STRIPE_WEBHOOK_SECRET;
+  process.env.STRIPE_SECRET_KEY = "sk_test_zip_fixture";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_zip_fixture";
+  t.after(async () => {
+    if (originalKey === undefined) delete process.env.STRIPE_SECRET_KEY; else process.env.STRIPE_SECRET_KEY = originalKey;
+    if (originalWebhook === undefined) delete process.env.STRIPE_WEBHOOK_SECRET; else process.env.STRIPE_WEBHOOK_SECRET = originalWebhook;
+    await prisma.order.deleteMany({ where: { beatId: { in: ids } } });
+    await prisma.uploadIntent.deleteMany({ where: { entityId: { in: ids } } });
+    await prisma.beat.deleteMany({ where: { id: { in: ids } } });
+    await prisma.user.delete({ where: { id: buyer.id } });
+    await prisma.$disconnect();
+  });
+  const makeBeat = async () => { const id = randomUUID(); ids.push(id); return prisma.beat.create({ data: { id, slug: `zip-${id}`, caseNumber: `ZIP-${id}`, title: "ZIP delivery", genre: "trap", priceUsd: 20, priceRub: 2000, status: "available", publishedAt: new Date() } }); };
+  const makeOrder = async (beatId: string, provider = "contact") => { const id = randomUUID(); return prisma.order.create({ data: { id, beatId, buyerUserId: buyer.id, buyerEmail: buyer.email, basePriceUsd: 20, finalPriceUsd: 20, basePrice: 20, finalPrice: 20, currency: "USD", market: "global", provider, termsAcceptedAt: new Date(), personalDataConsentAt: new Date(), contractPdfKey: `contracts/${id}/state-fixture.pdf`, contract: { create: { beatId, buyerEmail: buyer.email, htmlSnapshot: "<!doctype html><p>Accepted fixture</p>" } } } }); };
+  const actor = { userId: buyer.id, role: "buyer" as const };
+
+  await t.test("no file cannot mark paid, sell stock, award points or spend redemption points", async () => {
+    const beat = await makeBeat(), order = await makeOrder(beat.id);
+    await assert.rejects(confirmManualOrder(order.id), /BEAT_DELIVERY_MISSING/);
+    await assert.rejects(createManualExclusiveLicense({ beatId: beat.id, buyerUserId: buyer.id, buyerName: "Test Buyer", buyerEmail: buyer.email, buyerCountry: "Finland", buyerCity: "Turku", buyerStageName: "MC Test", buyerPhone: "", amount: 20, currency: "USD", contractLanguage: "en", buyerAcceptedTerms: true, buyerConsentedToData: true }), /BEAT_DELIVERY_MISSING/);
+    assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: beat.id } })).status, "available");
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status, "draft");
+    assert.equal(await prisma.loyaltyPoint.count({ where: { userId: buyer.id } }), 0);
+    await prisma.loyaltyPoint.create({ data: { userId: buyer.id, userEmail: buyer.email, points: 100 } });
+    await prisma.order.update({ where: { id: order.id }, data: { finalPrice: 0, finalPriceUsd: 0, discountPercent: 100 } });
+    await assert.rejects(redeemBeatOrder(order.id, buyer.id), /BEAT_DELIVERY_MISSING/);
+    assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: buyer.id } })).points, 100);
+  });
+  await t.test("a link alone is sufficient; ZIP is optional", async () => {
+    const beat = await makeBeat(), order = await makeOrder(beat.id);
+    const url = "https://drive.google.com/file/d/1234567890_only_link/view";
+    await prisma.beatDelivery.create({ data: { beatId: beat.id, url } });
+    assert.equal((await getConversation(order.id, actor)).order.deliveryReady, true);
+    await confirmManualOrder(order.id);
+    const paid = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    assert.equal(paid.status, "paid"); assert.equal(paid.deliveryMp3Url, url); assert.equal(paid.deliveryArchiveKey, null);
+  });
+  await t.test("a ZIP alone is sufficient and disclosed only after confirmation", async () => {
+    const beat = await makeBeat(), order = await makeOrder(beat.id), key = `beats/${beat.id}/archive/${randomUUID()}.zip`;
+    await prisma.beat.update({ where: { id: beat.id }, data: { archiveKey: key } });
+    assert.equal((await getConversation(order.id, actor)).order.deliveryZipUrl, null);
+    const before = (await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: buyer.id } })).points;
+    await confirmManualOrder(order.id); await confirmManualOrder(order.id);
+    const paid = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    assert.equal(paid.deliveryMp3Url, null); assert.equal(paid.deliveryArchiveKey, key);
+    assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: buyer.id } })).points, before + 25);
+    assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: beat.id } })).status, "sold");
+    const conversation = await getConversation(order.id, actor);
+    assert.equal(conversation.order.deliveryZipUrl, `/api/orders/${order.id}/beat-file`);
+    assert.ok(!JSON.stringify(conversation).includes(key));
+  });
+  await t.test("Stripe accepts ZIP without a link and cleanup preserves the frozen ZIP after replacement", async () => {
+    const beat = await makeBeat(), order = await makeOrder(beat.id, "stripe"), key = `beats/${beat.id}/archive/${randomUUID()}.zip`;
+    await prisma.beat.update({ where: { id: beat.id }, data: { archiveKey: key } });
+    await startStripeCheckout(order.id, buyer.id, prisma, async () => ({ sessionId: "cs_test_zip", paymentUrl: "https://checkout.stripe.com/c/pay/test-zip" }));
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryArchiveKey, key);
+    assert.equal((await getConversation(order.id, actor)).order.deliveryZipUrl, null);
+    const replacement = `beats/${beat.id}/archive/${randomUUID()}.zip`;
+    await prisma.uploadIntent.create({ data: { ownerId: buyer.id, entityType: "beat", entityId: beat.id, kind: "beatArchive", visibility: "private", key: replacement, contentType: "application/zip", expectedSize: 1, actualSize: 1, state: "FINALIZED", expiresAt: new Date(Date.now() + 3600_000) } });
+    const repository = new PrismaUploadIntentRepository();
+    assert.ok(await repository.attachBeatAsset(beat.id, "beat-archive", replacement, buyer.id));
+    assert.equal(await prisma.uploadIntent.count({ where: { key, state: "DELETING" } }), 0);
+    await prisma.uploadIntent.create({ data: { ownerId: buyer.id, entityType: "beat", entityId: beat.id, kind: "beatArchive", visibility: "private", key, contentType: "application/zip", expectedSize: 1, state: "DELETING", expiresAt: new Date(Date.now() - 1000) } });
+    assert.ok(!(await repository.expireStale(100)).some((entry) => entry.key === key));
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryArchiveKey, key);
+    const payload = JSON.stringify({ id: `evt_${randomUUID()}`, type: "checkout.session.completed", data: { object: { id: "cs_test_zip", metadata: { orderId: order.id }, client_reference_id: order.id, payment_status: "paid", amount_total: 2000, currency: "usd" } } });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHmac("sha256", "whsec_zip_fixture").update(`${timestamp}.${payload}`).digest("hex");
+    const event = () => new Request("https://hamloprod.org/api/stripe/webhook", { method: "POST", headers: { "stripe-signature": `t=${timestamp},v1=${signature}` }, body: payload });
+    assert.equal((await stripeWebhook(event())).status, 200);
+    assert.equal((await stripeWebhook(event())).status, 200);
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status, "paid");
+    assert.equal((await getConversation(order.id, actor)).order.deliveryZipUrl, `/api/orders/${order.id}/beat-file`);
+    assert.equal((await prisma.beat.findUniqueOrThrow({ where: { id: beat.id } })).status, "sold");
+  });
+});

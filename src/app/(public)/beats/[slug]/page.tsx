@@ -80,7 +80,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
   const stripeConfigured = isBeatStripeReady();
-  const hasDelivery = stripeConfigured && Boolean(await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } }));
+  const hasDelivery = stripeConfigured && Boolean(await prisma.beat.findFirst({ where: { id: beat.id, OR: [{ archiveKey: { not: null } }, { delivery: { isNot: null } }] }, select: { id: true } }));
   const stripe = beatStripeAvailability(stripeConfigured, beat.priceUsd, hasDelivery);
 
   return (

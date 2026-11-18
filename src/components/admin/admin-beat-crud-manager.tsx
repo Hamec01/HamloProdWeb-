@@ -461,7 +461,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
             <input type="checkbox" {...register("featured")} className="h-4 w-4" />
             <span>Featured</span>
           </label>
-          {editingId ? <div className="md:col-span-2"><BeatDeliveryForm key={editingId} beatId={editingId} /></div> : null}
+          {editingId ? <div className="md:col-span-2"><BeatDeliveryForm key={editingId} beatId={editingId} onArchiveAttached={setAssetBeat} /></div> : null}
           <label className="flex items-center gap-3 pt-9 text-sm uppercase tracking-[0.16em] text-[var(--color-paper-200)]">
             <input type="checkbox" {...register("availableForDownload")} className="h-4 w-4" />
             <span>Allow MP3 download</span>

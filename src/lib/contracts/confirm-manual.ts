@@ -1,3 +1,4 @@
+import { preparedBeatDelivery } from "@/lib/delivery/beat-delivery";
 import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { spendOrderPoints } from "@/lib/loyalty/redeem-order";
 import { lockBeatRow, systemMessage } from "@/lib/orders/reservations";
@@ -15,9 +16,10 @@ export async function confirmManualOrder(orderId: string) {
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { contract: true } });
     if (order.status === "paid") { await awardSalePoints(tx, orderId); return; }
     if (order.licenseType !== "exclusive" || order.status !== "draft" || !order.termsAcceptedAt || !order.personalDataConsentAt || !order.contract?.htmlSnapshot.startsWith("<!doctype html>")) throw new Error("ORDER_NOT_READY");
+    const delivery = await preparedBeatDelivery(tx, order.beatId);
     if (order.discountPercent === 100 && order.finalPrice === 0) await spendOrderPoints(tx, orderId);
     if (!await lockBeatForExclusiveSale(tx, order.beatId, order.buyerUserId)) throw new Error("BEAT_NOT_AVAILABLE");
-    const updated = await tx.order.updateMany({ where: { id: orderId, status: "draft" }, data: { status: "paid", paidAt: new Date(), paymentProvider: "contact" } });
+    const updated = await tx.order.updateMany({ where: { id: orderId, status: "draft" }, data: { status: "paid", paidAt: new Date(), paymentProvider: "contact", ...delivery } });
     if (!updated.count) return; // A simultaneous confirmation has already committed.
     await awardSalePoints(tx, orderId);
     await systemMessage(tx, orderId, "Продавец подтвердил получение оплаты. Лицензия доступна в заказе и профиле.");

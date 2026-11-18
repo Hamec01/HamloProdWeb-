@@ -46,14 +46,14 @@ export async function POST(request: NextRequest) {
 
   const beat = await prisma.beat.findUnique({
     where: { id: beat_id },
-    select: { id: true, priceUsd: true, priceRub: true, status: true, delivery: { select: { beatId: true } } },
+    select: { id: true, priceUsd: true, priceRub: true, status: true, archiveKey: true, delivery: { select: { beatId: true } } },
   });
   if (!beat) return err("Beat not found.", 404);
   if (beat.status === "sold" || beat.status === "private") {
     return err("Beat is not available for purchase.", 409);
   }
 
-  if (provider === "stripe" && (!beat.delivery || beat.priceUsd < 1)) return err("Для этого бита автоматическая оплата и выдача пока не настроены. Напишите продавцу.", 409);
+  if (provider === "stripe" && ((!beat.delivery && !beat.archiveKey) || beat.priceUsd < 1)) return err("Для этого бита автоматическая оплата и выдача пока не настроены. Напишите продавцу.", 409);
 
   const loyalty = await prisma.loyaltyPoint.findUnique({
     where: { userId: guard.context.userId },

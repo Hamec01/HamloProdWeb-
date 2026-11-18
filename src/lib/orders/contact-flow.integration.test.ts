@@ -89,6 +89,7 @@ test("RF requests: private messages, weekly reservations, expiry and atomic 100-
   const freeOrders = [];
   for (let index = 0; index < 2; index++) {
     const freeBeat = await makeBeat();
+    await prisma.beatDelivery.create({ data: { beatId: freeBeat.id, url: "https://drive.google.com/file/d/1234567890_free_fixture/view" } });
     const order = await prisma.order.create({ data: { beatId: freeBeat.id, buyerUserId: rewardBuyer.id, buyerEmail: rewardBuyer.email, buyerName: "Rewards Buyer", buyerCity: "Turku", buyerCountry: "Finland", basePriceUsd: 100, finalPriceUsd: 0, basePrice: 100, finalPrice: 0, discountPercent: 100, provider: "contact", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
     const html = await renderContractHtml(toOrderRow(order), freeBeat);
     await prisma.contract.create({ data: { orderId: order.id, beatId: freeBeat.id, buyerEmail: order.buyerEmail, htmlSnapshot: html } });

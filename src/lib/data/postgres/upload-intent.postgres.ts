@@ -57,7 +57,8 @@ export class PrismaUploadIntentRepository implements UploadIntentRepository {
         [field]: key,
         ...(kind === "beat-preview" ? { previewMimeType: intent.contentType, previewSizeBytes: Number(intent.actualSize), previewFileName: key.split("/").at(-1) } : {}),
       } });
-      if (oldKey && oldKey !== key) {
+      const purchasedArchive = kind === "beat-archive" && oldKey && await tx.order.findFirst({ where: { deliveryArchiveKey: oldKey }, select: { id: true } });
+      if (oldKey && oldKey !== key && !purchasedArchive) {
         // Wait out signed PUTs and in-flight uploads before deleting a displaced object.
         // Legacy keys may not have an intent: retain a durable cleanup record for them too.
         await tx.uploadIntent.upsert({ where: { key: oldKey },
@@ -77,6 +78,7 @@ export class PrismaUploadIntentRepository implements UploadIntentRepository {
       }, orderBy: { updatedAt: "asc" }, take });
       const claimed: UploadIntentRecord[] = [];
       for (const row of stale) {
+        if (row.kind === "beatArchive" && await tx.order.findFirst({ where: { deliveryArchiveKey: row.key }, select: { id: true } })) continue;
         const changed = await tx.uploadIntent.updateMany({ where: { id: row.id, state: row.state, updatedAt: row.updatedAt }, data: { state: "DELETING", updatedAt: new Date() } });
         if (changed.count) claimed.push(record({ ...row, state: "DELETING" }));
       }

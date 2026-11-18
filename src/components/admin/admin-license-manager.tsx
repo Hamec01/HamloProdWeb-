@@ -1,5 +1,6 @@
 "use client";
 
+import { BeatDeliveryForm } from "@/components/admin/beat-delivery-form";
 import { RegisteredBuyerPicker, type RegisteredBuyer } from "@/components/admin/registered-buyer-picker";
 import { useId, useState } from "react";
 import Link from "next/link";
@@ -24,16 +25,18 @@ type Props = {
   beats: AdminBeat[];
   sales: ManualSale[];
   canCreateSales: boolean;
+  deliveryReadyBeatIds: string[];
 };
 
 const fieldClass = "w-full border border-[var(--color-line)] bg-[rgba(0,0,0,0.24)] px-3 py-2 text-sm text-[var(--color-paper-100)] outline-none";
 const labelClass = "space-y-2 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-300)]";
 
-export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
+export function AdminLicenseManager({ beats, sales, canCreateSales, deliveryReadyBeatIds }: Props) {
   const router = useRouter();
   const beatSearchId = useId();
   const [beatQuery, setBeatQuery] = useState("");
   const [selectedBeatId, setSelectedBeatId] = useState("");
+  const selectedDeliveryReady = deliveryReadyBeatIds.includes(selectedBeatId);
   const [selectedBuyer, setSelectedBuyer] = useState<RegisteredBuyer | null>(null);
   const [buyerEmail, setBuyerEmail] = useState("");
   const availableBeats = beats.filter((beat) => beat.status === "available" || (beat.status === "reserved" && !beat.reservationExpiresAt));
@@ -194,9 +197,11 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
               </label>
             </div>
 
+            {selectedBeatId ? <BeatDeliveryForm key={selectedBeatId} beatId={selectedBeatId} /> : null}
+            {selectedBeatId && !selectedDeliveryReady ? <p className="text-sm text-amber-200">Сначала прикрепите ссылку или загрузите ZIP. Затем подтвердите получение оплаты.</p> : null}
             <div className="space-y-3">
               <label className="flex items-start gap-3 text-sm text-[var(--color-paper-200)]">
-                <input className="mt-1 accent-[var(--color-paper-200)]" type="checkbox" name="buyerAcceptedTerms" required />
+                <input className="mt-1 accent-[var(--color-paper-200)]" type="checkbox" name="buyerAcceptedTerms" required disabled={!selectedDeliveryReady} />
                 <span>Оплата получена, покупатель подтвердил согласие с условиями эксклюзивной лицензии.</span>
               </label>
               <label className="flex items-start gap-3 text-sm text-[var(--color-paper-200)]">
@@ -208,7 +213,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
             {availableBeats.length === 0 ? <p className="text-sm text-amber-300">Нет доступных битов для продажи.</p> : null}
             <button
               type="submit"
-              disabled={isSubmitting || !selectedBeatId || availableBeats.length === 0}
+              disabled={isSubmitting || !selectedBeatId || !selectedDeliveryReady || availableBeats.length === 0}
               className="border border-[rgba(185,149,90,0.42)] bg-[rgba(185,149,90,0.12)] px-5 py-3 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-100)] disabled:opacity-50"
             >
               {isSubmitting ? "Сохраняем..." : "Создать лицензию и отметить бит SOLD"}

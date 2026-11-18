@@ -39,7 +39,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   });
   const makeBeat = async () => {
     const suffix = randomUUID();
-    const beat = await prisma.beat.create({ data: { slug: `license-test-${suffix}`, caseNumber: `TEST-${suffix.slice(0, 8)}`, title: "Тестовый бит / Test Beat", genre: "trap", priceUsd: 100, priceRub: 2500, status: "available" } });
+    const beat = await prisma.beat.create({ data: { slug: `license-test-${suffix}`, caseNumber: `TEST-${suffix.slice(0, 8)}`, title: "Тестовый бит / Test Beat", genre: "trap", priceUsd: 100, priceRub: 2500, status: "available", delivery: { create: { url: "https://drive.google.com/file/d/1234567890_license_fixture/view" } } } });
     beatIds.push(beat.id);
     return beat;
   };
