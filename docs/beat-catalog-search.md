@@ -19,3 +19,21 @@ genre switching, pagination/reset/clear, literal percent/underscore and injectio
 text, private/unpublished exclusion, retained typing focus and 390px/320px
 layouts. No browser JavaScript errors. SQL fixtures used only
 `hamloprod_license_test`.
+
+## Publication
+
+Application commit `fddc2d9` was published as production deployment
+`dpl_DouR2SqPSNMR9qCrcxxjC9ScxpN6`
+(`https://hamlo-prod-l3tb21dst-inkeritm-4372s-projects.vercel.app`). Both production
+alias mappings completed. Staged search/genre pages passed in Russian and the
+English search field rendered correctly after READY. The deployment error/fatal
+log query returned no rows.
+
+The final anonymous browser check on `hamloprod.org` passed: after hydration,
+typing a real public CASE updated the URL and rendered its matching card,
+retained input focus and cleared back to the full catalogue. No JavaScript
+errors or purchase/payment mutations. Plain scripted fetches encountered Vercel's
+Security Checkpoint; browser verification succeeded without changing protection.
+
+The local QA server was stopped and its isolated fixture database was dropped.
+No primary beats, customers, orders or loyalty balances were edited for testing.
