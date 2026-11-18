@@ -1,23 +1,8 @@
 /**
- * Paid-checkout kill switch. Server-only.
- *
- * Paid checkout — Order creation/mutation via `/api/checkout`, Lava payment
- * creation via `/api/payments/create`, and checkout contract preview/PDF
- * generation — is enabled ONLY when `PAID_CHECKOUT_ENABLED` is exactly `"true"`.
- * Default (unset, or any other value) is OFF: online payments are deferred until
- * a payment provider is connected (see roadmap "payment systems + contract
- * generation" backlog milestone).
- *
- * When off:
- *   - no Order row is created or changed;
- *   - Lava is never contacted;
- *   - no new checkout contract snapshot / rights PDF is generated;
- *   - the routes above return a controlled 503 with `code: PAID_CHECKOUT_DISABLED`;
- *   - imported orders and purchase history stay readable;
- *   - the separate free loyalty flow (`/api/beats/[id]/purchase`) is unaffected —
- *     it records a purchase + loyalty points and never touches an Order or Lava.
- *
- * The Lava integration code is intentionally kept in place for when the flag flips.
+ * Online Stripe checkout is enabled only with an explicit flag and both server
+ * credentials. Contact requests, accepted contract previews, already paid PDF
+ * downloads and 100-point redemption remain available independently of Stripe.
+ * The legacy Lava configuration helpers are retained for imported integrations.
  */
 
 export type EnvSource = Record<string, string | undefined>;
@@ -45,5 +30,9 @@ export function paidCheckoutDisabledResponse(): PaidCheckoutDisabled {
 /** Contact requests and issued PDFs remain available while online payments are
  * disabled. Only new Stripe payments require both the flag and a secret key. */
 export function getBeatCheckoutProvider(locale: "ru" | "en", env: EnvSource = process.env): "stripe" | "contact" {
-  return locale === "en" && isPaidCheckoutEnabled(env) && Boolean(env.STRIPE_SECRET_KEY?.trim()) ? "stripe" : "contact";
+  return locale === "en" && isBeatStripeReady(env) ? "stripe" : "contact";
+}
+
+export function isBeatStripeReady(env: EnvSource = process.env) {
+  return isPaidCheckoutEnabled(env) && Boolean(env.STRIPE_SECRET_KEY?.trim()) && Boolean(env.STRIPE_WEBHOOK_SECRET?.trim());
 }

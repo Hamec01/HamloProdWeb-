@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const reason = error instanceof Error ? error.message : "UNKNOWN_ERROR";
 
+    if (reason === "BEAT_DELIVERY_MISSING") return err("Для этого бита ещё не настроена выдача файла. Напишите продавцу.", 409);
+    if (["BEAT_PAYMENT_PENDING", "BEAT_NOT_AVAILABLE", "BEAT_RESERVED"].includes(reason)) return err("Бит уже продан, забронирован или оплачивается другим покупателем.", 409);
+    if (reason === "STRIPE_CHECKOUT_RECOVERY_REQUIRED") return err("Платёж требует проверки продавцом. Откройте переписку по заказу.", 409);
     if (reason === "ORDER_PRICE_CHANGED") return err("Цена изменилась. Вернитесь к оформлению заказа и проверьте договор / Price changed. Please review checkout again.", 409);
     if (reason === "ORDER_NOT_FOUND") return err("Order not found.", 404);
     if (reason === "ORDER_NOT_DRAFT") return err("Only draft orders can start payment.", 409);
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest) {
     if (reason === "PROVIDER_NOT_SUPPORTED") return err("Order payment provider does not match the selected market.", 409);
     if (reason === "UNAUTHORIZED") return err("Unauthorized", 401);
     if (reason === "LAVA_NOT_CONFIGURED" || reason === "STRIPE_NOT_CONFIGURED") return err("Payment provider is not configured on the server.", 503);
+    if (reason === "STRIPE_PERMISSION_DENIED" || reason === "STRIPE_KEY_REJECTED") return err("Онлайн-оплата временно недоступна. Напишите продавцу.", 503);
     if (reason === "LAVA_REQUEST_FAILED" || reason === "LAVA_RESPONSE_INVALID" || reason === "STRIPE_REQUEST_FAILED") return err("Failed to create payment.", 502);
     if (reason === "FREE_ORDER_FINALIZATION_FAILED") return err("Beat is no longer available or the order changed.", 409);
     return err("Failed to prepare payment.", 500);

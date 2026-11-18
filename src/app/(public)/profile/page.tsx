@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { prisma } from "@/lib/db/client";
@@ -23,7 +24,7 @@ function formatDate(value: string, locale: string) {
   }).format(new Date(value));
 }
 
-export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string; grantsPage?: string }> }) {
+export default async function ProfilePage({ searchParams }: { searchParams: Promise<{ page?: string; grantsPage?: string; tab?: string }> }) {
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
   const t = dictionary[locale];
 
@@ -32,8 +33,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   }
 
   const query = await searchParams;
+  const tab = ["purchases", "requests", "points"].includes(query.tab || "") ? query.tab! : "overview";
+  const paidStatuses = ["paid", "pending_free_checkout"];
+  const orderWhere: Prisma.OrderWhereInput = { buyerUserId: session.userId, ...(tab === "purchases" ? { status: { in: paidStatuses } } : tab === "requests" ? { status: { notIn: paidStatuses } } : {}) };
   const requested = Number(query.page);
-  const count = await prisma.order.count({ where: { buyerUserId: session.userId } });
+  const count = await prisma.order.count({ where: orderWhere });
   const pages = Math.max(1, Math.ceil(count / 20));
   const page = Number.isSafeInteger(requested) && requested > 0 ? Math.min(requested, pages) : 1;
   const grantCount = await prisma.loyaltyGrant.count({ where: { userId: session.userId } });
@@ -42,7 +46,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const grantPage = Number.isSafeInteger(grantRequested) && grantRequested > 0 ? Math.min(grantRequested, grantPages) : 1;
   const [loyaltyRow, orderRows, ratingRows, thread, grants] = await Promise.all([
     prisma.loyaltyPoint.findUnique({ where: { userId: session.userId }, select: { points: true } }),
-    prisma.order.findMany({ where: { buyerUserId: session.userId }, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
+    prisma.order.findMany({ where: orderWhere, include: { messages: { where: { authorRole: "admin" }, orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } } }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], skip: (page - 1) * 20, take: 20 }),
     prisma.contentRating.findMany({
       where: { userId: session.userId, contentType: "beat" },
       orderBy: { createdAt: "desc" },
@@ -72,14 +76,17 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   return (
     <section className="space-y-10">
       <SectionHeading eyebrow={t.buyerAccount} title={t.profileTitle} description={t.profileDesc} />
+      <nav aria-label={locale === "ru" ? "Разделы кабинета" : "Account sections"} className="flex flex-wrap gap-3">
+        {[["overview", locale === "ru" ? "Обзор" : "Overview"], ["purchases", locale === "ru" ? "Купленные биты" : "Purchased beats"], ["requests", locale === "ru" ? "Заявки и оплата" : "Requests and payments"], ["points", locale === "ru" ? "Мои поинты" : "My points"]].map(([value, label]) => <Link key={value} href={value === "overview" ? "/profile" : `/profile?tab=${value}`} aria-current={tab === value ? "page" : undefined} className={`border px-4 py-3 text-sm ${tab === value ? "border-amber-500 bg-amber-950/30 text-amber-200" : "border-stone-600 text-stone-300 hover:border-amber-600"}`}>{label}</Link>)}
+      </nav>
 
-      <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+      {tab === "overview" ? (<article id="messages" className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <h3 className="text-xl">{locale === "ru" ? "Переписка с HaM" : "Messages with HaM"}</h3>
         {unreadProducerMessage(thread) ? <p className="mt-3 text-sm text-amber-200">{locale === "ru" ? "У тебя новое сообщение от HaM." : "You have a new message from HaM."}</p> : null}
         <Link href="/profile/messages" className="mt-4 inline-block border border-stone-600 px-4 py-3 text-sm underline">{locale === "ru" ? "Открыть личную переписку" : "Open private messages"}</Link>
-      </article>
+      </article>) : null}
 
-      <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+      {tab === "overview" || tab === "points" ? (<article id="points" className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? "Поинты: 25 за покупку, 100 за бесплатный бит" : "Points: 25 per purchase, 100 per free beat"}</h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-[var(--color-line)] bg-[rgba(10,10,10,0.45)] p-4">
@@ -100,12 +107,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         {grants.length ? <div className="mt-6 space-y-3">
           <h4 className="text-sm uppercase tracking-wider">{locale === "ru" ? "Дополнительные начисления от HaM" : "Bonus points from HaM"}</h4>
           {grants.map((grant) => <div key={grant.id} className="border border-stone-700 p-4 text-sm"><p className="text-amber-200">+{grant.amount} · {formatDate(grant.createdAt.toISOString(), locale)}</p><p className="mt-2 whitespace-pre-wrap break-words">{grant.reason}</p></div>)}
-          {grantPages > 1 ? <nav aria-label={locale === "ru" ? "История начислений" : "Bonus history"} className="flex gap-4 text-sm">{grantPage > 1 ? <Link className="underline" href={`/profile?page=${page}&grantsPage=${grantPage - 1}`}>{locale === "ru" ? "Новые начисления" : "Newer bonuses"}</Link> : null}<span>{grantPage} / {grantPages}</span>{grantPage < grantPages ? <Link className="underline" href={`/profile?page=${page}&grantsPage=${grantPage + 1}`}>{locale === "ru" ? "Ранние начисления" : "Older bonuses"}</Link> : null}</nav> : null}
+          {grantPages > 1 ? <nav aria-label={locale === "ru" ? "История начислений" : "Bonus history"} className="flex gap-4 text-sm">{grantPage > 1 ? <Link className="underline" href={`/profile?tab=${tab}&page=${page}&grantsPage=${grantPage - 1}`}>{locale === "ru" ? "Новые начисления" : "Newer bonuses"}</Link> : null}<span>{grantPage} / {grantPages}</span>{grantPage < grantPages ? <Link className="underline" href={`/profile?tab=${tab}&page=${page}&grantsPage=${grantPage + 1}`}>{locale === "ru" ? "Ранние начисления" : "Older bonuses"}</Link> : null}</nav> : null}
         </div> : null}
-      </article>
+      </article>) : null}
 
-      <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
-        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? "Мои биты и заявки" : "My Beats and Requests"}</h3>
+      {tab === "overview" || tab === "purchases" || tab === "requests" ? (<article id="purchases" className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+        <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{locale === "ru" ? (tab === "purchases" ? "Купленные биты" : tab === "requests" ? "Заявки и оплата" : "Мои биты и заявки") : (tab === "purchases" ? "Purchased beats" : tab === "requests" ? "Requests and payments" : "My Beats and Requests")}</h3>
         <div className="mt-4 space-y-3">
           {orders.length === 0 ? <p className="text-sm text-[var(--color-paper-300)]">{t.profileNoPurchases}</p> : null}
           {orders.map((order) => {
@@ -137,7 +144,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   <span className="text-[var(--color-paper-100)]">{finalPrice === 0 ? (locale === "ru" ? "Бесплатно" : "Free") : formatOrderMoney(finalPrice, currency, locale)}</span>
                   {(order.status === "paid" || order.status === "pending_free_checkout") && order.deliveryMp3Url ? <a href={order.deliveryMp3Url} target="_blank" rel="noopener noreferrer" className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{locale === "ru" ? "Скачать MP3" : "Download MP3"}</a> : null}
                   <span className="uppercase tracking-[0.1em]">{currency} / {locale === "ru" ? "эксклюзивная лицензия" : "exclusive license"}</span>
-                  {order.provider === "contact" || order.payment_provider === "internal" ? <Link href={`/orders/${order.id}`} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{order.newMessage ? (locale === "ru" ? "Новое сообщение — открыть заявку" : "New message — open request") : locale === "ru" ? "Заявка / сообщения / бронь" : "Request / Messages / Reservation"}</Link> : null}
+                  {<Link href={`/orders/${order.id}`} className="uppercase tracking-[0.12em] text-[var(--color-paper-100)] underline">{order.newMessage ? (locale === "ru" ? "Новое сообщение — открыть заявку" : "New message — open request") : locale === "ru" ? "Заявка / сообщения / бронь" : "Request / Messages / Reservation"}</Link>}
                   {order.license_type === "exclusive" && (order.status === "paid" || order.status === "pending_free_checkout") && (
                     <a
                       href={`/api/contracts/${order.id}/download`}
@@ -152,13 +159,13 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           })}
         </div>
         {pages > 1 ? <nav aria-label={locale === "ru" ? "История покупок" : "Purchase history"} className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-          {page > 1 ? <Link className="underline" href={`/profile?page=${page - 1}`}>{locale === "ru" ? "Новые заказы" : "Newer orders"}</Link> : null}
+          {page > 1 ? <Link className="underline" href={`/profile?tab=${tab}&page=${page - 1}`}>{locale === "ru" ? "Новые заказы" : "Newer orders"}</Link> : null}
           <span>{page} / {pages}</span>
-          {page < pages ? <Link className="underline" href={`/profile?page=${page + 1}`}>{locale === "ru" ? "Предыдущие покупки" : "Older purchases"}</Link> : null}
+          {page < pages ? <Link className="underline" href={`/profile?tab=${tab}&page=${page + 1}`}>{locale === "ru" ? "Предыдущие покупки" : "Older purchases"}</Link> : null}
         </nav> : null}
-      </article>
+      </article>) : null}
 
-      <article className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
+      {tab === "overview" ? (<article id="ratings" className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">
         <h3 className="text-xs uppercase tracking-[0.28em] text-[var(--color-paper-300)]">{t.profileRatingsTitle}</h3>
         <div className="mt-4 space-y-3">
           {ratingRows.length === 0 ? <p className="text-sm text-[var(--color-paper-300)]">{t.profileNoRatings}</p> : null}
@@ -194,7 +201,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             );
           })}
         </div>
-      </article>
+      </article>) : null}
     </section>
   );
 }

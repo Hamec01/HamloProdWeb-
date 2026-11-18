@@ -11,12 +11,12 @@ export async function PublicHeader() {
   const t = dictionary[locale];
   const navigation = [
     { href: `/${locale}`, label: t.navHome },
-    { href: session.isAuthenticated ? "/profile" : "/auth", label: session.isAuthenticated ? t.navProfile : t.navAuth },
+    ...(!session.isAuthenticated ? [{ href: "/auth", label: t.navAuth }] : []),
   ];
 
   return (
-    <header className="relative z-10 border-b border-[var(--color-line)] bg-[rgba(0,0,0,0.985)] backdrop-blur">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <header className="sticky top-0 z-50 border-b border-[var(--color-line)] bg-[rgba(0,0,0,0.985)] backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href={`/${locale}`} className="flex items-center">
           <Image
             src="/logo.png"
@@ -24,14 +24,14 @@ export async function PublicHeader() {
             width={160}
             height={48}
             priority
-            className="h-10 w-auto object-contain"
+            className="h-8 max-w-24 w-auto object-contain sm:h-10 sm:max-w-none"
           />
         </Link>
-        <div className="flex flex-col gap-4 sm:items-end">
+        <div className="flex items-center gap-3 sm:gap-5">
           <LanguageSwitcher locale={locale} />
           <nav className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.22em] text-[var(--color-paper-200)]">
           {navigation.map((item) => (
-            <Link key={item.href} href={item.href} className="transition-colors hover:text-[var(--color-paper-100)]">
+            <Link key={item.href} href={item.href} className={`${item.href === `/${locale}` ? "hidden sm:inline" : ""} transition-colors hover:text-[var(--color-paper-100)]`}>
               {item.label}
             </Link>
           ))}

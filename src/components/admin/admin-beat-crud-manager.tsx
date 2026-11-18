@@ -1,4 +1,5 @@
 "use client";
+import { BeatDeliveryForm } from "@/components/admin/beat-delivery-form";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { uploadBeatAsset } from "@/lib/storage/client-upload";
@@ -367,6 +368,7 @@ export function AdminBeatCrudManager({ beats }: { beats: AdminBeat[] }) {
 
   return (
     <div className="space-y-6">
+      {editingId ? <BeatDeliveryForm key={editingId} beatId={editingId} /> : null}
       <section className="case-panel p-6">
         <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-paper-400)]">Catalogue management</p>
         <h1 className="mt-2 font-sans text-5xl uppercase tracking-[0.06em]">Beats Admin</h1>

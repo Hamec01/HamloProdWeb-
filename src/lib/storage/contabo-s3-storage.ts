@@ -97,6 +97,8 @@ export class ContaboS3Storage implements DirectUploadStorage {
     this.client =
       deps.client ??
       new S3Client({
+        maxAttempts: 2,
+        requestHandler: { connectionTimeout: 5000, requestTimeout: 10000, throwOnRequestTimeout: true },
         region: config.region,
         endpoint: config.endpoint,
         forcePathStyle: config.forcePathStyle,

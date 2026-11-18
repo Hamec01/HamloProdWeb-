@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const checkoutFormSchema = z.object({
+  payment_method: z.enum(["stripe", "contact"]).optional(),
   beat_id: z.string().uuid(),
   buyer_name: z.string().trim().min(2, "Введите полное имя").max(180),
   buyer_stage_name: z.string().trim().max(120).optional(),

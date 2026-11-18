@@ -10,7 +10,7 @@ test("Stripe Checkout Session uses the fixed order amount, metadata and idempote
   globalThis.fetch = async (input, init) => {
     requestUrl = String(input);
     requestInit = init;
-    return Response.json({ id: "cs_test_123", url: "https://checkout.stripe.test/session" });
+    return Response.json({ id: "cs_test_123", url: "https://checkout.stripe.com/session" });
   };
 
   try {
@@ -26,7 +26,7 @@ test("Stripe Checkout Session uses the fixed order amount, metadata and idempote
 
     assert.equal(requestUrl, "https://api.stripe.com/v1/checkout/sessions");
     assert.equal(result.sessionId, "cs_test_123");
-    assert.equal(result.paymentUrl, "https://checkout.stripe.test/session");
+    assert.equal(result.paymentUrl, "https://checkout.stripe.com/session");
     assert.equal(new Headers(requestInit?.headers).get("Idempotency-Key"), "hamloprod-order-order-123");
 
     const form = new URLSearchParams(String(requestInit?.body));
@@ -34,6 +34,7 @@ test("Stripe Checkout Session uses the fixed order amount, metadata and idempote
     assert.equal(form.get("metadata[orderId]"), "order-123");
     assert.equal(form.get("line_items[0][price_data][product_data][name]"), "Night Drive");
     assert.equal(form.get("customer_email"), "artist@example.com");
+    assert.equal(form.get("payment_method_types[0]"), "card");
   } finally {
     globalThis.fetch = originalFetch;
   }

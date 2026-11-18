@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db/client";
 import { checkBeatForBuyer, reserveOrderBeat, systemMessage, type OrderActor } from "@/lib/orders/reservations";
+import { refreshExpiredStripeHold } from "@/lib/payments/stripe-checkout";
 
 export async function createBeatInquiry(beatId: string, buyer: { userId: string; email: string }, locale: "ru" | "en", reserve: boolean) {
+  await refreshExpiredStripeHold(beatId);
   return prisma.$transaction(async (tx) => {
     const beat = await checkBeatForBuyer(tx, beatId, buyer.userId);
     let order = await tx.order.findFirst({ where: { beatId, buyerUserId: buyer.userId, provider: "contact", status: "draft" }, orderBy: { createdAt: "desc" } });

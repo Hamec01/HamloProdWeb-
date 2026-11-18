@@ -51,6 +51,13 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
 
   useEffect(() => { if (!deliveryDirty.current) setDeliveryInput(data.order.deliveryMp3Url || ""); }, [data.order.deliveryMp3Url]);
 
+  useEffect(() => {
+    if (initial.order.provider !== "stripe" || initial.order.status !== "pending_payment") return;
+    const controller = new AbortController();
+    void fetch(`/api/orders/${orderId}/payment-status`, { method: "POST", signal: controller.signal }).then(() => refresh(controller.signal)).catch(() => {});
+    return () => controller.abort();
+  }, [initial.order.provider, initial.order.status, orderId, refresh]);
+
   async function send(event: FormEvent) {
     event.preventDefault(); if (!text.trim()) return;
     setBusy("message"); setError("");
@@ -98,6 +105,12 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       <h1 className="text-3xl">{order.beatTitle}</h1>
       <p className="text-sm">{order.amount === 0 ? (ru ? "Бесплатно" : "Free") : new Intl.NumberFormat(ru ? "ru-RU" : "en-US", { style: "currency", currency: order.currency }).format(order.amount)} · {order.status === "paid" ? (ru ? "Покупка подтверждена" : "Purchase confirmed") : ru ? "Обсуждение покупки" : "Purchase request"}</p>
       {role === "admin" ? <p className="text-sm text-[var(--color-paper-200)]">{order.buyerName || order.buyerEmail} · {order.buyerEmail}</p> : null}
+      {order.status === "pending_payment" && order.provider === "stripe" ? <div className="space-y-3 border border-amber-800 p-4">
+        <p className="text-sm">{ru ? "Ожидаем подтверждение оплаты Stripe. После подтверждения здесь появятся PDF и ссылка на бит." : "Waiting for Stripe payment confirmation. Your PDF and beat link will appear here after payment."}</p>
+        {order.paymentUrl && role === "buyer" ? <a className={buttonClass} href={order.paymentUrl}>{ru ? "Продолжить оплату Stripe" : "Continue Stripe payment"}</a> : null}
+        <button type="button" className={buttonClass} disabled={Boolean(busy)} onClick={async () => { setBusy("payment"); setError(""); try { const response = await fetch(`/api/orders/${orderId}/payment-status`, { method: "POST" }); const result = await response.json(); if (!response.ok) throw Error(result.error); await refresh(); } catch (error) { setError(error instanceof Error ? error.message : "Не удалось проверить платёж."); } finally { setBusy(""); } }}>{ru ? "Проверить оплату" : "Check payment"}</button>
+      </div> : null}
+      {order.status === "failed" && order.provider === "stripe" && !order.sold && role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=stripe`}>{ru ? "Платёж завершён без покупки — попробовать снова" : "Checkout ended without a purchase — try again"}</Link> : null}
       {order.reservationExpiresAt ? <div className="border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-100">
         <p>{order.reservationIsOurs ? (ru ? "Бит забронирован по вашей заявке" : "Reserved for this request") : ru ? "Бит забронирован по другой заявке" : "Reserved for another request"} {ru ? "до" : "until"} {date(order.reservationExpiresAt)} ({ru ? "Хельсинки" : "Helsinki"}).</p>
         {order.reservationIsOurs ? <button className={`${buttonClass} mt-3`} disabled={Boolean(busy)} onClick={() => void action("release")}>{ru ? "Снять бронь" : "Cancel reservation"}</button> : null}
@@ -105,11 +118,12 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
       {order.status === "draft" && !order.sold ? <div className="flex flex-wrap gap-3">
         {!order.reservationExpiresAt ? <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("reserve")}>{ru ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button> : null}
         {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}`}>{ru ? "Заполнить данные для лицензии / использовать поинты" : "License details / Use points"}</Link> : null}
+        {role === "buyer" && order.stripeAvailable ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=stripe`}>{ru ? "Купить через Stripe (USD)" : "Buy with Stripe (USD)"}</Link> : null}
         {order.hasContract && role === "buyer" ? <Link className={buttonClass} href={`/checkout/preview/${order.id}`}>{ru ? "Просмотреть договор" : "Review agreement"}</Link> : null}
       </div> : null}
       {!order.hasContract && order.status === "draft" ? <p className="text-sm text-amber-200">{ru ? "Для выдачи лицензии покупателю нужно заполнить данные и принять условия договора." : "The buyer must complete their details and accept the agreement before a license can be issued."}</p> : null}
       {role === "buyer" && order.status === "draft" && order.hasContract && order.redeemable && !order.sold ? <button className={buttonClass} disabled={Boolean(busy) || order.points < 100} onClick={() => void action("redeem")}>{ru ? "Получить бит за 100 поинтов" : "Get beat for 100 points"}</button> : null}
-      {role === "admin" && order.status === "draft" && order.hasContract && !order.sold ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
+      {role === "admin" && order.provider === "contact" && order.status === "draft" && order.hasContract && !order.sold ? <div className="border-t border-[var(--color-line)] pt-4 space-y-3">
         <label className="flex gap-3 text-sm"><input type="checkbox" checked={paymentReceived} onChange={(event) => setPaymentReceived(event.target.checked)} />{ru ? "Подтверждаю получение оплаты (или согласованный обмен поинтов)" : "Payment received (or agreed points redemption)"}</label>
         <button className={buttonClass} disabled={Boolean(busy) || !paymentReceived} onClick={() => void action("confirm")}>{ru ? "Подтвердить покупку и выдать PDF" : "Confirm purchase and issue PDF"}</button>
       </div> : null}

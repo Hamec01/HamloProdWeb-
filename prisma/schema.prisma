@@ -241,12 +241,22 @@ model Beat {
 
   orders    Order[]
   contracts Contract[]
+  delivery BeatDelivery?
   purchases BeatPurchase[]
   reactions BeatReaction[]
 
   @@index([status])
   @@index([featured])
   @@map("beats")
+}
+
+/// Private Google Drive delivery URL; never part of the public beat DTO.
+model BeatDelivery {
+  beatId String @id @map("beat_id") @db.Uuid
+  beat Beat @relation(fields: [beatId], references: [id], onDelete: Cascade)
+  url String
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@map("beat_deliveries")
 }
 
 model Release {

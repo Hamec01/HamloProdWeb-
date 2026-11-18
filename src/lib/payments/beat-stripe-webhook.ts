@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db/client";
 import { verifyStripeWebhookSignature } from "@/lib/payments/stripe";
 import { awardSalePoints } from "@/lib/loyalty/award-sale";
 import { ensureOrderLicense } from "@/lib/contracts/issue";
+import { lockBeatRow } from "@/lib/orders/reservations";
+import { attachPaidBeatDelivery } from "@/lib/delivery/beat-delivery";
 import { lockBeatForExclusiveSale } from "@/lib/orders/exclusive-sale";
 
 type JsonRecord = Record<string, unknown>;
@@ -43,8 +45,10 @@ export async function handleBeatStripeWebhook(request: Request) {
     return NextResponse.json({ error: "Invalid webhook payload." }, { status: 400 });
   }
 
-  const eventType = event.type;
-  const session = event.data.object;
+  return processBeatStripeSession(event.type, event.data.object);
+}
+
+export async function processBeatStripeSession(eventType: string, session: JsonRecord) {
   const sessionId = getString(session.id);
   const metadata = isRecord(session.metadata) ? session.metadata : null;
   const orderId = metadata ? getString(metadata.orderId) : null;
@@ -103,6 +107,7 @@ export async function handleBeatStripeWebhook(request: Request) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await lockBeatRow(tx, current.beatId);
       const order = await tx.order.findFirst({
         where: { id: current.id, provider: "stripe", paymentExternalId: sessionId },
         select: { id: true, beatId: true, buyerUserId: true, status: true },
@@ -119,7 +124,7 @@ export async function handleBeatStripeWebhook(request: Request) {
       }
       if (order.status !== "pending_payment") return "conflict" as const;
 
-      if (!await lockBeatForExclusiveSale(tx, order.beatId, order.buyerUserId)) return "conflict" as const;
+      if (!await lockBeatForExclusiveSale(tx, order.beatId, order.buyerUserId, order.id)) return "conflict" as const;
 
       const updated = await tx.order.updateMany({
         where: { id: order.id, status: "pending_payment", provider: "stripe", paymentExternalId: sessionId },
@@ -130,6 +135,7 @@ export async function handleBeatStripeWebhook(request: Request) {
       }
 
       await awardSalePoints(tx, order.id);
+      await attachPaidBeatDelivery(tx, order.id);
       return "applied" as const;
     });
 

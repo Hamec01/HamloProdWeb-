@@ -14,6 +14,8 @@ export async function createStripeCheckoutSession(input: {
   amountUsd: number;
   successUrl: string;
   cancelUrl: string;
+  expiresAt?: number;
+  integrationCheck?: boolean;
 }) {
   if (!Number.isSafeInteger(input.amountUsd) || input.amountUsd < 1 || input.amountUsd > Math.floor(Number.MAX_SAFE_INTEGER / 100)) {
     throw new Error("STRIPE_INVALID_AMOUNT");
@@ -30,7 +32,13 @@ export async function createStripeCheckoutSession(input: {
     "line_items[0][price_data][unit_amount]": String(input.amountUsd * 100),
     "line_items[0][price_data][product_data][name]": input.beatTitle,
     "line_items[0][quantity]": "1",
+    "payment_method_types[0]": "card",
   });
+  if (input.expiresAt) form.set("expires_at", String(input.expiresAt));
+  if (input.integrationCheck) {
+    form.delete("metadata[orderId]");
+    form.set("metadata[hamloprod_connection_check]", "true");
+  }
 
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
@@ -40,16 +48,29 @@ export async function createStripeCheckoutSession(input: {
       "Idempotency-Key": `hamloprod-order-${input.orderId}`,
     },
     body: form,
+    signal: AbortSignal.timeout(15000),
   });
   const payload = (await response.json().catch(() => null)) as StripeSessionResponse | null;
   const sessionId = typeof payload?.id === "string" ? payload.id : "";
   const paymentUrl = typeof payload?.url === "string" ? payload.url : "";
+  if (response.status === 403) throw new Error("STRIPE_PERMISSION_DENIED");
+  if (response.status === 401) throw new Error("STRIPE_KEY_REJECTED");
 
-  if (!response.ok || !sessionId || !paymentUrl) {
+  let validUrl = false;
+  try { const url = new URL(paymentUrl); validUrl = url.protocol === "https:" && url.hostname === "checkout.stripe.com" && !url.username && !url.password; } catch {}
+  if (!response.ok || !sessionId.startsWith("cs_") || !validUrl) {
     throw new Error("STRIPE_REQUEST_FAILED");
   }
 
   return { sessionId, paymentUrl };
+}
+
+export async function retrieveStripeCheckoutSession(secretKey: string, sessionId: string): Promise<Record<string, unknown>> {
+  if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) throw new Error("STRIPE_INVALID_SESSION");
+  const response = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, { headers: { Authorization: `Bearer ${secretKey}` }, signal: AbortSignal.timeout(15000), cache: "no-store" });
+  const session = await response.json().catch(() => null);
+  if (!response.ok || !session || session.id !== sessionId) throw new Error("STRIPE_REQUEST_FAILED");
+  return session;
 }
 
 export function verifyStripeWebhookSignature(input: {

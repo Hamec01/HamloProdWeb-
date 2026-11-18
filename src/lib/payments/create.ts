@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db/client";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { resolveOrderBasePrice, resolveOrderCurrency, resolveOrderFinalPrice } from "@/lib/orders/pricing";
 import { createLavaInvoice } from "@/lib/payments/lava";
-import { createStripeCheckoutSession } from "@/lib/payments/stripe";
+import { startStripeCheckout } from "@/lib/payments/stripe-checkout";
+import { isBeatStripeReady } from "@/lib/checkout/config";
 import { toOrderRow, type OrderRow } from "@/lib/orders/order-row";
 
 type BeatPaymentRow = { id: string; title: string; slug: string; price_rub: number | null; price_usd: number };
@@ -97,24 +98,6 @@ async function createLavaPayment(order: OrderRow, beat: BeatPaymentRow): Promise
   return { paymentUrl: lava.paymentUrl, externalId: lava.externalId };
 }
 
-async function createStripePayment(order: OrderRow, beat: BeatPaymentRow): Promise<{ paymentUrl: string; externalId: string }> {
-  const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!secretKey) throw new Error("STRIPE_NOT_CONFIGURED");
-
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://hamloprod.org").replace(/\/$/, "");
-  const stripe = await createStripeCheckoutSession({
-    secretKey,
-    orderId: order.id,
-    beatTitle: beat.title,
-    buyerEmail: order.buyer_email,
-    amountUsd: resolveOrderFinalPrice(order),
-    successUrl: `${siteUrl}/profile?payment=success`,
-    cancelUrl: `${siteUrl}/checkout/payment/${order.id}`,
-  });
-
-  return { paymentUrl: stripe.paymentUrl, externalId: stripe.sessionId };
-}
-
 export async function preparePaymentCreation(orderId: string): Promise<PaymentPreparationResult> {
   const { order, beat, contractSnapshotExists } = await getOrderForPayment(orderId);
   if (order.status === "pending_free_checkout") {
@@ -122,6 +105,10 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
     return { kind: "free", orderId: order.id, status: "pending_free_checkout", paymentUrl: null };
   }
 
+  if (order.provider === "stripe" && resolveOrderFinalPrice(order) > 0) {
+    if (!isBeatStripeReady()) throw new Error("STRIPE_NOT_CONFIGURED");
+    return startStripeCheckout(order.id, await requireBuyerUserId());
+  }
   if (order.status !== "draft") throw new Error("ORDER_NOT_DRAFT");
   if (!contractSnapshotExists) throw new Error("CONTRACT_SNAPSHOT_MISSING");
   if (!order.terms_accepted_at || !order.personal_data_consent_at) throw new Error("CHECKOUT_ACCEPTANCE_MISSING");
@@ -148,9 +135,8 @@ export async function preparePaymentCreation(orderId: string): Promise<PaymentPr
 
   await prisma.$transaction((tx) => checkBeatForBuyer(tx, order.beat_id, order.buyer_user_id));
   const paymentOrder = { ...order, final_price: recalculatedFinalAmount, final_price_usd: recalculatedFinalAmount };
-  const payment = order.market === "ru"
-    ? await createLavaPayment(paymentOrder, beat)
-    : await createStripePayment(paymentOrder, beat);
+  if (order.market !== "ru") throw new Error("PROVIDER_NOT_SUPPORTED");
+  const payment = await createLavaPayment(paymentOrder, beat);
 
   if (!payment.externalId) throw new Error(order.market === "ru" ? "LAVA_RESPONSE_INVALID" : "STRIPE_REQUEST_FAILED");
   await markPaidOrderPending(order.id, order.market === "ru" ? "lava" : "stripe", payment.externalId, payment.paymentUrl);

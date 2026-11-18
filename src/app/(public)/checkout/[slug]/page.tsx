@@ -1,3 +1,4 @@
+import { getBeatCheckoutProvider, isBeatStripeReady } from "@/lib/checkout/config";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -12,10 +13,13 @@ import { getBeatBySlug } from "@/services/content";
 
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ payment?: string }>;
 }) {
   const { slug } = await params;
+  const { payment } = await searchParams;
   const [locale, session] = await Promise.all([getLocale(), getPublicSessionState()]);
 
   console.info("[checkout] incoming request", {
@@ -26,7 +30,7 @@ export default async function CheckoutPage({
   });
 
   if (!session.isAuthenticated || !session.userId) {
-    redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}`)}`);
+    redirect(`/auth?next=${encodeURIComponent(`/checkout/${slug}${payment === "stripe" ? "?payment=stripe" : ""}`)}`);
   }
 
   const beat = await getBeatBySlug(slug);
@@ -39,8 +43,10 @@ export default async function CheckoutPage({
     redirect(`/${locale}/beats/${slug}`);
   }
 
-  const market = getMarketContext(locale);
-  const basePrice = locale === "ru" ? beat.priceRub ?? 2500 : beat.priceUsd;
+  const provider = payment === "stripe" ? "stripe" : payment === "contact" ? "contact" : getBeatCheckoutProvider(locale);
+  if (provider === "stripe" && !isBeatStripeReady()) redirect(`/beats/${slug}`);
+  const market = getMarketContext(provider === "stripe" ? "en" : locale);
+  const basePrice = market.currency === "RUB" ? beat.priceRub ?? 2500 : beat.priceUsd;
 
   const loyalty = await prisma.loyaltyPoint.findUnique({
     where: { userId: session.userId },
@@ -66,6 +72,7 @@ export default async function CheckoutPage({
 
       <div className="mx-auto max-w-2xl">
         <CheckoutForm
+          paymentMethod={provider}
           beatId={beat.id}
           beatTitle={beat.title}
           beatCaseNumber={beat.caseNumber}

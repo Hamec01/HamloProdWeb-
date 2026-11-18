@@ -32,7 +32,7 @@ export async function releaseExpiredReservations() {
   `;
 }
 
-export async function checkBeatForBuyer(tx: Prisma.TransactionClient, beatId: string, buyerId?: string | null, allowStaffHold = false) {
+export async function checkBeatForBuyer(tx: Prisma.TransactionClient, beatId: string, buyerId?: string | null, allowStaffHold = false, paymentOrderId?: string) {
   await lockBeatRow(tx, beatId);
   let beat = await tx.beat.findUniqueOrThrow({ where: { id: beatId } });
   if (beat.reservationExpiresAt && beat.reservationExpiresAt <= new Date()) {
@@ -46,6 +46,7 @@ export async function checkBeatForBuyer(tx: Prisma.TransactionClient, beatId: st
   if (beat.status === "sold" || beat.status === "private") throw new Error("BEAT_NOT_AVAILABLE");
   if (beat.reservationOrderId && beat.reservationBuyerId !== buyerId) throw new Error("BEAT_RESERVED");
   if (beat.status === "reserved" && !beat.reservationOrderId && !allowStaffHold) throw new Error("BEAT_RESERVED");
+  if (await tx.order.findFirst({ where: { beatId, status: "pending_payment", ...(paymentOrderId ? { id: { not: paymentOrderId } } : {}) }, select: { id: true } })) throw new Error("BEAT_PAYMENT_PENDING");
   return beat;
 }
 

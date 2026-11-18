@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { checkoutFormSchema, type CheckoutFormValues } from "@/lib/validations/checkout";
 
 type Props = {
+  paymentMethod: "stripe" | "contact";
   beatId: string;
   beatTitle: string;
   beatCaseNumber: string;
@@ -99,6 +100,7 @@ function formatUsd(value: number, locale: "ru" | "en", currency: "USD" | "RUB") 
 }
 
 export function CheckoutForm({
+  paymentMethod,
   beatId,
   beatTitle,
   beatCaseNumber,
@@ -122,6 +124,7 @@ export function CheckoutForm({
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
+      payment_method: paymentMethod,
       beat_id: beatId,
       buyer_email: prefillEmail,
       license_type: "exclusive",
@@ -175,6 +178,7 @@ export function CheckoutForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <p className="text-sm text-amber-200">{paymentMethod === "stripe" ? (locale === "ru" ? "Оплата картой через Stripe в USD. После оплаты PDF и ссылка на бит появятся в кабинете." : "Pay by card with Stripe in USD. Your PDF and beat download link appear in your account after payment.") : (locale === "ru" ? "Оплата по договорённости с продавцом через сообщения на сайте." : "Arrange payment with the producer through site messages.")}</p>
       <input type="hidden" {...register("beat_id")} />
 
       <section className="rounded-2xl border border-[var(--color-line)] bg-[rgba(15,13,10,0.75)] p-6">

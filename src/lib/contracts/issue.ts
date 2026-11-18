@@ -3,6 +3,7 @@ import { getSellerIdentity } from "@/lib/contracts/seller";
 import { createStoredContractPdf, getStoredContractPdfUrl } from "@/lib/contracts/pdf-storage";
 import { renderContractHtml } from "@/lib/contracts/preview";
 import { toOrderRow } from "@/lib/orders/order-row";
+import { attachPaidBeatDelivery } from "@/lib/delivery/beat-delivery";
 
 /** A retry reuses the frozen snapshot and the issued PDF. No browser session is
  * needed here: callers must authorize the order or verify a payment webhook. */
@@ -13,6 +14,7 @@ export async function ensureOrderLicense(orderId: string) {
   if (!order) throw new Error("ORDER_NOT_FOUND");
   if (order.licenseType !== "exclusive") throw new Error("LICENSE_TYPE_NOT_SUPPORTED");
   if (order.status !== "paid" && order.status !== "pending_free_checkout") throw new Error("ORDER_NOT_READY_FOR_RIGHTS_FORM");
+  await prisma.$transaction((tx) => attachPaidBeatDelivery(tx, order.id));
   if (order.contractPdfKey) {
     return { key: order.contractPdfKey, downloadUrl: await getStoredContractPdfUrl(order.contractPdfKey, orderId) };
   }

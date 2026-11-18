@@ -29,7 +29,9 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
     else process.env.STRIPE_WEBHOOK_SECRET = originalSecret;
     const orders = await prisma.order.findMany({ where: { beatId: { in: beatIds } }, select: { contractPdfKey: true } });
     for (const order of orders) if (order.contractPdfKey) keys.add(order.contractPdfKey);
+    console.info("[license-qa] cleanup PDFs", keys.size);
     for (const key of keys) await storage.deleteObject({ visibility: "private", key });
+    console.info("[license-qa] cleanup PDFs complete");
     await prisma.order.deleteMany({ where: { beatId: { in: beatIds } } });
     await prisma.beat.deleteMany({ where: { id: { in: beatIds } } });
     await prisma.user.delete({ where: { id: user.id } });
@@ -67,6 +69,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   assert.equal(manualOrder.contract?.pdfKey, first.key);
   assert.ok(manualOrder.contract?.htmlSnapshot.includes(buyer.buyerName));
 
+  console.info("[license-qa] manual PDF created and downloaded");
   const paidBeat = await makeBeat();
   await assert.rejects(createManualExclusiveLicense({ ...buyer, beatId: paidBeat.id, buyerEmail: "wrong-account@example.invalid" }), /BUYER_EMAIL_MISMATCH/);
   const order = await prisma.order.create({ data: { beatId: paidBeat.id, buyerUserId: user.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCity: buyer.buyerCity, buyerCountry: buyer.buyerCountry, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, currency: "USD", market: "global", provider: "stripe", paymentExternalId: `cs_test_${randomUUID()}`, status: "pending_payment", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
@@ -97,6 +100,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   assert.equal((await prisma.contract.findUniqueOrThrow({ where: { orderId: order.id } })).htmlSnapshot, html);
   await prisma.licenseSellerSetting.delete({ where: { id: "default" } });
 
+  console.info("[license-qa] Stripe retries and frozen PDF verified");
   const contactBeat = await makeBeat();
   const contactOrder = await prisma.order.create({ data: { beatId: contactBeat.id, buyerUserId: user.id, buyerEmail: buyer.buyerEmail, buyerName: buyer.buyerName, buyerCountry: buyer.buyerCountry, buyerCity: buyer.buyerCity, basePriceUsd: 100, finalPriceUsd: 100, basePrice: 100, finalPrice: 100, provider: "contact", termsAcceptedAt: new Date(), personalDataConsentAt: new Date() } });
   await assert.rejects(confirmManualOrder(contactOrder.id), /ORDER_NOT_READY/);
@@ -104,6 +108,7 @@ test("license integration: manual sale, payment webhook, retries and frozen PDF"
   await prisma.contract.create({ data: { orderId: contactOrder.id, beatId: contactBeat.id, buyerEmail: buyer.buyerEmail, htmlSnapshot: acceptedHtml } });
   const confirmed = await confirmManualOrder(contactOrder.id);
   assert.equal(confirmed.pdfReady, true);
+  console.info("[license-qa] contact PDF confirmed", confirmed.pdfReady);
   const contactPdf = await ensureOrderLicense(contactOrder.id);
   assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: user.id } })).points, 75);
   assert.equal((await confirmManualOrder(contactOrder.id)).pdfReady, true);

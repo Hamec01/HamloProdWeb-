@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { BeatDownloadButton } from "@/components/beats/beat-download-button";
 import { ContentFeedbackCard } from "@/components/feedback/content-feedback-card";
 import { PlayBeatButton } from "@/components/beats/play-beat-button";
@@ -9,7 +9,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
 import { BeatInquiryActions } from "@/components/beats/beat-inquiry-actions";
-import { getBeatCheckoutProvider } from "@/lib/checkout/config";
+import { isBeatStripeReady } from "@/lib/checkout/config";
+import { prisma } from "@/lib/db/client";
 import { getLocale } from "@/lib/i18n-server";
 import { localizeBeats } from "@/lib/localize-content";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
@@ -77,7 +78,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
-  const buyLicenseHref = `/checkout/${beat.slug}`;
+  const deliveryReady = isBeatStripeReady() && beat.priceUsd > 0 && Boolean(await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } }));
 
   return (
     <section className="space-y-8">
@@ -131,7 +132,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               <span className="text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.currentPrice}</span>
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{priceLabel}</span>
             </div>
-            {getBeatCheckoutProvider(locale) === "contact" ? <BeatInquiryActions beatId={beat.id} beatSlug={beat.slug} isAuthenticated={session.isAuthenticated} locale={locale} /> : <Link href={buyLicenseHref} className="mt-5 inline-block border border-[var(--color-line)] px-4 py-2 text-sm">{t.buyLicense}</Link>}
+            <BeatInquiryActions beatId={beat.id} beatSlug={beat.slug} isAuthenticated={session.isAuthenticated} locale={locale} stripeAvailable={deliveryReady} priceUsd={beat.priceUsd} />
             {beat.reservationExpiresAt ? <p className="mt-4 text-sm text-amber-200">{locale === "ru" ? "Бронь до" : "Reserved until"} {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Helsinki" }).format(new Date(beat.reservationExpiresAt))} ({locale === "ru" ? "Хельсинки" : "Helsinki"})</p> : null}
             </>}
           </section>

@@ -14,7 +14,11 @@ test("a configured key does not enable Stripe while paid checkout is disabled", 
 });
 
 test("Stripe requires explicit enablement and stays out of the Russian contact market", () => {
-  const configured = { STRIPE_SECRET_KEY: "test-key", PAID_CHECKOUT_ENABLED: "true" };
+  const configured = { STRIPE_SECRET_KEY: "test-key", STRIPE_WEBHOOK_SECRET: "whsec-test", PAID_CHECKOUT_ENABLED: "true" };
   assert.equal(getBeatCheckoutProvider("en", configured), "stripe");
   assert.equal(getBeatCheckoutProvider("ru", configured), "contact");
+});
+
+test("Stripe stays disabled without a webhook signing secret", () => {
+  assert.equal(getBeatCheckoutProvider("en", { STRIPE_SECRET_KEY: "test-key", PAID_CHECKOUT_ENABLED: "true" }), "contact");
 });

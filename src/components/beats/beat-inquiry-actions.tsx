@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, compact = false }: { beatId: string; beatSlug: string; isAuthenticated: boolean; locale: "ru" | "en"; compact?: boolean }) {
+export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, compact = false, stripeAvailable = false, priceUsd }: { beatId: string; beatSlug: string; isAuthenticated: boolean; locale: "ru" | "en"; compact?: boolean; stripeAvailable?: boolean; priceUsd?: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -20,6 +21,7 @@ export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, 
   }
   return <div className={compact ? "space-y-2" : "mt-5 space-y-3"}>
     <div className="flex flex-wrap gap-3">
+      {stripeAvailable ? <Link href={`/checkout/${encodeURIComponent(beatSlug)}?payment=stripe`} className="border border-amber-500 bg-amber-950/30 px-4 py-2 text-sm text-amber-100">{locale === "ru" ? "Купить через Stripe" : "Buy with Stripe"}{priceUsd !== undefined ? ` · $${priceUsd}` : ""}</Link> : null}
       <button type="button" disabled={busy} onClick={() => void open(false)} className="border border-amber-700 bg-amber-950/30 px-4 py-2 text-sm uppercase tracking-[0.12em] text-amber-100 disabled:opacity-50">{busy ? (locale === "ru" ? "Открываем…" : "Opening…") : locale === "ru" ? "Купить бит / написать" : "Buy Beat / Message"}</button>
       {!compact ? <button type="button" disabled={busy} onClick={() => void open(true)} className="border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-paper-100)] disabled:opacity-50">{locale === "ru" ? "Бронь на 7 дней" : "Reserve for 7 days"}</button> : null}
     </div>

@@ -5,9 +5,10 @@ import { prisma } from "@/lib/db/client";
 import { requireBuyer } from "@/lib/auth/public-guard";
 import { getLocale } from "@/lib/i18n-server";
 import { getMarketContext } from "@/lib/market";
-import { getBeatCheckoutProvider } from "@/lib/checkout/config";
+import { getBeatCheckoutProvider, isBeatStripeReady } from "@/lib/checkout/config";
 import { checkoutFormSchema } from "@/lib/validations/checkout";
 import { getDiscountPercent } from "@/lib/loyalty";
+import { refreshExpiredStripeHold } from "@/lib/payments/stripe-checkout";
 
 export const runtime = "nodejs";
 
@@ -38,17 +39,20 @@ export async function POST(request: NextRequest) {
   } = parsed.data;
 
   const locale = await getLocale();
-  const market = getMarketContext(locale);
-  const provider = getBeatCheckoutProvider(locale);
+  const provider = parsed.data.payment_method ?? getBeatCheckoutProvider(locale);
+  if (provider === "stripe" && !isBeatStripeReady()) return err("Оплата Stripe пока недоступна.", 503);
+  const market = getMarketContext(provider === "stripe" ? "en" : locale);
 
   const beat = await prisma.beat.findUnique({
     where: { id: beat_id },
-    select: { id: true, priceUsd: true, priceRub: true, status: true },
+    select: { id: true, priceUsd: true, priceRub: true, status: true, delivery: { select: { beatId: true } } },
   });
   if (!beat) return err("Beat not found.", 404);
   if (beat.status === "sold" || beat.status === "private") {
     return err("Beat is not available for purchase.", 409);
   }
+
+  if (provider === "stripe" && (!beat.delivery || beat.priceUsd < 1)) return err("Для этого бита автоматическая оплата и выдача пока не настроены. Напишите продавцу.", 409);
 
   const loyalty = await prisma.loyaltyPoint.findUnique({
     where: { userId: guard.context.userId },
@@ -87,6 +91,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
+    await refreshExpiredStripeHold(beat_id);
     const orderId = await prisma.$transaction(async (tx) => {
       await checkBeatForBuyer(tx, beat_id, guard.context.userId);
       const existingDraft = await tx.order.findFirst({ where: { buyerUserId: guard.context.userId, beatId: beat_id, status: "draft" }, orderBy: { createdAt: "desc" }, select: { id: true } });
