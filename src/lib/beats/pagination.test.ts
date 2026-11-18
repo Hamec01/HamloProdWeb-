@@ -23,3 +23,12 @@ test("genre links reset pagination; page links preserve the selected genre", () 
   assert.equal(beatCatalogHref(1, "trap"), "/beats?genre=trap");
   assert.equal(beatCatalogHref(2, "trap"), "/beats?genre=trap&page=2");
 });
+
+test("search survives genre and page navigation and clears without losing the genre", () => {
+  const page = new URL(beatCatalogHref(2, "trap", "  Рудимент   CASE-068  "), "https://hamloprod.org");
+  assert.equal(page.searchParams.get("q"), "Рудимент CASE-068");
+  assert.equal(page.searchParams.get("page"), "2");
+  assert.equal(page.searchParams.get("genre"), "trap");
+  assert.equal(beatCatalogHref(1, "trap", ""), "/beats?genre=trap");
+  assert.equal(new URL(beatCatalogHref(1, "boombap", "руди"), page).searchParams.has("page"), false);
+});
