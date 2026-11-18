@@ -75,3 +75,29 @@ Stripe remains explicitly selectable in Russian and English independently of
 those defaults. The full regression suite was rerun after these changes: 263
 passed, zero failed, one optional skip. The additive migration was applied to
 the primary database and all four runtime CRUD privileges were confirmed.
+
+## Production release
+
+Published application commit `c7af132` as deployment
+`dpl_FeVHzwWofPTTobJFjoondfRPnZ6D`
+(`https://hamlo-prod-c8ojhop3h-inkeritm-4372s-projects.vercel.app`). Vercel confirmed
+both production domain mappings completed. `PAID_CHECKOUT_ENABLED` is now `true`
+as a Production Config variable, with the same tested runtime override on this
+deployment. Previous live deployment was the owner's key-only redeploy
+`dpl_8cv68ZCzUD5o4Yr5j6kwKCyAVJYF`.
+
+The final browser run additionally verified that English manual checkout remains
+contact-based while Russian checkout explicitly selects Stripe. The selected
+method is preserved when editing an accepted contract. Public production checks
+passed for beat catalogue, purchase/point profile login redirects, unauthenticated
+summary and delivery denial, configured webhook signature rejection, and HPDG808
+version 1.0.1. The recent error/fatal deployment-log query returned no records.
+Early checks against a still-building deployment returned Vercel's build page;
+they were repeated successfully after READY, before promotion.
+
+The QA server was stopped, its two recorded private PDFs were removed, and the
+isolated database was dropped. No production application customers, purchases,
+messages or loyalty awards were created for QA. The only real Stripe probe was
+an unpaid session that was immediately expired. Producers can now attach each
+beat's own Drive link and set a positive USD price to enable its Stripe button;
+no production Drive links were invented or populated automatically.
