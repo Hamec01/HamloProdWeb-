@@ -33,7 +33,7 @@ legacy point balances/history. Existing seller settings and license templates,
 HPDG payment handling and public assets are retained. The redemption PDF function
 includes Chromium and signature assets.
 
-Validation: production build and TypeScript passed; 254 tests passed and one
+Validation: production build and TypeScript passed; 257 tests passed and one
 unrelated optional test was skipped. Integration tests use an isolated database
 and independent connections to verify competing reservations, expiry, private
 message access, pagination, idempotency and concurrent redemption. Browser/API QA
@@ -50,3 +50,22 @@ Only the administrator can edit delivery, and the link is returned only to that
 purchase's buyer or an administrator after payment confirmation. No external
 URL is fetched by the server. Migration `20261118020000_order_mp3_delivery` adds
 the delivery field. Delivery URL validation rejects executable/invalid links.
+
+## Production release
+
+Published to https://hamloprod.org from application commit `65e5bef` using
+deployment `dpl_6kxvuGNDYhGw1oHDvjmEmG3CmR1g`. Previous live deployment:
+`dpl_4sZh9ZUpVP22k9VT3t5nZi32Udxj`. Both migrations above were applied successfully
+before promotion. Vercel confirmed the domain mappings completed. Public smoke
+checks passed for the Russian buy/message and reservation entry, the 25/100
+loyalty policy, profile login redirect, unauthenticated chat rejection and the
+existing HPDG808 page/version.
+
+The final test run passed 257 tests with zero failures and one optional skip.
+Three consecutive independent-connection redemption race probes also passed.
+Additional browser/API checks confirmed administrator-only MP3 delivery edits,
+private delivery visibility, PDF access, retained purchases/chat/points after
+logout and login, and access to older purchases through profile pagination.
+The isolated QA database and its remaining private PDF objects were removed
+after verification. No test customers, purchases or messages were created in
+the production database.

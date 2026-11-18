@@ -96,7 +96,7 @@ test("RF requests: private messages, weekly reservations, expiry and atomic 100-
   }
   const redemptions = await Promise.allSettled(freeOrders.map((order, index) => redeemBeatOrder(order.id, rewardBuyer.id, index === 0 ? prisma : concurrentClient)));
   assert.equal(redemptions.filter((entry) => entry.status === "fulfilled").length, 1);
-  assert.ok(redemptions.some((entry) => entry.status === "rejected" && /INSUFFICIENT_POINTS/.test(String(entry.reason))));
+  assert.ok(redemptions.some((entry) => entry.status === "rejected" && /INSUFFICIENT_POINTS/.test(String(entry.reason))), redemptions.map((entry) => entry.status === "rejected" ? String(entry.reason) : "fulfilled").join("\n"));
   const winner = await prisma.order.findFirstOrThrow({ where: { buyerUserId: rewardBuyer.id, loyaltyPointsSpent: 100 } });
   assert.equal((await redeemBeatOrder(winner.id, rewardBuyer.id)).pdfReady, true);
   assert.equal((await prisma.loyaltyPoint.findUniqueOrThrow({ where: { userId: rewardBuyer.id } })).points, 0);
