@@ -47,3 +47,32 @@ license issuance integration; the full suite is not recorded as passing for
 this release. Earlier overloaded QA runs hit the four-connection migrator-role
 limit; final focused tests run without the local browser/server competing for
 those connections. QA uses only the isolated `hamloprod_license_test` database.
+
+## Published release
+
+Application commit `64a88a0` was built as production deployment
+`dpl_GA2EhvScC5zfWgPymvAP29Lj23Bo` at
+`https://hamlo-prod-e6iqf197z-inkeritm-4372s-projects.vercel.app`.
+The additive migration was applied to the primary database and runtime-role
+permissions on the new tables were verified before promotion. Both production
+domain mappings completed; https://hamloprod.org/admin/users is live.
+Post-promotion checks passed for directory/profile login redirects, anonymous
+rejection on notes/points/messages, the loyalty endpoint and public beat list.
+The deployment error/fatal log query returned no records in its recent window.
+
+Browser/API QA passed the complete directory/search/pagination story, producer
+and customer messages with unread state, escaping and privacy of notes, 25+75
+manual credits, a failed history read after a successful credit followed by a
+note save and safe credit retry, role/owner/origin/input rejection, logout/login
+persistence, and a 390px mobile layout without page overflow or browser errors.
+The local Chromium test run disabled GPU acceleration and decorative effects.
+A further full-suite attempt made progress through PDF generation/payment
+idempotency but stalled around S3 test cleanup; it was stopped and is not
+reported as a successful full-suite run. The focused 257-pass result remains the
+completed regression result for this release.
+
+The local QA server/test processes were stopped and the isolated database was
+removed. No PDF keys remained on the recorded QA orders at cleanup. Listing
+private object prefixes timed out, so the remaining isolated order IDs were
+retained in `/tmp/hamlo-users-qa-cleanup-manifest.json` for any later orphan-file
+inspection. No real production customers were messaged or granted test points.
