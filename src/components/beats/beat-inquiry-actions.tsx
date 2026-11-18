@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { StripePurchaseOption } from "./stripe-purchase-option";
+import type { StripeUnavailableReason } from "@/lib/checkout/stripe-availability";
 
-export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, compact = false, stripeAvailable = false, priceUsd }: { beatId: string; beatSlug: string; isAuthenticated: boolean; locale: "ru" | "en"; compact?: boolean; stripeAvailable?: boolean; priceUsd?: number }) {
+export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, compact = false, stripeAvailable = false, stripeUnavailableReason, priceUsd, priceRub }: { beatId: string; beatSlug: string; isAuthenticated: boolean; locale: "ru" | "en"; compact?: boolean; stripeAvailable?: boolean; stripeUnavailableReason?: StripeUnavailableReason | null; priceUsd?: number; priceRub?: number }) {
   const router = useRouter();
+  const chooser = useRef<HTMLDialogElement>(null);
+  const headingId = useId();
+  const manualAmount = locale === "ru" ? priceRub : priceUsd;
+  const manualPrice = manualAmount === undefined ? "" : new Intl.NumberFormat(locale === "ru" ? "ru-RU" : "en-US", { style: "currency", currency: locale === "ru" ? "RUB" : "USD", maximumFractionDigits: 0 }).format(manualAmount);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function open(reserve: boolean) {
+    chooser.current?.close();
     if (!isAuthenticated) { router.push(`/auth?next=${encodeURIComponent(`/beats/${beatSlug}`)}`); return; }
     setBusy(true); setError("");
     try {
@@ -21,11 +27,27 @@ export function BeatInquiryActions({ beatId, beatSlug, isAuthenticated, locale, 
   }
   return <div className={compact ? "space-y-2" : "mt-5 space-y-3"}>
     <div className="flex flex-wrap gap-3">
-      {stripeAvailable ? <Link href={`/checkout/${encodeURIComponent(beatSlug)}?payment=stripe`} className="border border-amber-500 bg-amber-950/30 px-4 py-2 text-sm text-amber-100">{locale === "ru" ? "Купить через Stripe" : "Buy with Stripe"}{priceUsd !== undefined ? ` · $${priceUsd}` : ""}</Link> : null}
-      <button type="button" disabled={busy} onClick={() => void open(false)} className="border border-amber-700 bg-amber-950/30 px-4 py-2 text-sm uppercase tracking-[0.12em] text-amber-100 disabled:opacity-50">{busy ? (locale === "ru" ? "Открываем…" : "Opening…") : locale === "ru" ? "Купить бит / написать" : "Buy Beat / Message"}</button>
-      {!compact ? <button type="button" disabled={busy} onClick={() => void open(true)} className="border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-paper-100)] disabled:opacity-50">{locale === "ru" ? "Бронь на 7 дней" : "Reserve for 7 days"}</button> : null}
+      <button type="button" disabled={busy} onClick={() => { if (!chooser.current?.open) chooser.current?.showModal(); }} aria-haspopup="dialog" className="min-h-11 border border-amber-600 bg-amber-950/30 px-4 py-2 text-sm uppercase tracking-[0.12em] text-amber-100 disabled:opacity-50">{locale === "ru" ? "Купить бит" : "Buy beat"}</button>
+      <button type="button" disabled={busy} onClick={() => void open(false)} className="min-h-11 border border-stone-600 px-4 py-2 text-sm text-stone-200 disabled:opacity-50">{busy ? (locale === "ru" ? "Открываем…" : "Opening…") : locale === "ru" ? "Написать продавцу" : "Message producer"}</button>
+      {!compact ? <button type="button" disabled={busy} onClick={() => void open(true)} className="min-h-11 border border-stone-600 px-4 py-2 text-sm text-stone-200 disabled:opacity-50">{locale === "ru" ? "Бронь на 7 дней" : "Reserve for 7 days"}</button> : null}
     </div>
-    {!compact ? <p className="text-xs leading-5 text-[var(--color-paper-300)]">{locale === "ru" ? "Обсудите оплату с продавцом прямо на сайте. После подтверждения оплаты лицензия появится в заказе и профиле." : "Discuss payment with the producer here on the site. Your license appears in the order and profile once payment is confirmed."}</p> : null}
+    {!compact ? <p className="text-xs leading-5 text-stone-300">{locale === "ru" ? "Нажмите «Купить бит», чтобы выбрать Stripe, оплату через продавца или бронь." : "Choose Buy beat for Stripe, payment through the producer or a reservation."}</p> : null}
+    <dialog ref={chooser} aria-labelledby={headingId} onClick={(event) => { if (event.target === event.currentTarget) chooser.current?.close(); }} className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg overflow-y-auto border border-stone-600 bg-[#11100e] p-0 text-stone-100 shadow-2xl backdrop:bg-black/80">
+      <div className="space-y-5 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-4"><h2 id={headingId} className="text-2xl">{locale === "ru" ? "Как купить бит" : "Choose how to buy"}</h2><button type="button" onClick={() => chooser.current?.close()} aria-label={locale === "ru" ? "Закрыть выбор оплаты" : "Close purchase options"} className="flex h-10 w-10 items-center justify-center border border-stone-600 text-xl">×</button></div>
+        <section className="space-y-3 border border-amber-900/70 p-4">
+          <h3 className="text-lg">{locale === "ru" ? "Картой через Stripe" : "Card payment with Stripe"}</h3>
+          <p className="text-xs leading-5 text-stone-300">{locale === "ru" ? "Оплата в USD. После подтверждения оплаты PDF, файл бита и 25 поинтов появятся в кабинете." : "Pay in USD. Your PDF, beat file and 25 points appear in your account after payment."}</p>
+          <StripePurchaseOption href={`/checkout/${encodeURIComponent(beatSlug)}?payment=stripe`} priceUsd={priceUsd} available={stripeAvailable} reason={stripeUnavailableReason} locale={locale} />
+        </section>
+        <section className="space-y-3 border border-stone-700 p-4">
+          <h3 className="text-lg">{locale === "ru" ? "Через продавца" : "Through the producer"}{manualPrice ? ` · ${manualPrice}` : ""}</h3>
+          <p className="text-xs leading-5 text-stone-300">{locale === "ru" ? "Обсудите оплату прямо на сайте. После подтверждения продавцом покупка сохранится в кабинете." : "Arrange payment through site messages. The producer confirms your purchase and saves it to your account."}</p>
+          <button type="button" disabled={busy} onClick={() => void open(false)} className="min-h-11 border border-stone-600 px-4 py-2 text-sm disabled:opacity-50">{locale === "ru" ? "Купить через переписку" : "Buy through messages"}</button>
+        </section>
+        <button type="button" disabled={busy} onClick={() => void open(true)} className="min-h-11 w-full border border-stone-600 px-4 py-3 text-sm disabled:opacity-50">{locale === "ru" ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button>
+      </div>
+    </dialog>
     {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
   </div>;
 }

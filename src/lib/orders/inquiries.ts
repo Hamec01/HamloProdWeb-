@@ -11,6 +11,8 @@ export async function createBeatInquiry(beatId: string, buyer: { userId: string;
       const amount = locale === "ru" ? beat.priceRub ?? 2500 : beat.priceUsd;
       order = await tx.order.create({ data: { beatId, buyerUserId: buyer.userId, buyerEmail: buyer.email, basePriceUsd: locale === "en" ? amount : 0, finalPriceUsd: locale === "en" ? amount : 0, basePrice: amount, finalPrice: amount, currency: locale === "ru" ? "RUB" : "USD", market: locale === "ru" ? "ru" : "global", provider: "contact", paymentProvider: "contact", licenseType: "exclusive", contractLanguage: locale } });
       await systemMessage(tx, order.id, "Заявка на покупку бита создана. Здесь можно обсудить оплату с продавцом и оформить бронь на 7 дней.");
+    } else if (order.adminArchivedAt) {
+      await tx.order.update({ where: { id: order.id }, data: { adminArchivedAt: null } });
     }
     const actor: OrderActor = { userId: buyer.userId, role: "buyer" };
     if (reserve) await reserveOrderBeat(tx, order.id, actor);

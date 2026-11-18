@@ -10,6 +10,7 @@ import { getGenreLabel } from "@/lib/beats-taxonomy";
 import { dictionary, type Locale } from "@/lib/i18n";
 import { formatMarketMoney, getBeatPriceForLocale, getMarketContext } from "@/lib/market";
 import type { Beat } from "@/types";
+import type { StripeUnavailableReason } from "@/lib/checkout/stripe-availability";
 import type { BeatReactionStats } from "@/lib/beats/pagination";
 import { beatCoverSrc } from "@/lib/beats/cover-src";
 
@@ -21,6 +22,7 @@ export function BeatCard({
   isAuthenticated,
   initialReactionStats,
   stripeAvailable = false,
+  stripeUnavailableReason,
 }: {
   beat: Beat;
   queue: Beat[];
@@ -29,6 +31,7 @@ export function BeatCard({
   isAuthenticated: boolean;
   initialReactionStats?: BeatReactionStats;
   stripeAvailable?: boolean;
+  stripeUnavailableReason?: StripeUnavailableReason | null;
 }) {
   const t = dictionary[locale];
   const market = getMarketContext(locale);
@@ -80,7 +83,7 @@ export function BeatCard({
         <BeatLikeButton beatId={beat.id} locale={locale} isAuthenticated={isAuthenticated} initialStats={initialReactionStats} />
       </div>
 
-      {beat.status === "available" || beat.status === "reserved" ? <div className="mt-4"><BeatInquiryActions compact beatId={beat.id} beatSlug={beat.slug} isAuthenticated={isAuthenticated} locale={locale} stripeAvailable={stripeAvailable} priceUsd={beat.priceUsd} /></div> : null}
+      {beat.status === "available" || beat.status === "reserved" ? <div className="mt-4"><BeatInquiryActions compact beatId={beat.id} beatSlug={beat.slug} isAuthenticated={isAuthenticated} locale={locale} stripeAvailable={stripeAvailable} stripeUnavailableReason={stripeUnavailableReason} priceUsd={beat.priceUsd} priceRub={beat.priceRub} /></div> : null}
       {beat.status === "reserved" && beat.reservationExpiresAt ? <p className="mt-3 text-xs text-amber-200">{locale === "ru" ? "Бронь до" : "Reserved until"} {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium", timeZone: "Europe/Helsinki" }).format(new Date(beat.reservationExpiresAt))}</p> : null}
       <div className="mt-4 flex items-center justify-between border-t border-[var(--color-line)] pt-4 text-xs uppercase tracking-[0.16em] text-[var(--color-paper-400)]">
         <span>{beat.duration}</span>

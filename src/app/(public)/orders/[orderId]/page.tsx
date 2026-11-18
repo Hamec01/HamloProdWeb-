@@ -16,7 +16,11 @@ export default async function OrderPage({ params }: { params: Promise<{ orderId:
   let initial: Awaited<ReturnType<typeof getConversation>>;
   try { initial = await getConversation(orderId, actor); } catch { notFound(); }
   return <section className="space-y-6">
-    <Link className="inline-block border border-[var(--color-line)] px-4 py-2 text-sm" href={actor.role === "admin" ? "/admin/licenses" : "/profile"}>{locale === "ru" ? "Назад в кабинет" : "Back to account"}</Link>
+    <nav className="flex flex-wrap gap-3" aria-label={locale === "ru" ? "Навигация по заявке" : "Request navigation"}>
+      <Link className="border border-[var(--color-line)] px-4 py-3 text-sm" href={`/beats/${encodeURIComponent(initial.order.beatSlug)}`}>{locale === "ru" ? "← К биту" : "← Back to beat"}</Link>
+      <Link className="border border-[var(--color-line)] px-4 py-3 text-sm" href="/beats">{locale === "ru" ? "Ко всем битам" : "All beats"}</Link>
+      <Link className="border border-[var(--color-line)] px-4 py-3 text-sm" href={actor.role === "admin" ? "/admin/licenses" : "/profile"}>{locale === "ru" ? "В кабинет" : "My account"}</Link>
+    </nav>
     <OrderConversation key={orderId} initial={initial} role={actor.role} locale={locale} />
   </section>;
 }

@@ -445,6 +445,7 @@ model Order {
   heldBeats Beat[] @relation("HeldBeatOrder")
   buyerLastReadAt DateTime? @map("buyer_last_read_at") @db.Timestamptz(6)
   adminLastReadAt DateTime? @map("admin_last_read_at") @db.Timestamptz(6)
+  adminArchivedAt DateTime? @map("admin_archived_at") @db.Timestamptz(6)
   loyaltyPointsSpent Int @default(0) @map("loyalty_points_spent")
   deliveryMp3Url String? @map("delivery_mp3_url")
 
@@ -452,6 +453,7 @@ model Order {
   @@index([buyerUserId])
   @@index([status, createdAt])
   @@index([paymentExternalId])
+  @@index([provider, status, adminArchivedAt, createdAt])
   @@map("orders")
 }
 

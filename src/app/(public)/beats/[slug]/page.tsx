@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getPublicSessionState } from "@/lib/auth/public-session";
 import { dictionary } from "@/lib/i18n";
 import { BeatInquiryActions } from "@/components/beats/beat-inquiry-actions";
+import { beatStripeAvailability } from "@/lib/checkout/stripe-availability";
 import { isBeatStripeReady } from "@/lib/checkout/config";
 import { prisma } from "@/lib/db/client";
 import { getLocale } from "@/lib/i18n-server";
@@ -78,7 +79,9 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
   const market = getMarketContext(locale);
   const beatPrice = getBeatPriceForLocale(beat, locale);
   const priceLabel = formatMarketMoney(beatPrice, market.currency, locale);
-  const deliveryReady = isBeatStripeReady() && beat.priceUsd > 0 && Boolean(await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } }));
+  const stripeConfigured = isBeatStripeReady();
+  const hasDelivery = stripeConfigured && Boolean(await prisma.beatDelivery.findUnique({ where: { beatId: beat.id }, select: { beatId: true } }));
+  const stripe = beatStripeAvailability(stripeConfigured, beat.priceUsd, hasDelivery);
 
   return (
     <section className="space-y-8">
@@ -88,7 +91,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
           className="inline-flex items-center gap-2 border border-[var(--color-line)] px-4 py-2 text-sm uppercase tracking-[0.18em] text-[var(--color-paper-200)] transition-colors hover:bg-[rgba(255,255,255,0.04)]"
         >
           <ArrowLeft size={14} />
-          {t.backToArchive}
+          {locale === "ru" ? "Ко всем битам" : "All beats"}
         </Link>
         <StatusBadge status={beat.status} />
       </div>
@@ -132,7 +135,7 @@ export default async function BeatCasePage({ params }: { params: Promise<{ slug:
               <span className="text-sm uppercase tracking-[0.18em] text-[var(--color-paper-400)]">{t.currentPrice}</span>
               <span className="font-sans text-4xl uppercase tracking-[0.06em] text-[var(--color-paper-100)]">{priceLabel}</span>
             </div>
-            <BeatInquiryActions beatId={beat.id} beatSlug={beat.slug} isAuthenticated={session.isAuthenticated} locale={locale} stripeAvailable={deliveryReady} priceUsd={beat.priceUsd} />
+            <BeatInquiryActions beatId={beat.id} beatSlug={beat.slug} isAuthenticated={session.isAuthenticated} locale={locale} stripeAvailable={stripe.available} stripeUnavailableReason={stripe.reason} priceUsd={beat.priceUsd} priceRub={beat.priceRub} />
             {beat.reservationExpiresAt ? <p className="mt-4 text-sm text-amber-200">{locale === "ru" ? "Бронь до" : "Reserved until"} {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Helsinki" }).format(new Date(beat.reservationExpiresAt))} ({locale === "ru" ? "Хельсинки" : "Helsinki"})</p> : null}
             </>}
           </section>

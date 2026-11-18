@@ -16,6 +16,7 @@ type ManualSale = {
   currency: "RUB" | "USD";
   createdAt: string;
   hasPdf: boolean;
+  provider?: string;
   newMessage?: boolean;
 };
 
@@ -232,6 +233,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
                 <th className="px-5 py-3">Бит</th>
                 <th className="px-5 py-3">Покупатель</th>
                 <th className="px-5 py-3">Сумма</th>
+                <th className="px-5 py-3">Продажа</th>
                 <th className="px-5 py-3">PDF</th>
               </tr>
             </thead>
@@ -241,6 +243,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
                   <td className="px-5 py-4">{sale.beatTitle}<br /><span className="text-xs text-[var(--color-paper-400)]">{new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" }).format(new Date(sale.createdAt))}</span></td>
                   <td className="px-5 py-4">{sale.buyerName}<br /><span className="text-xs text-[var(--color-paper-400)]">{sale.buyerEmail}</span><br /><Link className="mt-2 inline-block underline" href={`/orders/${sale.id}`}>{sale.newMessage ? "Новое сообщение — открыть чат" : "Переписка / выдать MP3"}</Link></td>
                   <td className="px-5 py-4">{new Intl.NumberFormat("ru-RU", { style: "currency", currency: sale.currency, maximumFractionDigits: 0 }).format(sale.amount)}</td>
+                  <td className="px-5 py-4"><span className="text-amber-200">{sale.provider === "stripe" ? "Stripe · SOLD" : "SOLD"}</span><p className="mt-1 text-xs text-stone-300">{sale.provider === "stripe" ? "Оплачено автоматически" : "Продажа подтверждена"}</p></td>
                   <td className="px-5 py-4">
                     <button
                       type="button"
@@ -254,7 +257,7 @@ export function AdminLicenseManager({ beats, sales, canCreateSales }: Props) {
                 </tr>
               ))}
               {sales.length === 0 ? (
-                <tr><td className="px-5 py-5 text-[var(--color-paper-400)]" colSpan={4}>Пока нет ручных продаж.</td></tr>
+                <tr><td className="px-5 py-5 text-[var(--color-paper-400)]" colSpan={5}>Покупок пока нет.</td></tr>
               ) : null}
             </tbody>
           </table>

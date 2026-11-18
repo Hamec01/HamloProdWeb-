@@ -11,6 +11,7 @@ export async function SectorHeader({ locale }: { locale: Locale }) {
 
   const navigation = [
     { href: `/${locale}`, label: t.navHome },
+    { href: "/beats", label: locale === "ru" ? "Биты" : "Beats" },
     ...(!session.isAuthenticated ? [{ href: "/auth", label: t.navAuth }] : []),
   ];
 

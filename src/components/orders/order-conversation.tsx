@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { StripePurchaseOption } from "@/components/beats/stripe-purchase-option";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { getConversation } from "@/lib/orders/conversation";
 
@@ -115,10 +116,14 @@ export function OrderConversation({ initial, role, locale }: { initial: Conversa
         <p>{order.reservationIsOurs ? (ru ? "Бит забронирован по вашей заявке" : "Reserved for this request") : ru ? "Бит забронирован по другой заявке" : "Reserved for another request"} {ru ? "до" : "until"} {date(order.reservationExpiresAt)} ({ru ? "Хельсинки" : "Helsinki"}).</p>
         {order.reservationIsOurs ? <button className={`${buttonClass} mt-3`} disabled={Boolean(busy)} onClick={() => void action("release")}>{ru ? "Снять бронь" : "Cancel reservation"}</button> : null}
       </div> : null}
+      {role === "buyer" && order.status === "draft" && !order.sold ? <section className="space-y-3 border border-stone-700 bg-stone-950/60 p-4">
+        <h2 className="text-lg">{ru ? "Способ оплаты" : "Payment method"}</h2>
+        <StripePurchaseOption href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=stripe`} priceUsd={order.stripePriceUsd} available={order.stripeAvailable} reason={order.stripeUnavailableReason} locale={locale} />
+        <p className="text-xs leading-5 text-stone-300">{ru ? "Или договоритесь об оплате с продавцом в переписке ниже." : "Or arrange payment with the producer in the messages below."}</p>
+      </section> : null}
       {order.status === "draft" && !order.sold ? <div className="flex flex-wrap gap-3">
         {!order.reservationExpiresAt ? <button className={buttonClass} disabled={Boolean(busy)} onClick={() => void action("reserve")}>{ru ? "Забронировать на 7 дней" : "Reserve for 7 days"}</button> : null}
         {role === "buyer" ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=contact`}>{ru ? "Заполнить данные для лицензии / использовать поинты" : "License details / Use points"}</Link> : null}
-        {role === "buyer" && order.stripeAvailable ? <Link className={buttonClass} href={`/checkout/${encodeURIComponent(order.beatSlug)}?payment=stripe`}>{ru ? "Купить через Stripe (USD)" : "Buy with Stripe (USD)"}</Link> : null}
         {order.hasContract && role === "buyer" ? <Link className={buttonClass} href={`/checkout/preview/${order.id}`}>{ru ? "Просмотреть договор" : "Review agreement"}</Link> : null}
       </div> : null}
       {!order.hasContract && order.status === "draft" ? <p className="text-sm text-amber-200">{ru ? "Для выдачи лицензии покупателю нужно заполнить данные и принять условия договора." : "The buyer must complete their details and accept the agreement before a license can be issued."}</p> : null}

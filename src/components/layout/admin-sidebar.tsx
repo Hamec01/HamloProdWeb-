@@ -15,7 +15,7 @@ const adminNavigation = [
 
 export function AdminSidebar() {
   return (
-    <aside className="case-panel h-fit min-w-64 p-5">
+    <aside className="case-panel h-fit min-w-0 w-full p-4">
       <p className="text-xs uppercase tracking-[0.26em] text-[var(--color-paper-400)]">Restricted Records</p>
       <h2 className="mt-3 font-sans text-3xl uppercase tracking-[0.08em]">Admin</h2>
       <div className="case-divider my-5" />
@@ -26,7 +26,7 @@ export function AdminSidebar() {
           </Link>
         ))}
       </nav>
-      <a href="/api/admin/hpdg808/contacts" className="mt-3 block px-3 py-3 text-sm text-[var(--color-paper-200)] hover:text-white">
+      <a href="/api/admin/hpdg808/contacts" download className="mt-3 block px-3 py-3 text-sm text-[var(--color-paper-200)] hover:text-white">
         HPDG 808 — Email CSV ↓
       </a>
       <div className="case-divider my-5" />

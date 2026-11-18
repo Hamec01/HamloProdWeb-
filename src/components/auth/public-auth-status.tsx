@@ -65,6 +65,7 @@ export function PublicAuthStatus({ email, locale }: { email: string; locale: Loc
   const name = summary?.displayName || email.split("@")[0];
   const initials = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
   const links = [
+    { href: "/beats", label: ru ? "Каталог битов" : "Beat catalogue", icon: Headphones, count: null },
     { href: "/profile", label: ru ? "Мой профиль" : "My profile", icon: UserRound, count: null },
     { href: "/profile?tab=purchases", label: ru ? "Купленные биты" : "Purchased beats", icon: Headphones, count: summary?.purchases },
     { href: "/profile?tab=requests", label: ru ? "Заявки и оплата" : "Requests and payments", icon: FileClock, count: summary?.requests },
